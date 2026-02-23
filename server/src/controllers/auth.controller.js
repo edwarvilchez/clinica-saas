@@ -12,14 +12,14 @@ exports.register = async (req, res) => {
     // Map account types to internal roles if necessary
     if (finalAccountType === 'PROFESSIONAL') finalRoleName = 'DOCTOR';
     if (finalAccountType === 'CLINIC' || finalAccountType === 'HOSPITAL') finalRoleName = 'ADMINISTRATIVE';
-    
+
     // Check if user already exists to give a cleaner error before database constraint
     const existingUser = await User.findOne({ where: { [Op.or]: [{ email }, { username }] } });
     if (existingUser) {
       const field = existingUser.email === email ? 'email' : 'username';
       await t.rollback();
-      return res.status(400).json({ 
-        message: field === 'email' ? 'Este correo electrónico ya está registrado.' : 'Este nombre de usuario ya está en uso.' 
+      return res.status(400).json({
+        message: field === 'email' ? 'Este correo electrónico ya está registrado.' : 'Este nombre de usuario ya está en uso.'
       });
     }
 
@@ -28,7 +28,7 @@ exports.register = async (req, res) => {
       await t.rollback();
       return res.status(400).json({ message: 'El rol especificado no es válido.' });
     }
-    
+
     const user = await User.create({
       username,
       email,
@@ -72,7 +72,7 @@ exports.register = async (req, res) => {
         phone: req.body.phone
       }, { transaction: t });
     }
-    
+
     // Create Organization for business accounts
     if (['PROFESSIONAL', 'CLINIC', 'HOSPITAL'].includes(finalAccountType)) {
       const orgName = businessName || (finalAccountType === 'PROFESSIONAL' ? `${firstName} ${lastName}` : username);
@@ -86,7 +86,7 @@ exports.register = async (req, res) => {
 
       // Link user to organization
       await user.update({ organizationId: newOrg.id }, { transaction: t });
-      
+
       // Update returned user object
       user.organizationId = newOrg.id;
     }
@@ -94,18 +94,18 @@ exports.register = async (req, res) => {
     await t.commit();
 
     const token = jwt.sign({ id: user.id, role: role.name }, process.env.JWT_SECRET, { expiresIn: '8h' });
-    res.status(201).json({ 
+    res.status(201).json({
       message: 'Cuenta creada con éxito',
-      token, 
-      user: { id: user.id, username, email, firstName, lastName, businessName, accountType: user.accountType, role: role.name, gender: user.gender } 
+      token,
+      user: { id: user.id, username, email, firstName, lastName, businessName, accountType: user.accountType, role: role.name, gender: user.gender }
     });
   } catch (error) {
     await t.rollback();
     console.error('Registration Error:', error);
-    
+
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({ 
-        message: 'Error de duplicación: ' + error.errors[0].message 
+      return res.status(400).json({
+        message: 'Error de duplicación: ' + error.errors[0].message
       });
     }
 
@@ -127,11 +127,11 @@ const log = (msg) => {
 
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  
+
   try {
     console.log(`[LOGIN DEBUG] Email received: "${email}"`);
     log(`[LOGIN START] Request received for: ${email}`);
-    
+
 
     // Explicitly check env var
     if (!process.env.JWT_SECRET) {
@@ -139,17 +139,17 @@ exports.login = async (req, res) => {
       return res.status(500).json({ message: 'Error interno: JWT_SECRET no configurado.' });
     }
 
-    const user = await User.findOne({ 
-      where: { 
+    const user = await User.findOne({
+      where: {
         [Op.or]: [
           { email: email },
           { username: email }
         ]
-      }, 
+      },
       include: [
         Role,
         Organization
-      ] 
+      ]
     });
 
     if (!user) {
@@ -167,21 +167,23 @@ exports.login = async (req, res) => {
 
     log(`Password Match. Generating Token...`);
     const token = jwt.sign({ id: user.id, role: user.Role.name }, process.env.JWT_SECRET, { expiresIn: '8h' });
-    
+
     log(`Token Generated. Sending Response.`);
-    res.json({ token, user: { 
-      id: user.id, 
-      username: user.username, 
-      email, 
-      firstName: user.firstName, 
-      lastName: user.lastName, 
-      businessName: user.businessName,
-      accountType: user.accountType,
-      role: user.Role.name, 
-      gender: user.gender,
-      organizationId: user.organizationId,
-      Organization: user.Organization
-    } });
+    res.json({
+      token, user: {
+        id: user.id,
+        username: user.username,
+        email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        businessName: user.businessName,
+        accountType: user.accountType,
+        role: user.Role.name,
+        gender: user.gender,
+        organizationId: user.organizationId,
+        Organization: user.Organization
+      }
+    });
   } catch (error) {
     log(`[LOGIN EXCEPTION] ${error.message} \nStack: ${error.stack}`);
     console.error('[LOGIN ERROR]', error);
@@ -191,9 +193,9 @@ exports.login = async (req, res) => {
 
 exports.getMe = async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id, { 
-      include: [Role, Organization], 
-      attributes: { exclude: ['password'] } 
+    const user = await User.findByPk(req.user.id, {
+      include: [Role, Organization],
+      attributes: { exclude: ['password'] }
     });
     res.json(user);
   } catch (error) {
@@ -235,19 +237,19 @@ exports.forgotPassword = async (req, res) => {
         message: message
       });
 
-      res.status(200).json({ 
-        success: true, 
+      res.status(200).json({
+        success: true,
         message: 'Correo de recuperación enviado',
-        debugToken: process.env.NODE_ENV !== 'production' ? token : undefined 
+        debugToken: process.env.NODE_ENV !== 'production' ? token : undefined
       });
     } catch (emailError) {
       console.error('Email send error:', emailError);
-      
+
       if (process.env.NODE_ENV !== 'production') {
-        return res.status(200).json({ 
-          success: true, 
+        return res.status(200).json({
+          success: true,
           message: 'Error al enviar email (modo desarrollo), pero el token fue generado.',
-          debugToken: token 
+          debugToken: token
         });
       }
 
@@ -268,7 +270,7 @@ exports.resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
     const { Op } = require('sequelize');
-    
+
     const user = await User.findOne({
       where: {
         resetToken: token,
@@ -302,5 +304,28 @@ exports.resetPassword = async (req, res) => {
     res.json({ message: 'Contraseña actualizada exitosamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+};
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const user = await User.findByPk(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Usuario no encontrado' });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'La contraseña actual es incorrecta' });
+    }
+
+    await user.update({ password: newPassword });
+
+    res.json({ message: 'Contraseña actualizada exitosamente' });
+  } catch (error) {
+    console.error('Change Password Error:', error);
+    res.status(500).json({ message: 'Error al cambiar la contraseña' });
   }
 };

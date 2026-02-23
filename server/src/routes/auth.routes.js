@@ -9,6 +9,7 @@ const {
   registerSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
+  changePasswordSchema,
 } = require('../validators/auth.validator');
 
 /**
@@ -147,6 +148,37 @@ router.post('/forgot-password', validate(forgotPasswordSchema), authController.f
  *         description: Contraseña actualizada
  */
 router.post('/reset-password', validate(resetPasswordSchema), authController.resetPassword);
+
+/**
+ * @swagger
+ * /api/auth/change-password:
+ *   post:
+ *     summary: Cambiar contraseña del usuario actual
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *                 minLength: 8
+ *     responses:
+ *       200:
+ *         description: Contraseña actualizada
+ *       400:
+ *         description: Error de validación o contraseña actual incorrecta
+ *       401:
+ *         description: No autorizado
+ */
+router.post('/change-password', authMiddleware, validate(changePasswordSchema), authController.changePassword);
 
 // TEMPORARY DEBUG ROUTE - Remove after testing
 router.get('/debug-users', async (req, res) => {

@@ -54,8 +54,12 @@ export class AuthService {
   hasRole(allowedRoles: string[]): boolean {
     const user = this.currentUser();
     if (!user || !user.role) return false;
-    
+
     const userRole = user.role.toUpperCase();
     return allowedRoles.map(r => r.toUpperCase()).includes(userRole);
+  }
+
+  changePassword(data: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/change-password`, data);
   }
 }

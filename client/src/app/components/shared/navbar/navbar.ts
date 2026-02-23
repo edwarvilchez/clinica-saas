@@ -28,10 +28,10 @@ export class Navbar {
   isUserMenuOpen = false;
 
   constructor(
-    public authService: AuthService, 
+    public authService: AuthService,
     public langService: LanguageService,
     public currencyService: CurrencyService
-  ) {}
+  ) { }
 
   toggleUserMenu() {
     this.isUserMenuOpen = !this.isUserMenuOpen;
@@ -93,6 +93,14 @@ export class Navbar {
     Swal.fire({
       title: 'Cambiar Contraseña',
       html: `
+        <div style="text-align: left; font-size: 0.85rem; color: #64748b; margin-bottom: 1rem; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; background-color: #f8fafc;">
+          <strong>Requisitos de la nueva contraseña:</strong>
+          <ul style="margin: 0.5rem 0 0 1.25rem; padding: 0;">
+            <li>Mínimo 8 caracteres</li>
+            <li>Al menos una mayúscula y una minúscula</li>
+            <li>Al menos un número</li>
+          </ul>
+        </div>
         <input type="password" id="current-pass" class="swal2-input" placeholder="Contraseña Actual">
         <input type="password" id="new-pass" class="swal2-input" placeholder="Nueva Contraseña">
         <input type="password" id="confirm-pass" class="swal2-input" placeholder="Confirmar Nueva Contraseña">
@@ -104,19 +112,41 @@ export class Navbar {
         const current = (document.getElementById('current-pass') as HTMLInputElement).value;
         const newPass = (document.getElementById('new-pass') as HTMLInputElement).value;
         const confirm = (document.getElementById('confirm-pass') as HTMLInputElement).value;
-        
+
         if (!current || !newPass || !confirm) {
           Swal.showValidationMessage('Todos los campos son obligatorios');
+          return false;
         }
         if (newPass !== confirm) {
           Swal.showValidationMessage('Las contraseñas nuevas no coinciden');
+          return false;
         }
         return { current, newPass };
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire('¡Éxito!', 'Tu contraseña ha sido actualizada.', 'success');
-        // TODO: Call API to change password
+        const { current, newPass } = result.value;
+        this.authService.changePassword({
+          currentPassword: current,
+          newPassword: newPass
+        }).subscribe({
+          next: () => {
+            Swal.fire('¡Éxito!', 'Tu contraseña ha sido actualizada.', 'success');
+          },
+          error: (err) => {
+            console.error('Password change error:', err);
+            let errorMessage = 'No se pudo cambiar la contraseña';
+
+            // Handle validation errors from backend (Joi)
+            if (err.error?.errors && Array.isArray(err.error.errors) && err.error.errors.length > 0) {
+              errorMessage = err.error.errors[0].message;
+            } else if (err.error?.message) {
+              errorMessage = err.error.message;
+            }
+
+            Swal.fire('Error', errorMessage, 'error');
+          }
+        });
       }
     });
   }
