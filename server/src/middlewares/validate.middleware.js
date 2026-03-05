@@ -26,7 +26,7 @@ const validate = (schema, property = 'body') => {
       }, 'Validation error');
 
       return res.status(400).json({
-        message: 'Validation error',
+        message: errorMessages[0]?.message || 'Error de validación en los datos enviados.',
         errors: errorMessages,
       });
     }

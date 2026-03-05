@@ -59,6 +59,28 @@ export class AuthService {
     return allowedRoles.map(r => r.toUpperCase()).includes(userRole);
   }
 
+  /**
+   * Retorna true si el usuario actual debe cambiar su contraseña.
+   * Se usa en firstLoginGuard para bloquear la navegación.
+   */
+  mustChangePasswordNow(): boolean {
+    const user = this.currentUser();
+    return user?.mustChangePassword === true;
+  }
+
+  /**
+   * Actualiza el flag mustChangePassword en el estado local (localStorage + signal)
+   * después de que el usuario cambia su contraseña exitosamente.
+   */
+  clearMustChangePassword(): void {
+    const user = this.currentUser();
+    if (user) {
+      const updatedUser = { ...user, mustChangePassword: false };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      this.currentUser.set(updatedUser);
+    }
+  }
+
   changePassword(data: any): Observable<any> {
     return this.http.post(`${this.apiUrl}/change-password`, data);
   }

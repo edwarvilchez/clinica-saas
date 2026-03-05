@@ -13,6 +13,7 @@ jest.mock('../../models', () => ({
   User: {
     findOne: jest.fn(),
     create: jest.fn(),
+    findByPk: jest.fn(),
   },
   Role: {
     findOne: jest.fn(),
@@ -20,6 +21,13 @@ jest.mock('../../models', () => ({
   Patient: {},
   Doctor: {},
   Appointment: {},
+  Organization: {},
+  sequelize: {
+    transaction: jest.fn(() => ({
+      commit: jest.fn(),
+      rollback: jest.fn(),
+    }))
+  }
 }));
 
 describe('Auth Controller', () => {

@@ -2,6 +2,25 @@ const { User, Role, Patient, Organization, sequelize } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 
+/**
+ * Genera una contraseña temporal que cumple con el patrón de seguridad:
+ * mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número.
+ * Formato: Med@ + 6 caracteres aleatorios (letras y números).
+ * Ejemplo: Med@x7Rp2q
+ */
+const generarPasswordTemporal = () => {
+  const chars = 'abcdefghijkmnopqrstuvwxyz';
+  const nums = '23456789';
+  const upper = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let resto = '';
+  const all = chars + nums + upper;
+  for (let i = 0; i < 6; i++) {
+    resto += all.charAt(Math.floor(Math.random() * all.length));
+  }
+  // Garantizar al menos 1 mayúscula y 1 número adicionales en el sufijo
+  return 'Med@' + resto;
+};
+
 exports.register = async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -29,17 +48,25 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'El rol especificado no es válido.' });
     }
 
+    // Opción B: siempre generar contraseña temporal.
+    // Se ignora cualquier password enviado desde el cliente.
+    // El usuario DEBE cambiarla en su primer ingreso.
+    const tempPassword = generarPasswordTemporal();
+
     const user = await User.create({
       username,
       email,
-      password,
+      password: tempPassword,
       firstName,
       lastName,
       businessName,
       accountType: finalAccountType,
       roleId: role.id,
-      gender: patientData?.gender || req.body.gender // Use patient gender or direct gender
+      gender: patientData?.gender || req.body.gender,
+      mustChangePassword: true,
+      temporaryPassword: tempPassword  // Siempre se guarda la temporal
     }, { transaction: t });
+
 
     // If registering as a patient, create patient record
     if (role.name === 'PATIENT' && patientData) {
@@ -93,11 +120,29 @@ exports.register = async (req, res) => {
 
     await t.commit();
 
-    const token = jwt.sign({ id: user.id, role: role.name }, process.env.JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign(
+      { id: user.id, role: role.name, mustChangePassword: true },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
     res.status(201).json({
-      message: 'Cuenta creada con éxito',
+      message: 'Cuenta creada con éxito. Debes cambiar tu contraseña temporal en tu primer ingreso.',
       token,
-      user: { id: user.id, username, email, firstName, lastName, businessName, accountType: user.accountType, role: role.name, gender: user.gender }
+      user: {
+        id: user.id,
+        username,
+        email,
+        firstName,
+        lastName,
+        businessName,
+        accountType: user.accountType,
+        role: role.name,
+        gender: user.gender,
+        mustChangePassword: true
+      },
+      // En modo desarrollo se expone la contraseña temporal para facilitar las pruebas
+      ...(process.env.NODE_ENV !== 'production' && { temporaryPassword: tempPassword })
     });
   } catch (error) {
     await t.rollback();
@@ -166,11 +211,18 @@ exports.login = async (req, res) => {
     }
 
     log(`Password Match. Generating Token...`);
-    const token = jwt.sign({ id: user.id, role: user.Role.name }, process.env.JWT_SECRET, { expiresIn: '8h' });
+
+    // Incluir mustChangePassword en el token JWT para que el guard del frontend pueda verificarlo
+    const token = jwt.sign(
+      { id: user.id, role: user.Role.name, mustChangePassword: user.mustChangePassword },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
 
     log(`Token Generated. Sending Response.`);
     res.json({
-      token, user: {
+      token,
+      user: {
         id: user.id,
         username: user.username,
         email,
@@ -181,7 +233,8 @@ exports.login = async (req, res) => {
         role: user.Role.name,
         gender: user.gender,
         organizationId: user.organizationId,
-        Organization: user.Organization
+        Organization: user.Organization,
+        mustChangePassword: user.mustChangePassword  // Exponer flag al frontend
       }
     });
   } catch (error) {
@@ -285,7 +338,9 @@ exports.resetPassword = async (req, res) => {
     await user.update({
       password: password,
       resetToken: null,
-      resetExpires: null
+      resetExpires: null,
+      mustChangePassword: false,   // Reset externo también limpia el flag
+      temporaryPassword: null
     });
 
     // Send confirmation email
@@ -321,11 +376,22 @@ exports.changePassword = async (req, res) => {
       return res.status(400).json({ message: 'La contraseña actual es incorrecta' });
     }
 
-    await user.update({ password: newPassword });
+    // Actualizar contraseña y desactivar el flag de cambio obligatorio
+    await user.update({
+      password: newPassword,
+      mustChangePassword: false,  // El usuario ya cumplió con el cambio obligatorio
+      temporaryPassword: null     // Limpiar la referencia a la clave temporal
+    });
 
-    res.json({ message: 'Contraseña actualizada exitosamente' });
+    res.json({
+      message: '✅ Contraseña actualizada exitosamente. Tu cuenta está completamente configurada.',
+      mustChangePassword: false
+    });
   } catch (error) {
     console.error('Change Password Error:', error);
     res.status(500).json({ message: 'Error al cambiar la contraseña' });
   }
 };
+
+// Exportar el helper para uso en otros controladores (e.g. team.controller)
+exports.generarPasswordTemporal = generarPasswordTemporal;

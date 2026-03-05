@@ -65,15 +65,38 @@ export class Login implements OnInit, OnDestroy {
       this.loading.set(true);
       this.error.set('');
       this.authService.login(this.loginForm.value).subscribe({
-        next: () => {
-          Swal.fire({
-            title: '¡Bienvenido!',
-            text: 'Sesión iniciada correctamente.',
-            icon: 'success',
-            timer: 1500,
-            showConfirmButton: false
-          });
-          this.router.navigate(['/dashboard']);
+        next: (res) => {
+          this.loading.set(false);
+
+          if (res?.user?.mustChangePassword) {
+            // El usuario tiene contraseña temporal — mostrar advertencia y redirigir
+            Swal.fire({
+              title: '⚠️ Contraseña Temporal Detectada',
+              html: `
+                <p>Has ingresado con una <strong>contraseña temporal</strong>.</p>
+                <p>Por seguridad, debes cambiarla antes de acceder al sistema.</p>
+              `,
+              icon: 'warning',
+              confirmButtonText: 'Cambiar ahora',
+              confirmButtonColor: '#f59e0b',
+              allowOutsideClick: false,
+              timer: 3500,
+              timerProgressBar: true,
+              showConfirmButton: true
+            }).then(() => {
+              this.router.navigate(['/change-password-first']);
+            });
+          } else {
+            // Acceso normal
+            Swal.fire({
+              title: '¡Bienvenido!',
+              text: 'Sesión iniciada correctamente.',
+              icon: 'success',
+              timer: 1500,
+              showConfirmButton: false
+            });
+            this.router.navigate(['/dashboard']);
+          }
         },
         error: (err) => {
           this.error.set(err.error?.message || 'Error al iniciar sesión. Verifica tus datos.');

@@ -66,6 +66,16 @@ const User = sequelize.define('User', {
   deletedBy: {
     type: DataTypes.UUID,
     allowNull: true
+  },
+  mustChangePassword: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  temporaryPassword: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: null
   }
 }, {
   hooks: {
@@ -107,7 +117,7 @@ const User = sequelize.define('User', {
   ]
 });
 
-User.prototype.comparePassword = async function(candidatePassword) {
+User.prototype.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

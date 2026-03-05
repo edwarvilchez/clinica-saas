@@ -29,8 +29,6 @@ interface OrgOption {
 export class Register implements OnInit, OnDestroy {
   registerForm: FormGroup;
   loading = false;
-  showPassword = signal(false);
-  showConfirmPassword = signal(false);
   private formSub?: Subscription;
   private readonly STORAGE_KEY = 'medicus_register_draft';
 
@@ -39,10 +37,10 @@ export class Register implements OnInit, OnDestroy {
   accountType = signal<AccountType>('PATIENT');
 
   orgOptions: OrgOption[] = [
-    { type: 'PATIENT',      icon: 'bi-person-heart',     labelKey: 'register.patient',      descKey: 'register.patientDesc',      color: 'primary' },
-    { type: 'PROFESSIONAL', icon: 'bi-briefcase-fill',   labelKey: 'landing.professional',  descKey: 'register.professionalDesc', color: 'success' },
-    { type: 'CLINIC',       icon: 'bi-building',         labelKey: 'landing.clinic',        descKey: 'register.clinicDesc',       color: 'info' },
-    { type: 'HOSPITAL',     icon: 'bi-hospital-fill',    labelKey: 'landing.hospital',      descKey: 'register.hospitalDesc',     color: 'warning' },
+    { type: 'PATIENT', icon: 'bi-person-heart', labelKey: 'register.patient', descKey: 'register.patientDesc', color: 'primary' },
+    { type: 'PROFESSIONAL', icon: 'bi-briefcase-fill', labelKey: 'landing.professional', descKey: 'register.professionalDesc', color: 'success' },
+    { type: 'CLINIC', icon: 'bi-building', labelKey: 'landing.clinic', descKey: 'register.clinicDesc', color: 'info' },
+    { type: 'HOSPITAL', icon: 'bi-hospital-fill', labelKey: 'landing.hospital', descKey: 'register.hospitalDesc', color: 'warning' },
   ];
 
   isPatient = computed(() => this.accountType() === 'PATIENT');
@@ -58,8 +56,6 @@ export class Register implements OnInit, OnDestroy {
     this.registerForm = this.fb.group({
       username: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]],
-      confirmPassword: ['', Validators.required],
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
       // Patient fields
@@ -76,7 +72,7 @@ export class Register implements OnInit, OnDestroy {
       // Common
       accountType: ['PATIENT'],
       acceptTerms: [false, Validators.requiredTrue],
-    }, { validators: this.passwordMatchValidator });
+    });
   }
 
   ngOnInit() {
@@ -84,20 +80,15 @@ export class Register implements OnInit, OnDestroy {
     if (savedDraft) {
       try {
         const draft = JSON.parse(savedDraft);
-        delete draft.password;
-        delete draft.confirmPassword;
         this.registerForm.patchValue(draft);
         if (draft.accountType) {
           this.accountType.set(draft.accountType);
         }
-      } catch (_) {}
+      } catch (_) { }
     }
 
     this.formSub = this.registerForm.valueChanges.subscribe(values => {
-      const toSave = { ...values };
-      delete toSave.password;
-      delete toSave.confirmPassword;
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(toSave));
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(values));
     });
   }
 
@@ -149,15 +140,6 @@ export class Register implements OnInit, OnDestroy {
     );
   }
 
-  passwordMatchValidator(form: FormGroup) {
-    const password = form.get('password');
-    const confirmPassword = form.get('confirmPassword');
-    if (password && confirmPassword && password.value !== confirmPassword.value) {
-      confirmPassword.setErrors({ passwordMismatch: true });
-      return { passwordMismatch: true };
-    }
-    return null;
-  }
 
   onSubmit() {
     if (this.registerForm.valid) {
@@ -167,7 +149,7 @@ export class Register implements OnInit, OnDestroy {
       const data: any = {
         username: f.username,
         email: f.email,
-        password: f.password,
+        // No se envía contraseña — el backend siempre genera una temporal (Opción B)
         firstName: f.firstName,
         lastName: f.lastName,
         accountType: f.accountType,
@@ -193,12 +175,34 @@ export class Register implements OnInit, OnDestroy {
         next: (res: any) => {
           this.loading = false;
           localStorage.removeItem(this.STORAGE_KEY);
+
+          // Mostrar contraseña temporal al usuario (Opción B)
           Swal.fire({
-            title: this.langService.translate('register.success'),
-            text: res.message || 'Tu cuenta ha sido creada exitosamente.',
+            title: '✅ ¡Cuenta Creada!',
+            html: `
+              <p class="mb-2">Tu cuenta ha sido creada exitosamente.</p>
+              <p class="mb-1 text-muted small">Se generó una <strong>contraseña temporal</strong> para tu acceso inicial:</p>
+              <div style="
+                background: #0f172a;
+                color: #38bdf8;
+                font-family: monospace;
+                font-size: 1.4rem;
+                font-weight: 700;
+                letter-spacing: 0.15em;
+                padding: 0.75rem 1.5rem;
+                border-radius: 0.5rem;
+                margin: 0.75rem 0;
+                border: 1px solid #0ea5e9;
+              ">${res.temporaryPassword || '(ver en API)'}</div>
+              <p class="text-warning small mb-0">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                <strong>Guárdala ahora.</strong> Al ingresar, el sistema te pedirá cambiarla.
+              </p>
+            `,
             icon: 'success',
             confirmButtonColor: '#0ea5e9',
-            confirmButtonText: this.langService.translate('auth.login'),
+            confirmButtonText: 'Ir al Login',
+            allowOutsideClick: false,
           }).then(() => this.router.navigate(['/login']));
         },
         error: (err) => {
@@ -227,7 +231,6 @@ export class Register implements OnInit, OnDestroy {
     if (control?.hasError('minlength'))
       return es ? `Mínimo ${control.errors?.['minlength'].requiredLength} caracteres` : `Min ${control.errors?.['minlength'].requiredLength} chars`;
     if (control?.hasError('pattern')) return es ? 'Formato inválido' : 'Invalid format';
-    if (control?.hasError('passwordMismatch')) return es ? 'No coinciden' : 'Mismatch';
     return '';
   }
 

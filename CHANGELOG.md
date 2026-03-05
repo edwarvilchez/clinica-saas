@@ -2,7 +2,61 @@
 
 Todas las modificaciones notables del proyecto serán documentadas en este archivo.
 
+## [1.9.0] - 2026-03-02
+
+### 🔐 Contraseña Temporal y Cambio Obligatorio en Primer Ingreso
+
+#### Nueva Funcionalidad
+
+- ✅ **Generación Automática de Contraseña Temporal**: Al crear cualquier usuario (registro o adición de miembro de equipo), el sistema genera automáticamente una contraseña temporal segura con el formato `Med@XXXXXX` que cumple el patrón de seguridad establecido.
+  - Patrón: mínimo 8 caracteres, 1 mayúscula, 1 minúscula, 1 número.
+  - En modo desarrollo, la contraseña temporal se expone en la respuesta de la API para facilitar pruebas.
+- ✅ **Flag `mustChangePassword`**: Nueva bandera booleana en la base de datos (campo `mustChangePassword`, default `true`) que marca cuándo un usuario debe cambiar su contraseña.
+  - Se activa automáticamente al crear usuarios (registro y adición de equipo).
+  - Se desactiva una vez el usuario cambia su contraseña exitosamente.
+- ✅ **Pantalla Obligatoria de Cambio** (`/change-password-first`): Nueva ruta y componente Angular que:
+  - Muestra un SweetAlert informativo al cargar explicando el requisito y el patrón de contraseña.
+  - Incluye una lista de verificación visual en tiempo real de los requisitos de contraseña.
+  - Valida el patrón de contraseña (8+ caracteres, 1 mayúscula, 1 minúscula, 1 número).
+  - Muestra un SweetAlert de éxito al completar el cambio.
+  - No permite cancelar la operación (acción obligatoria).
+- ✅ **Guard de Primer Ingreso** (`firstLoginGuard`): Nuevo guard Angular que:
+  - Intercepta la navegación a cualquier ruta protegida cuando `mustChangePassword === true`.
+  - Redirige automáticamente a `/change-password-first`.
+  - Aplicado a todas las rutas del sistema (dashboard, pacientes, citas, equipo, etc.).
+- ✅ **Mensajes Contextuales en Login**: El componente de login detecta el flag `mustChangePassword` en la respuesta del servidor y muestra:
+  - **Contraseña temporal**: SweetAlert de advertencia con mensaje "Contraseña Temporal Detectada" + redirección automática.
+  - **Acceso normal**: SweetAlert de bienvenida estándar.
+- ✅ **Contraseña Temporal en Gestión de Equipo**: Al añadir miembros al equipo, la API devuelve la contraseña temporal generada para que el administrador la comunique al nuevo empleado (en lugar de usar la clave fija `medicus123`).
+- ✅ **Limpieza al Cambiar**: Al actualizar la contraseña, se limpia también el campo `temporaryPassword` en la base de datos.
+
+#### Base de Datos
+
+- ✅ **Nueva Migración** `20260302000000-add-must-change-password.js`:
+  - Columna `mustChangePassword` (BOOLEAN NOT NULL DEFAULT TRUE).
+  - Columna `temporaryPassword` (STRING NULL) — referencia a la clave temporal, se limpia al cambiar.
+
+#### Archivos Nuevos
+
+- `server/src/migrations/20260302000000-add-must-change-password.js` - Migración de BD.
+- `client/src/app/guards/first-login.guard.ts` - Guard de primer ingreso.
+- `client/src/app/components/change-password-first-login/change-password-first-login.ts` - Componente.
+- `client/src/app/components/change-password-first-login/change-password-first-login.html` - Template.
+- `client/src/app/components/change-password-first-login/change-password-first-login.css` - Estilos.
+
+#### Archivos Modificados
+
+- `server/src/models/User.js` - Nuevos campos `mustChangePassword` y `temporaryPassword`.
+- `server/src/controllers/auth.controller.js` - Generación de clave temporal en `register`, flag en `login`, limpieza en `changePassword`.
+- `server/src/controllers/team.controller.js` - Generación de clave temporal en `addMember`.
+- `client/src/app/services/auth.service.ts` - Métodos `mustChangePasswordNow()` y `clearMustChangePassword()`.
+- `client/src/app/app.routes.ts` - Nueva ruta `/change-password-first` + `firstLoginGuard` en todas las rutas protegidas.
+- `client/src/app/components/login/login.ts` - Detección de `mustChangePassword` con Swal diferenciado.
+
+---
+
 ## [1.8.5] - 2026-02-19
+
 
 ### 🛡️ Integridad de Datos y Reparación en Producción
 

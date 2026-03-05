@@ -1,5 +1,6 @@
 const { User, Role, Organization, Doctor, Nurse, Staff, sequelize } = require('../models');
 const bcrypt = require('bcryptjs');
+const { generarPasswordTemporal } = require('./auth.controller');
 
 exports.addMember = async (req, res) => {
   const t = await sequelize.transaction();
@@ -26,17 +27,23 @@ exports.addMember = async (req, res) => {
       return res.status(400).json({ message: 'Rol inválido.' });
     }
 
+    // Generar o usar la contraseña proporcionada; siempre forzar cambio en primer ingreso
+    const tempPass = password || generarPasswordTemporal();
+    const isTemporary = !password;
+
     // Create User
     const newUser = await User.create({
       username: email.split('@')[0] + '_' + Date.now(), // Generate unique username
       email,
-      password: password || 'medicus123', // Default or provided
+      password: tempPass,
       firstName,
       lastName,
       gender,
       roleId: role.id,
       organizationId,
-      accountType: req.user.accountType // Inherit account type context
+      accountType: req.user.accountType, // Inherit account type context
+      mustChangePassword: true,          // Obligar cambio de contraseña en primer ingreso
+      temporaryPassword: isTemporary ? tempPass : null
     }, { transaction: t });
 
     // Create Profile based on Role
@@ -60,7 +67,12 @@ exports.addMember = async (req, res) => {
     }
 
     await t.commit();
-    res.status(201).json({ message: 'Miembro añadido con éxito', user: newUser });
+    res.status(201).json({
+      message: 'Miembro añadido con éxito. Se le ha generado una contraseña temporal.',
+      user: { ...newUser.toJSON(), password: undefined },
+      // Exponer contraseña temporal para que el admin la comunique al nuevo miembro
+      temporaryPassword: isTemporary ? tempPass : undefined
+    });
 
   } catch (error) {
     await t.rollback();
@@ -92,7 +104,7 @@ exports.removeMember = async (req, res) => {
     const organizationId = req.user.organizationId;
 
     const userToRemove = await User.findOne({ where: { id, organizationId } });
-    
+
     if (!userToRemove) {
       return res.status(404).json({ message: 'Usuario no encontrado en tu equipo.' });
     }
