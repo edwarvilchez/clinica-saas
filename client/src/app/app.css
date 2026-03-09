@@ -106,3 +106,20 @@ app-sidebar {
 .main-content > * {
   max-width: 100%;
 }
+
+/* Branding Footer Intensity */
+.brand-footer-version {
+  color: #0369a1 !important; /* Blue 700 */
+  font-weight: 800 !important;
+}
+
+.brand-footer-copyright {
+  color: #0f172a !important; /* Slate 900 - Very dark */
+  font-weight: 800 !important;
+}
+
+.brand-footer-wrapper {
+  opacity: 1 !important;
+  font-size: 0.8rem !important;
+  letter-spacing: 0.5px;
+}
