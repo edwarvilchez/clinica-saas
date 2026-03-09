@@ -6,11 +6,32 @@ exports.addMember = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { firstName, lastName, email, roleName, password, gender, licenseNumber, departmentId } = req.body;
-    const organizationId = req.user.organizationId; // From JWT/Auth middleware
+    const organizationId = req.user.organizationId; 
+    const org = await Organization.findByPk(organizationId);
 
-    if (!organizationId) {
+    if (!organizationId || !org) {
       await t.rollback();
       return res.status(403).json({ message: 'No perteneces a una organización para añadir miembros.' });
+    }
+
+    // ENFORCE PLAN LIMITS
+    if (roleName === 'DOCTOR') {
+      const doctorCount = await User.count({ 
+        where: { organizationId, roleId: (await Role.findOne({ where: { name: 'DOCTOR' } })).id } 
+      });
+
+      if (org.type === 'PROFESSIONAL' && doctorCount >= 1) {
+        await t.rollback();
+        return res.status(403).json({ 
+          message: 'Límite alcanzado: El plan Consultorio solo permite 1 médico. Por favor, actualiza tu plan.' 
+        });
+      }
+      if (org.type === 'CLINIC' && doctorCount >= 10) {
+        await t.rollback();
+        return res.status(403).json({ 
+          message: 'Límite alcanzado: El plan Clínica solo permite hasta 10 médicos. Por favor, actualiza tu plan.' 
+        });
+      }
     }
 
     // Check if user exists

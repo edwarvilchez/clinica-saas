@@ -2,14 +2,21 @@
 
 Sistema completo de gestión para clínicas médicas desarrollado con Angular y Node.js.
 
-![Versión](https://img.shields.io/badge/versión-1.8.5-blue.svg)
+![Versión](https://img.shields.io/badge/versión-1.8.6-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Security](https://img.shields.io/badge/security-9%2F10-brightgreen.svg)
-![Test Coverage](https://img.shields.io/badge/coverage-15%25-yellow.svg)
+![Test Coverage](https://img.shields.io/badge/coverage-18%25-yellow.svg)
 ![Docker](https://img.shields.io/badge/docker-ready-blue.svg)
 ![Deployment](https://img.shields.io/badge/deployment-easypanel-success.svg)
 
 ## 📋 Características Principales
+
+### 🌎 Soporte Bilingüe e Internacionalización (i18n)
+
+- ✅ **Interfaz 100% bilingüe** (Español / Inglés)
+- ✅ **Cambio dinámico de idioma** en tiempo real sin recargar la página
+- ✅ **Soporte de monedas** (USD / VES) con tasa de cambio configurable
+- ✅ **Formatos regionales** para fechas, números y monedas
 
 ### 👥 Gestión de Usuarios
 
@@ -59,6 +66,15 @@ Sistema completo de gestión para clínicas médicas desarrollado con Angular y 
 - ✅ **Activación Automática** de servicios premium
 - ✅ **Gestión de Organización**
 - ✅ **SuperAdmin Bypass**: Acceso total sin restricciones de suscripción
+
+## 🆕 Novedades v1.8.6 (Marzo 2026)
+
+### 🌎 Globalización y UI Premium
+
+- ✅ **Soporte Multilingüe**: Implementación total de `LanguageService` en todos los módulos (Dashboard, Citas, Historial, Facturación, Equipo).
+- ✅ **Gestión de Planes Pro**: Nueva interfaz de suscripción con soporte bilingüe para límites, nombres y características de planes.
+- ✅ **Módulo de Mi Equipo**: Gestión administrativa de miembros con roles dinámicos y soporte i18n.
+- ✅ **Billing UI Fixes**: Corrección de carga de estilos (`NG2008`) e integración de estilos inline para mayor estabilidad en entornos de desarrollo.
 
 ## 🆕 Novedades v1.8.5 (Febrero 2026)
 

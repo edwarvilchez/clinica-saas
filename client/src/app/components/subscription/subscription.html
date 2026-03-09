@@ -9,10 +9,10 @@
           <div class="bg-white bg-opacity-25 p-2 rounded-2">
             <i class="bi bi-stars fs-4"></i>
           </div>
-          <h3 class="mb-0">¡Prueba Gratis por 7 Días!</h3>
+          <h3 class="mb-0">{{ langService.translate('subscription.trialTitle') }}</h3>
         </div>
         <p class="mb-0 fs-5 text-white-50">
-          Experimenta todas las funcionalidades premium sin compromiso.
+          {{ langService.translate('subscription.trialDesc') }}
         </p>
       </div>
       <!-- Only show register if not logged in, or upgrade text if logged in -->
@@ -21,13 +21,15 @@
         routerLink="/register"
         class="btn btn-light btn-lg fw-bold rounded-pill text-primary shadow px-4"
       >
-        Comenzar Prueba <i class="bi bi-arrow-right ms-2"></i>
+        {{ langService.translate('subscription.startTrial') }}
+        <i class="bi bi-arrow-right ms-2"></i>
       </a>
       <span
         *ngIf="authService.currentUser()"
         class="badge bg-white text-primary rounded-pill px-3 py-2 fs-6 shadow-sm"
       >
-        <i class="bi bi-person-check-fill me-1"></i> Sesión Activa
+        <i class="bi bi-person-check-fill me-1"></i>
+        {{ langService.translate('subscription.activeSession') }}
       </span>
     </div>
 
@@ -36,12 +38,15 @@
       <div
         class="d-inline-flex align-items-center gap-2 bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-bold small mb-3"
       >
-        <i class="bi bi-award-fill"></i> PLANES Y PRECIOS
+        <i class="bi bi-award-fill"></i> {{ langService.translate('subscription.pricingTitle') }}
       </div>
-      <h1 class="display-4 fw-bold mb-3">Elige el plan perfecto<br />para tu organización</h1>
+      <h1
+        class="display-4 fw-bold mb-3"
+        [innerHTML]="langService.translate('subscription.choosePlan').replace(' ', '<br>')"
+      ></h1>
       <p class="text-muted fs-5">
-        Todos los planes incluyen cumplimiento con normativas de salud.<br />
-        <strong class="text-primary">Escala tu plan a medida que crece tu práctica.</strong>
+        {{ langService.translate('subscription.choosePlan') }}<br />
+        <strong class="text-primary">{{ langService.translate('subscription.scalePlan') }}</strong>
       </p>
     </div>
 
@@ -53,7 +58,7 @@
         class="toggle-btn"
         [class.active]="billingCycle() === cycle.id"
       >
-        {{ cycle.label }}
+        {{ getCycleLabel(cycle) }}
         <span *ngIf="cycle.discount" class="discount-badge">{{ cycle.discount }}</span>
       </button>
     </div>
@@ -62,30 +67,39 @@
     <div class="row g-4 justify-content-center">
       <div class="col-md-6 col-lg-3" *ngFor="let plan of plans">
         <div class="plan-card h-100 d-flex flex-column" [class.popular]="plan.popular">
-          <div *ngIf="plan.popular" class="popular-badge">Recomendado</div>
+          <div *ngIf="plan.popular" class="popular-badge">
+            {{ langService.translate('subscription.recommended') }}
+          </div>
 
           <div class="d-flex align-items-center gap-3 mb-4">
             <div class="icon-box" [ngClass]="'icon-' + plan.color">
               <i [class]="'bi ' + plan.icon"></i>
             </div>
             <div>
-              <h4 class="fw-bold mb-0 lh-1">{{ plan.name }}</h4>
-              <p class="small text-muted fw-bold text-uppercase mb-0 mt-1">{{ plan.tagline }}</p>
+              <h4 class="fw-bold mb-0 lh-1">{{ getPlanName(plan) }}</h4>
+              <p class="small text-muted fw-bold text-uppercase mb-0 mt-1">
+                {{ getPlanTagline(plan) }}
+              </p>
             </div>
           </div>
 
           <div class="d-flex align-items-baseline gap-1 mb-4">
             <span class="price-tag">${{ getPrice(plan.price) | number }}</span>
             <span class="period-tag"
-              >/ {{ billingCycle() === 'Mensual' ? 'mes' : billingCycle().toLowerCase() }}</span
+              >/
+              {{
+                billingCycle() === 'Mensual'
+                  ? langService.translate('subscription.monthly')
+                  : getCurrentCycleLabel().toLowerCase()
+              }}</span
             >
           </div>
 
           <div class="mb-4 flex-grow-1">
             <p class="x-small fw-bold text-primary text-uppercase border-bottom pb-2 mb-3">
-              {{ plan.limit }}
+              {{ getPlanLimit(plan) }}
             </p>
-            <div class="feature-item" *ngFor="let feature of plan.features">
+            <div class="feature-item" *ngFor="let feature of getPlanFeatures(plan)">
               <div class="check-icon"><i class="bi bi-check-lg"></i></div>
               <span class="feature-text">{{ feature }}</span>
             </div>
@@ -96,12 +110,13 @@
             class="cta-btn"
             [ngClass]="plan.popular ? 'cta-btn-primary' : 'cta-btn-secondary'"
           >
-            Elegir Plan <i class="bi bi-arrow-right"></i>
+            {{ langService.translate('subscription.choosePlanBtn') }}
+            <i class="bi bi-arrow-right"></i>
           </button>
 
           <div class="mt-2 text-center x-small text-muted" *ngIf="currentPlan() === plan.type">
             <span class="badge bg-success bg-opacity-25 text-success rounded-pill px-2">
-              Plan Actual
+              {{ langService.translate('subscription.currentPlan') }}
             </span>
           </div>
         </div>
@@ -113,17 +128,20 @@
       <div class="contact-footer">
         <div class="row align-items-center g-5">
           <div class="col-lg-6">
-            <h3 class="fw-bold mb-3">¿Necesitas un despliegue personalizado?</h3>
+            <h3 class="fw-bold mb-3">
+              {{ langService.translate('subscription.customDeployment') }}
+            </h3>
             <p class="text-white-50 mb-4">
-              Si eres una red de hospitales o una corporación multinacional, contacta con nuestro
-              equipo ejecutivo para una solución a medida.
+              {{ langService.translate('subscription.customDeploymentDesc') }}
             </p>
             <div class="d-flex align-items-center gap-3">
               <div class="bg-white bg-opacity-10 p-2 rounded-3">
                 <i class="bi bi-envelope fs-5 text-info"></i>
               </div>
               <div>
-                <p class="x-small fw-bold text-info text-uppercase mb-0">Email de Atención</p>
+                <p class="x-small fw-bold text-info text-uppercase mb-0">
+                  {{ langService.translate('subscription.supportEmail') }}
+                </p>
                 <a
                   href="mailto:hola.piridawly@gmail.com"
                   class="text-white text-decoration-none fw-bold"

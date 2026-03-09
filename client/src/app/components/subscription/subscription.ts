@@ -32,11 +32,16 @@ export class Subscription implements OnInit {
   currentPlan = signal<string | null>(null);
   
   cycles = [
-    { id: 'Mensual', label: 'Mensual', discount: null },
-    { id: 'Trimestral', label: 'Trimestral', discount: null },
-    { id: 'Semestral', label: 'Semestral', discount: null },
-    { id: 'Anual', label: 'Anual', discount: '-20%' }
+    { id: 'Mensual', id_en: 'Monthly', discount: null },
+    { id: 'Trimestral', id_en: 'Quarterly', discount: null },
+    { id: 'Semestral', id_en: 'Semester', discount: null },
+    { id: 'Anual', id_en: 'Yearly', discount: '-20%' }
   ];
+
+  getCycleLabel(cycle: any): string {
+    if (this.langService.lang() === 'en') return cycle.id_en;
+    return cycle.id;
+  }
 
   plans: PricingPlan[] = [
     {
@@ -132,12 +137,56 @@ export class Subscription implements OnInit {
     this.billingCycle.set(cycleId);
   }
 
+  getCurrentCycleLabel(): string {
+    const cycle = this.cycles.find(c => c.id === this.billingCycle());
+    return cycle ? this.getCycleLabel(cycle) : '';
+  }
+
   getPrice(basePrice: number): number {
     const cycle = this.billingCycle();
     if (cycle === 'Trimestral') return basePrice * 3;
     if (cycle === 'Semestral') return basePrice * 6;
     if (cycle === 'Anual') return Math.round((basePrice * 12 * 0.8));
     return basePrice;
+  }
+
+  getPlanName(plan: any): string {
+    if (this.langService.lang() === 'en') {
+      if (plan.type === 'PROFESSIONAL') return 'Ind. Practice';
+      if (plan.type === 'CLINIC') return 'Clinic';
+      if (plan.type === 'HOSPITAL') return 'Hospital';
+    }
+    return plan.name;
+  }
+
+  getPlanTagline(plan: any): string {
+     if (this.langService.lang() === 'en') {
+        if (plan.type === 'PROFESSIONAL') return 'Individual Doctors';
+        if (plan.type === 'CLINIC') return 'Small Clinics / Centers';
+        if (plan.type === 'HOSPITAL') return 'Hospitals & Large Centers';
+        if (plan.type === 'ENTERPRISE') return 'Health Networks';
+     }
+     return plan.tagline;
+  }
+
+  getPlanLimit(plan: any): string {
+     if (this.langService.lang() === 'en') {
+        if (plan.type === 'PROFESSIONAL') return 'Limit: 1,500 Patients';
+        if (plan.type === 'CLINIC') return 'Limit: 10 Doctors';
+        if (plan.type === 'HOSPITAL') return 'No Limits';
+        if (plan.type === 'ENTERPRISE') return 'Custom';
+     }
+     return plan.limit;
+  }
+
+  getPlanFeatures(plan: any): string[] {
+    if (this.langService.lang() === 'en') {
+        if (plan.type === 'PROFESSIONAL') return ["1 Doctor", "Up to 1,500 Patients", "Smart Medical Agenda", "Digital Medical Record", "Email Support"];
+        if (plan.type === 'CLINIC') return ["Up to 10 Doctors", "Multiple Receptionists", "Billing & Cashier", "Financial Reports", "Priority Support"];
+        if (plan.type === 'HOSPITAL') return ["Unlimited Doctors", "Bed/Room Management", "Nursing Module", "Integrated Laboratory", "Advanced Audit"];
+        if (plan.type === 'ENTERPRISE') return ["Dedicated Infrastructure", "Integration API", "Custom Mobile App", "99.9% Guaranteed SLA", "Account Manager"];
+    }
+    return plan.features;
   }
 
   getHeaders() {
@@ -155,57 +204,58 @@ export class Subscription implements OnInit {
     const amount = this.getPrice(plan.price);
     const concept = `Suscripción ${plan.name} (${cycle})`;
 
+    const isEs = this.langService.lang() === 'es';
+
     Swal.fire({
-      title: 'Realizar Pago de Suscripción',
+      title: isEs ? 'Realizar Pago de Suscripción' : 'Make Subscription Payment',
       html: `
         <div class="text-start">
           <div class="alert alert-info border-0 shadow-sm mb-3">
-            <h6 class="fw-bold mb-1"><i class="bi bi-cart-check"></i> Resumen del Pedido</h6>
+            <h6 class="fw-bold mb-1"><i class="bi bi-cart-check"></i> ${isEs ? 'Resumen del Pedido' : 'Order Summary'}</h6>
             <div class="d-flex justify-content-between">
-              <span>Plan:</span> <strong>${plan.name}</strong>
+              <span>${isEs ? 'Plan' : 'Plan'}:</span> <strong>${this.getPlanName(plan)}</strong>
             </div>
             <div class="d-flex justify-content-between">
-              <span>Ciclo:</span> <strong>${cycle}</strong>
+              <span>${isEs ? 'Ciclo' : 'Cycle'}:</span> <strong>${this.getCycleLabel(this.cycles.find(c => c.id === cycle))}</strong>
             </div>
             <hr class="my-2">
             <div class="d-flex justify-content-between fs-5">
-              <span>Total a Pagar:</span> <strong class="text-primary">$${amount} USD</strong>
+              <span>${isEs ? 'Total a Pagar' : 'Total to Pay'}:</span> <strong class="text-primary">$${amount} USD</strong>
             </div>
             <div class="small text-muted mt-1">≈ Bs. ${(amount * this.currencyService.rate()).toFixed(2)}</div>
           </div>
 
           <div class="mb-3">
-            <label class="form-label small fw-bold mb-1">Método de Pago</label>
+            <label class="form-label small fw-bold mb-1">${isEs ? 'Método de Pago' : 'Payment Method'}</label>
             <select id="method" class="form-select form-select-sm">
-                <option value="Transferencia">Transferencia Bancaria (Bs.)</option>
-                <option value="Pago Móvil">Pago Móvil (Bs.)</option>
+                <option value="Transferencia">${isEs ? 'Transferencia Bancaria (Bs.)' : 'Bank Transfer (Bs.)'}</option>
+                <option value="Pago Móvil">${isEs ? 'Pago Móvil (Bs.)' : 'Mobile Payment (Bs.)'}</option>
                 <option value="Zelle">Zelle (USD)</option>
                 <option value="Binance">Binance Pay (USDT)</option>
             </select>
           </div>
 
           <div id="bankDetails" class="alert alert-secondary p-2 mb-3 small">
-            <!-- Dynamic info based on method could go here -->
-            <p class="mb-0"><strong>Datos de Pago:</strong></p>
+            <p class="mb-0"><strong>${isEs ? 'Datos de Pago:' : 'Payment Details:'}</strong></p>
             <p class="mb-0">Banesco: 0134-XXXX-XX-XXXXXXXXXX</p>
             <p class="mb-0">Pago Móvil: 0412-XXXXXXX / J-12345678</p>
             <p class="mb-0">Zelle: pagos@medicus.com</p>
           </div>
 
           <div class="mb-3">
-            <label class="form-label small fw-bold mb-1">Referencia / comprobante</label>
-            <input id="ref" class="form-control form-control-sm" placeholder="Número de confirmación">
+            <label class="form-label small fw-bold mb-1">${isEs ? 'Referencia / comprobante' : 'Reference / Proof'}</label>
+            <input id="ref" class="form-control form-control-sm" placeholder="${isEs ? 'Número de confirmación' : 'Confirmation Number'}">
           </div>
           
           <div class="mb-3">
-             <label class="form-label small fw-bold mb-1">Adjuntar Recibo (Opcional)</label>
+             <label class="form-label small fw-bold mb-1">${isEs ? 'Adjuntar Recibo (Opcional)' : 'Attach Receipt (Optional)'}</label>
              <input id="receiptFile" type="file" class="form-control form-control-sm" accept="image/*,application/pdf">
           </div>
         </div>
       `,
-      confirmButtonText: 'Confirmar Pago',
+      confirmButtonText: isEs ? 'Confirmar Pago' : 'Confirm Payment',
       showCancelButton: true,
-      cancelButtonText: 'Cancelar',
+      cancelButtonText: isEs ? 'Cancelar' : 'Cancel',
       confirmButtonColor: '#0ea5e9',
       preConfirm: () => {
         const method = (document.getElementById('method') as HTMLSelectElement).value;
@@ -214,24 +264,11 @@ export class Subscription implements OnInit {
         const file = fileInput?.files ? fileInput.files[0] : null;
 
         if (!ref) {
-          Swal.showValidationMessage('Por favor ingrese el número de referencia');
+          Swal.showValidationMessage(isEs ? 'Por favor ingrese el número de referencia' : 'Please enter reference number');
           return false;
         }
 
         const formData = new FormData();
-        // Since we don't have a dedicated endpoint for subscription payments yet, 
-        // we might create a generic 'Payment' but mark it related to Org.
-        // For now, we will use the existing /api/payments but modify backend to handle 'SUBSCRIPTION' type?
-        // Or simply store it as a generic payment with special concept.
-        
-        // However, the backend 'Payment' model requires 'patientId'. 
-        // Subscription payments are not from patients.
-        // We need to create a new endpoint or adapting the model.
-        // Given constraint "without breaking existing functionality", I will use a WORKAROUND:
-        // Create a 'System Patient' or similar? No, that's messy.
-        
-        // Better: Send to a new route /api/payments/subscription
-        
         formData.append('concept', concept);
         formData.append('amount', amount.toString());
         formData.append('currency', 'USD');
@@ -239,7 +276,7 @@ export class Subscription implements OnInit {
         formData.append('instrument', method);
         formData.append('status', 'Pending');
         formData.append('type', 'SUBSCRIPTION'); 
-        formData.append('planType', plan.type); // To upgrade automatically if approved
+        formData.append('planType', plan.type); 
         formData.append('billingCycle', cycle);
         
         if (file) formData.append('receipt', file);
@@ -247,16 +284,22 @@ export class Subscription implements OnInit {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        // Send to backend
         this.http.post(`${API_URL}/payments/subscription`, result.value, { headers: this.getHeaders() })
           .subscribe({
             next: () => {
-              Swal.fire('¡Pago Enviado!', 'Tu pago ha sido registrado y está siendo verificado. Te notificaremos cuando tu plan esté activo.', 'success');
+              Swal.fire(
+                isEs ? '¡Pago Enviado!' : 'Payment Sent!', 
+                isEs ? 'Tu pago ha sido registrado y está siendo verificado. Te notificaremos cuando tu plan esté activo.' : 'Your payment has been recorded and is being verified. We will notify you when your plan is active.', 
+                'success'
+              );
             },
             error: (err) => {
-              // Since /api/payments/subscription doesn't exist yet, this will 404.
               console.error(err);
-              Swal.fire('Error', 'No se pudo procesar el pago. (Ruta no implementada aún en backend)', 'error');
+              Swal.fire(
+                isEs ? 'Error' : 'Error', 
+                isEs ? 'No se pudo procesar el pago. Por favor intente más tarde.' : 'Could not process payment. Please try again later.', 
+                'error'
+              );
             }
           });
       }

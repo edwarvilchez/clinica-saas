@@ -144,6 +144,12 @@ export const routes: Routes = [
     canActivate: [authGuard, firstLoginGuard],
     title: 'Medicus - Planes y Precios'
   },
+  {
+    path: 'billing',
+    loadComponent: () => import('./components/billing/billing').then(m => m.Billing),
+    canActivate: [authGuard, firstLoginGuard],
+    title: 'Medicus - Mi Suscripción'
+  },
 
   // Catch all - redirect to dashboard
   { path: '**', redirectTo: 'dashboard' }

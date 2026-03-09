@@ -14,7 +14,7 @@ export class LanguageService {
   private translations: any = {
     es: {
       common: {
-        dashboard: 'Panel Lateral',
+        dashboard: 'Dashboard',
         search: 'Buscar...',
         actions: 'Acciones',
         status: 'Estado',
@@ -152,7 +152,7 @@ export class LanguageService {
         registerHere: 'Regístrate aquí',
         publicBooking: 'Agendar Cita (Sin cuenta)',
         accountType: 'Tipo de Cuenta',
-        professional: 'Profesional Independiente',
+        professional: 'Profesional Independiente (Médicos)',
         clinic: 'Clínica / Centro Médico',
         hospital: 'Hospital / Institución',
         businessName: 'Nombre Institucional / Comercial',
@@ -353,7 +353,67 @@ export class LanguageService {
         schedule: 'Agendar',
         available: 'Disponible'
       },
-
+      billing: {
+        title: 'Mi Suscripción',
+        subtitle: 'Gestiona tu plan y historial de facturación',
+        sidebar: 'Estado de Suscripción',
+        updatePlan: 'Actualizar Plan',
+        timeRemaining: 'Tiempo Restante',
+        days: 'días',
+        expiresOn: 'Vence el',
+        reminderNotice: 'Recibirás un recordatorio 2 días antes del vencimiento.',
+        paymentHistory: 'Historial de Pagos',
+        noPayments: 'No tienes pagos de suscripción registrados aún.',
+        table: {
+          date: 'FECHA',
+          concept: 'CONCEPTO',
+          method: 'MÉTODO',
+          amount: 'MONTO',
+          status: 'ESTADO',
+          receipt: 'RECIBO'
+        }
+      },
+      team: {
+        title: 'Gestión de Equipo',
+        subtitle: 'Administra los miembros de tu organización.',
+        sidebar: 'Mi Equipo',
+        addMember: 'Añadir Miembro',
+        newMember: 'Nuevo Miembro',
+        role: 'Rol',
+        selectRole: 'Seleccionar Rol',
+        gender: 'Género',
+        license: 'Licencia / ID',
+        invitationButton: 'Guardar y Enviar Invitación',
+        member: 'Miembro',
+        noMembers: 'No hay miembros en tu equipo aún.',
+        messages: {
+          loading: 'Añadiendo miembro...',
+          success: 'Miembro añadido correctamente',
+          confirmDelete: '¿Estás seguro?',
+          confirmDeleteText: 'Esta acción no se puede deshacer.',
+          yesDelete: 'Sí, eliminar'
+        }
+      },
+      subscription: {
+        trialTitle: '¡Prueba Gratis por 7 Días!',
+        trialDesc: 'Experimenta todas las funcionalidades premium sin compromiso.',
+        sidebar: 'Planes y Precios',
+        startTrial: 'Comenzar Prueba',
+        activeSession: 'Sesión Activa',
+        pricingTitle: 'PLANES Y PRECIOS',
+        choosePlan: 'Elige el plan perfecto para tu organización',
+        scalePlan: 'Escala tu plan a medida que crece tu práctica.',
+        choosePlanBtn: 'Elegir Plan',
+        currentPlan: 'Plan Actual',
+        customDeployment: '¿Necesitas un despliegue personalizado?',
+        customDeploymentDesc: 'Si eres una red de hospitales o una corporación multinacional, contacta con nuestro equipo para una solución a medida.',
+        supportEmail: 'Email de Atención',
+        recommended: 'Recomendado',
+        monthly: 'mes',
+        quarterly: 'trimestre',
+        semester: 'semestre',
+        yearly: 'año'
+      }
     },
     en: {
       common: {
@@ -682,6 +742,67 @@ export class LanguageService {
         viewProfile: 'View Profile',
         schedule: 'Schedule',
         available: 'Available'
+      },
+      billing: {
+        title: 'My Subscription',
+        subtitle: 'Manage your plan and billing history',
+        sidebar: 'Subscription Status',
+        updatePlan: 'Upgrade Plan',
+        timeRemaining: 'Time Remaining',
+        days: 'days',
+        expiresOn: 'Expires on',
+        reminderNotice: 'You will receive a reminder 2 days before expiration.',
+        paymentHistory: 'Payment History',
+        noPayments: 'You have no subscription payments recorded yet.',
+        table: {
+          date: 'DATE',
+          concept: 'CONCEPT',
+          method: 'METHOD',
+          amount: 'AMOUNT',
+          status: 'STATUS',
+          receipt: 'RECEIPT'
+        }
+      },
+      team: {
+        title: 'Team Management',
+        subtitle: 'Manage your organization members.',
+        sidebar: 'My Team',
+        addMember: 'Add Member',
+        newMember: 'New Member',
+        role: 'Role',
+        selectRole: 'Select Role',
+        gender: 'Gender',
+        license: 'License / ID',
+        invitationButton: 'Save and Send Invitation',
+        member: 'Member',
+        noMembers: 'No members in your team yet.',
+        messages: {
+          loading: 'Adding member...',
+          success: 'Member added successfully',
+          confirmDelete: 'Are you sure?',
+          confirmDeleteText: 'This action cannot be undone.',
+          yesDelete: 'Yes, delete'
+        }
+      },
+      subscription: {
+        trialTitle: '7-Day Free Trial!',
+        trialDesc: 'Experience all premium features with no commitment.',
+        sidebar: 'Plans & Pricing',
+        startTrial: 'Start Trial',
+        activeSession: 'Active Session',
+        pricingTitle: 'PLANS & PRICING',
+        choosePlan: 'Choose the perfect plan for your organization',
+        scalePlan: 'Scale your plan as your practice grows.',
+        choosePlanBtn: 'Choose Plan',
+        currentPlan: 'Current Plan',
+        customDeployment: 'Need a custom deployment?',
+        customDeploymentDesc: 'If you are a hospital network or a multinational corporation, contact our team for a tailored solution.',
+        supportEmail: 'Support Email',
+        recommended: 'Recommended',
+        monthly: 'month',
+        quarterly: 'quarter',
+        semester: 'semester',
+        yearly: 'year'
       },
       navbar: {
         updateInfo: 'Update Info',

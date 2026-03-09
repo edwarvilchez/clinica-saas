@@ -1,0 +1,25 @@
+.icon-box {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bg-primary-soft { background-color: rgba(14, 165, 233, 0.1) !important; }
+.bg-success-soft { background-color: rgba(34, 197, 94, 0.1) !important; }
+.bg-warning-soft { background-color: rgba(234, 179, 8, 0.1) !important; }
+.bg-danger-soft { background-color: rgba(239, 68, 68, 0.1) !important; }
+
+.progress { background-color: #f1f5f9; border-radius: 999px; }
+.progress-bar { border-radius: 999px; }
+
+.card { transition: transform 0.2s ease, box-shadow 0.2s ease; border-radius: 1rem; }
+.card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important; 
+}
+
+.table th { font-weight: 600; font-size: 0.75rem; letter-spacing: 0.05em; padding: 1rem; }
+.table td { padding: 1rem; }
+.x-small { font-size: 0.7rem; }

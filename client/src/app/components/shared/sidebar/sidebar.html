@@ -104,7 +104,7 @@
       class="list-group-item list-group-item-action border-0 rounded-3 py-1-5 d-flex align-items-center gap-3"
     >
       <i class="bi bi-people-fill fs-5"></i>
-      <span class="fw-medium">Mi Equipo</span>
+      <span class="fw-medium">{{ langService.translate('team.sidebar') }}</span>
     </a>
 
     <div
@@ -150,8 +150,18 @@
       routerLinkActive="active"
       class="list-group-item list-group-item-action border-0 rounded-3 py-1-5 d-flex align-items-center gap-3"
     >
+      <i class="bi bi-cart-plus-fill fs-5 text-success"></i>
+      <span class="fw-medium">{{ langService.translate('subscription.sidebar') }}</span>
+    </a>
+
+    <a
+      *ngIf="authService.currentUser()?.organizationId"
+      routerLink="/billing"
+      routerLinkActive="active"
+      class="list-group-item list-group-item-action border-0 rounded-3 py-1-5 d-flex align-items-center gap-3"
+    >
       <i class="bi bi-stars fs-5 text-warning"></i>
-      <span class="fw-medium">Planes y Precios</span>
+      <span class="fw-medium">{{ langService.translate('billing.sidebar') }}</span>
     </a>
   </div>
 
