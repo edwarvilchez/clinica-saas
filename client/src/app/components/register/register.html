@@ -1,5 +1,7 @@
-<div class="min-vh-100 d-flex flex-column"
-  style="background: radial-gradient(circle at top right, #e0f2fe 0%, #f8fafc 50%)">
+<div
+  class="min-vh-100 d-flex flex-column"
+  style="background: radial-gradient(circle at top right, #e0f2fe 0%, #f8fafc 50%)"
+>
   <!-- Main Content Wrapper -->
   <div class="flex-grow-1 d-flex align-items-center justify-content-center py-3">
     <div class="row w-100 max-width-1200 px-3 my-0">
@@ -17,8 +19,10 @@
 
         <div class="row g-2">
           <div class="col-12 col-xl-10">
-            <div class="glass-morphism p-2 rounded-3 shadow-sm cursor-pointer hover-scale transition-all"
-              routerLink="/agendar-cita">
+            <div
+              class="glass-morphism p-2 rounded-3 shadow-sm cursor-pointer hover-scale transition-all"
+              routerLink="/agendar-cita"
+            >
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-calendar-check text-primary fs-4"></i>
                 <div>
@@ -29,8 +33,10 @@
             </div>
           </div>
           <div class="col-12 col-xl-10">
-            <div class="glass-morphism p-2 rounded-3 shadow-sm cursor-pointer hover-scale transition-all"
-              (click)="viewHistory()">
+            <div
+              class="glass-morphism p-2 rounded-3 shadow-sm cursor-pointer hover-scale transition-all"
+              (click)="viewHistory()"
+            >
               <div class="d-flex align-items-center gap-2">
                 <i class="bi bi-file-medical text-success fs-4"></i>
                 <div>
@@ -57,16 +63,25 @@
 
             <!-- Step indicator -->
             <div class="d-flex align-items-center justify-content-center gap-2 mb-1">
-              <span class="badge rounded-pill px-2 py-1 small" [class.bg-primary]="step() === 1"
-                [class.bg-secondary]="step() !== 1">
+              <span
+                class="badge rounded-pill px-2 py-1 small"
+                [class.bg-primary]="step() === 1"
+                [class.bg-secondary]="step() !== 1"
+              >
                 1
               </span>
-              <div class="progress" style="width: 40px; height: 3px;">
-                <div class="progress-bar" [style.width.%]="step() === 1 ? 0 : 100"
-                  style="background-color: #0ea5e9; transition: width 0.3s ease;"></div>
+              <div class="progress" style="width: 40px; height: 3px">
+                <div
+                  class="progress-bar"
+                  [style.width.%]="step() === 1 ? 0 : 100"
+                  style="background-color: #0ea5e9; transition: width 0.3s ease"
+                ></div>
               </div>
-              <span class="badge rounded-pill px-2 py-1 small" [class.bg-primary]="step() === 2"
-                [class.bg-secondary]="step() !== 2">
+              <span
+                class="badge rounded-pill px-2 py-1 small"
+                [class.bg-primary]="step() === 2"
+                [class.bg-secondary]="step() !== 2"
+              >
                 2
               </span>
             </div>
@@ -83,20 +98,28 @@
           <div *ngIf="step() === 1" class="animate-fade-in">
             <div class="row g-2 mb-3">
               <div class="col-6" *ngFor="let option of orgOptions">
-                <div class="account-type-card h-100 p-2 rounded-3 border-2 cursor-pointer text-center transition-all"
+                <div
+                  class="account-type-card h-100 p-2 rounded-3 border-2 cursor-pointer text-center transition-all"
                   [class.border-primary]="accountType() === option.type"
                   [class.bg-primary-subtle]="accountType() === option.type"
-                  [class.border-light]="accountType() !== option.type" [class.shadow-sm]="accountType() === option.type"
-                  (click)="selectAccountType(option.type)">
-                  <div class="icon-wrapper mb-1 mx-auto d-flex align-items-center justify-content-center rounded-2"
-                    [class.bg-primary]="option.color === 'primary'" [class.bg-success]="option.color === 'success'"
-                    [class.bg-info]="option.color === 'info'" [class.bg-warning]="option.color === 'warning'"
-                    style="width: 40px; height: 40px;">
+                  [class.border-light]="accountType() !== option.type"
+                  [class.shadow-sm]="accountType() === option.type"
+                  (click)="selectAccountType(option.type)"
+                >
+                  <div
+                    class="icon-wrapper mb-1 mx-auto d-flex align-items-center justify-content-center rounded-2"
+                    [class.bg-primary]="option.color === 'primary'"
+                    [class.bg-success]="option.color === 'success'"
+                    [class.bg-info]="option.color === 'info'"
+                    [class.bg-warning]="option.color === 'warning'"
+                    style="width: 40px; height: 40px"
+                  >
                     <i [class]="'bi ' + option.icon + ' text-white fs-5'"></i>
                   </div>
                   <h6 class="fw-bold mb-0 small">{{ langService.translate(option.labelKey) }}</h6>
-                  <p class="x-small text-muted mb-0" style="font-size: 0.7rem; line-height: 1.2;">{{
-                    langService.translate(option.descKey) }}</p>
+                  <p class="x-small text-muted mb-0" style="font-size: 0.7rem; line-height: 1.2">
+                    {{ langService.translate(option.descKey) }}
+                  </p>
                 </div>
               </div>
             </div>
@@ -115,12 +138,21 @@
           <form *ngIf="step() === 2" [formGroup]="registerForm" (ngSubmit)="onSubmit()">
             <!-- Header with back button and badge -->
             <div class="d-flex align-items-center justify-content-between mb-2">
-              <button type="button" class="btn btn-link text-muted text-decoration-none p-0 x-small" (click)="goBack()">
+              <button
+                type="button"
+                class="btn btn-link text-muted text-decoration-none p-0 x-small"
+                (click)="goBack()"
+              >
                 <i class="bi bi-arrow-left me-1"></i>Volver
               </button>
-              <span class="badge rounded-pill px-2 py-1" [class]="'bg-' + getSelectedOption()?.color">
+              <span
+                class="badge rounded-pill px-2 py-1"
+                [class]="'bg-' + getSelectedOption()?.color"
+              >
                 <i [class]="'bi ' + getSelectedOption()?.icon + ' me-1'"></i>
-                <span class="small">{{ langService.translate(getSelectedOption()?.labelKey || '') }}</span>
+                <span class="small">{{
+                  langService.translate(getSelectedOption()?.labelKey || '')
+                }}</span>
               </span>
             </div>
 
@@ -128,35 +160,60 @@
             <div class="row g-1">
               <!-- Username & Email -->
               <div class="col-md-6 mb-1">
-                <label class="form-label x-small fw-bold mb-0">{{ langService.translate('common.username') }}</label>
-                <input type="text" class="form-control form-control-sm glass-morphism border rounded-2"
-                  formControlName="username" placeholder="usuario123" />
-                <small class="text-danger x-small"
-                  *ngIf="registerForm.get('username')?.touched && registerForm.get('username')?.invalid">
+                <label class="form-label x-small fw-bold mb-0">{{
+                  langService.translate('common.username')
+                }}</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm glass-morphism border rounded-2"
+                  formControlName="username"
+                  placeholder="usuario123"
+                />
+                <small
+                  class="text-danger x-small"
+                  *ngIf="
+                    registerForm.get('username')?.touched && registerForm.get('username')?.invalid
+                  "
+                >
                   {{ getErrorMessage('username') }}
                 </small>
               </div>
 
               <div class="col-md-6 mb-1">
-                <label class="form-label x-small fw-bold mb-0">{{ langService.translate('auth.email') }}</label>
-                <input type="email" class="form-control form-control-sm glass-morphism border rounded-2"
-                  formControlName="email" placeholder="correo@ejemplo.com" />
-                <small class="text-danger x-small"
-                  *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid">
+                <label class="form-label x-small fw-bold mb-0">{{
+                  langService.translate('auth.email')
+                }}</label>
+                <input
+                  type="email"
+                  class="form-control form-control-sm glass-morphism border rounded-2"
+                  formControlName="email"
+                  placeholder="correo@ejemplo.com"
+                />
+                <small
+                  class="text-danger x-small"
+                  *ngIf="registerForm.get('email')?.touched && registerForm.get('email')?.invalid"
+                >
                   {{ getErrorMessage('email') }}
                 </small>
               </div>
 
               <!-- Contraseña temporal informativa -->
               <div class="col-12 mb-1">
-                <div class="d-flex align-items-start gap-2 p-2 rounded-3"
-                  style="background: rgba(14,165,233,0.08); border: 1px dashed #0ea5e9;">
-                  <i class="bi bi-shield-lock-fill text-primary mt-1" style="font-size: 0.9rem; flex-shrink: 0;"></i>
+                <div
+                  class="d-flex align-items-start gap-2 p-2 rounded-3"
+                  style="background: rgba(14, 165, 233, 0.08); border: 1px dashed #0ea5e9"
+                >
+                  <i
+                    class="bi bi-shield-lock-fill text-primary mt-1"
+                    style="font-size: 0.9rem; flex-shrink: 0"
+                  ></i>
                   <div>
-                    <p class="fw-bold mb-0 small text-primary">Contraseña generada automáticamente</p>
+                    <p class="fw-bold mb-0 small text-primary">
+                      Contraseña generada automáticamente
+                    </p>
                     <p class="x-small text-muted mb-0">
-                      Al crear tu cuenta, el sistema generará una <strong>contraseña temporal segura</strong> que se
-                      mostrará en pantalla.
+                      Al crear tu cuenta, el sistema generará una
+                      <strong>contraseña temporal segura</strong> que se mostrará en pantalla.
                       Deberás cambiarla en tu primer ingreso.
                     </p>
                   </div>
@@ -165,45 +222,74 @@
 
               <!-- First & Last Name -->
               <div class="col-md-6 mb-1">
-                <label class="form-label x-small fw-bold mb-0">{{ langService.translate('nurses.fields.firstName')
-                  }}</label>
-                <input type="text" class="form-control form-control-sm glass-morphism border rounded-2"
-                  formControlName="firstName" placeholder="Nombre" />
+                <label class="form-label x-small fw-bold mb-0">{{
+                  langService.translate('nurses.fields.firstName')
+                }}</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm glass-morphism border rounded-2"
+                  formControlName="firstName"
+                  placeholder="Nombre"
+                />
               </div>
 
               <div class="col-md-6 mb-1">
-                <label class="form-label x-small fw-bold mb-0">{{ langService.translate('nurses.fields.lastName')
-                  }}</label>
-                <input type="text" class="form-control form-control-sm glass-morphism border rounded-2"
-                  formControlName="lastName" placeholder="Apellido" />
+                <label class="form-label x-small fw-bold mb-0">{{
+                  langService.translate('nurses.fields.lastName')
+                }}</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm glass-morphism border rounded-2"
+                  formControlName="lastName"
+                  placeholder="Apellido"
+                />
               </div>
 
               <!-- Patient Specific Fields -->
               <ng-container *ngIf="isPatient()">
                 <div class="col-md-6 mb-1">
-                  <label class="form-label x-small fw-bold mb-0">{{ langService.translate('medical_history.id')
-                    }}</label>
-                  <input type="text" class="form-control form-control-sm glass-morphism border rounded-2"
-                    formControlName="documentId" placeholder="V-12345678" />
+                  <label class="form-label x-small fw-bold mb-0">{{
+                    langService.translate('medical_history.id')
+                  }}</label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm glass-morphism border rounded-2"
+                    formControlName="documentId"
+                    placeholder="V-12345678"
+                  />
                 </div>
 
                 <div class="col-md-6 mb-1">
-                  <label class="form-label x-small fw-bold mb-0">{{ langService.translate('medical_history.phone')
-                    }}</label>
-                  <input type="tel" class="form-control form-control-sm glass-morphism border rounded-2"
-                    formControlName="phone" placeholder="+58 424-1234567" />
+                  <label class="form-label x-small fw-bold mb-0">{{
+                    langService.translate('medical_history.phone')
+                  }}</label>
+                  <input
+                    type="tel"
+                    class="form-control form-control-sm glass-morphism border rounded-2"
+                    formControlName="phone"
+                    placeholder="+58 424-1234567"
+                  />
                 </div>
 
                 <div class="col-md-6 mb-1">
-                  <label class="form-label x-small fw-bold mb-0">{{ langService.translate('common.birthDate') }}</label>
-                  <input type="date" class="form-control form-control-sm glass-morphism border rounded-2"
-                    formControlName="birthDate" />
+                  <label class="form-label x-small fw-bold mb-0">{{
+                    langService.translate('common.birthDate')
+                  }}</label>
+                  <input
+                    type="date"
+                    class="form-control form-control-sm glass-morphism border rounded-2"
+                    formControlName="birthDate"
+                  />
                 </div>
 
                 <div class="col-md-6 mb-1">
-                  <label class="form-label x-small fw-bold mb-0">{{ langService.translate('medical_history.gender')
-                    }}</label>
-                  <select class="form-select form-select-sm glass-morphism border rounded-2" formControlName="gender">
+                  <label class="form-label x-small fw-bold mb-0">{{
+                    langService.translate('medical_history.gender')
+                  }}</label>
+                  <select
+                    class="form-select form-select-sm glass-morphism border rounded-2"
+                    formControlName="gender"
+                  >
                     <option value="">Seleccionar</option>
                     <option value="Male">{{ langService.translate('common.male') }}</option>
                     <option value="Female">{{ langService.translate('common.female') }}</option>
@@ -214,40 +300,63 @@
               <!-- Provider Specific Fields -->
               <ng-container *ngIf="isProvider()">
                 <div class="col-12 mb-1" *ngIf="needsBusinessName()">
-                  <label class="form-label x-small fw-bold mb-0">{{ langService.translate('landing.businessName')
-                    }}</label>
-                  <input type="text" class="form-control form-control-sm glass-morphism border rounded-2"
+                  <label class="form-label x-small fw-bold mb-0">{{
+                    langService.translate('landing.businessName')
+                  }}</label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm glass-morphism border rounded-2"
                     formControlName="businessName"
-                    [placeholder]="langService.translate('landing.businessNamePlaceholder')" />
+                    [placeholder]="langService.translate('landing.businessNamePlaceholder')"
+                  />
                 </div>
 
                 <div class="col-md-6 mb-1">
-                  <label class="form-label x-small fw-bold mb-0">{{ langService.translate('register.license') }}</label>
-                  <input type="text" class="form-control form-control-sm glass-morphism border rounded-2"
-                    formControlName="licenseNumber" placeholder="Nº Colegiatura" />
+                  <label class="form-label x-small fw-bold mb-0">{{
+                    langService.translate('register.license')
+                  }}</label>
+                  <input
+                    type="text"
+                    class="form-control form-control-sm glass-morphism border rounded-2"
+                    formControlName="licenseNumber"
+                    placeholder="Nº Colegiatura"
+                  />
                 </div>
 
                 <div class="col-md-6 mb-1">
-                  <label class="form-label x-small fw-bold mb-0">{{ langService.translate('medical_history.phone')
-                    }}</label>
-                  <input type="tel" class="form-control form-control-sm glass-morphism border rounded-2"
-                    formControlName="phone" placeholder="Teléfono" />
+                  <label class="form-label x-small fw-bold mb-0">{{
+                    langService.translate('medical_history.phone')
+                  }}</label>
+                  <input
+                    type="tel"
+                    class="form-control form-control-sm glass-morphism border rounded-2"
+                    formControlName="phone"
+                    placeholder="Teléfono"
+                  />
                 </div>
               </ng-container>
 
               <!-- Address (All types) -->
               <div class="col-12 mb-1">
-                <label class="form-label x-small fw-bold mb-0">{{ langService.translate('register.address') }}</label>
-                <input type="text" class="form-control form-control-sm glass-morphism border rounded-2"
-                  formControlName="address" placeholder="Dirección completa" />
+                <label class="form-label x-small fw-bold mb-0">{{
+                  langService.translate('register.address')
+                }}</label>
+                <input
+                  type="text"
+                  class="form-control form-control-sm glass-morphism border rounded-2"
+                  formControlName="address"
+                  placeholder="Dirección completa"
+                />
               </div>
 
               <!-- Patient-only: Blood Type & Allergies -->
               <ng-container *ngIf="isPatient()">
                 <div class="col-md-6 mb-1">
                   <label class="form-label x-small fw-bold mb-0">Tipo Sangre (Opc.)</label>
-                  <select class="form-select form-select-sm glass-morphism border rounded-2"
-                    formControlName="bloodType">
+                  <select
+                    class="form-select form-select-sm glass-morphism border rounded-2"
+                    formControlName="bloodType"
+                  >
                     <option value="">--</option>
                     <option value="A+">A+</option>
                     <option value="A-">A-</option>
@@ -262,8 +371,12 @@
 
                 <div class="col-md-6 mb-1">
                   <label class="form-label x-small fw-bold mb-0">Alergias (Opc.)</label>
-                  <input type="text" class="form-control form-control-sm glass-morphism border rounded-2"
-                    formControlName="allergies" placeholder="Ninguna" />
+                  <input
+                    type="text"
+                    class="form-control form-control-sm glass-morphism border rounded-2"
+                    formControlName="allergies"
+                    placeholder="Ninguna"
+                  />
                 </div>
               </ng-container>
             </div>
@@ -271,19 +384,31 @@
             <!-- Compliance Checkbox -->
             <div class="mb-2 mt-1">
               <div class="form-check">
-                <input class="form-check-input" type="checkbox" id="acceptTerms" formControlName="acceptTerms"
-                  style="width: 0.875rem; height: 0.875rem;" />
-                <label class="form-check-label xx-small text-muted" for="acceptTerms"
-                  style="font-size: 0.7rem; line-height: 1.3;">
-                  Acepto los términos. Datos bajo <span class="fw-bold">ISO 27001</span>, <span class="fw-bold">ISO
-                    9001</span> y <span class="fw-bold">GDPR</span>.
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="acceptTerms"
+                  formControlName="acceptTerms"
+                  style="width: 0.875rem; height: 0.875rem"
+                />
+                <label
+                  class="form-check-label xx-small text-muted"
+                  for="acceptTerms"
+                  style="font-size: 0.7rem; line-height: 1.3"
+                >
+                  Acepto los términos. Datos bajo <span class="fw-bold">ISO 27001</span>,
+                  <span class="fw-bold">ISO 9001</span> y <span class="fw-bold">GDPR</span>.
                 </label>
               </div>
             </div>
 
             <!-- Submit Button -->
             <div class="d-grid gap-1">
-              <button type="submit" class="btn btn-primary-premium btn-sm py-2" [disabled]="loading">
+              <button
+                type="submit"
+                class="btn btn-primary-premium btn-sm py-2"
+                [disabled]="loading"
+              >
                 <span *ngIf="!loading">
                   <i class="bi bi-person-plus-fill me-1"></i>Crear Cuenta
                 </span>
@@ -295,7 +420,9 @@
               <div class="text-center">
                 <p class="text-muted mb-0 x-small">
                   ¿Ya tienes cuenta?
-                  <a routerLink="/login" class="text-primary fw-bold text-decoration-none">Inicia Sesión</a>
+                  <a routerLink="/login" class="text-primary fw-bold text-decoration-none"
+                    >Inicia Sesión</a
+                  >
                 </p>
               </div>
             </div>
@@ -304,6 +431,16 @@
       </div>
     </div>
   </div>
+  <!-- Footer -->
+  <footer class="py-3 mt-auto">
+    <div class="container text-center">
+      <div style="font-size: 0.75rem; letter-spacing: 0.5px">
+        <span class="fw-bold text-primary">v1.8.6</span>
+        <span class="mx-2 text-muted">|</span>
+        <span class="text-secondary-emphasis fw-bold">Piridawly Software &copy; 2026</span>
+      </div>
+    </div>
+  </footer>
 </div>
 
 <style>
