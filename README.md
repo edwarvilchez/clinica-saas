@@ -67,9 +67,15 @@ Sistema completo de gestión para clínicas médicas desarrollado con Angular y 
 - ✅ **Gestión de Organización**
 - ✅ **SuperAdmin Bypass**: Acceso total sin restricciones de suscripción
 
-## 🆕 Novedades v1.8.6 (Marzo 2026)
+## 🆕 Novedades v1.8.7 (Marzo 2026)
 
-### 🌎 Globalización y UI Premium
+### 💊 Guía Farmacéutica (Vademécum Venezuela)
+
+- ✅ **Scraper Inteligente**: Implementación de `scrape_vademecum.js` para la extracción automatizada de más de 6,000 medicamentos desde Vademécum Venezuela.
+- ✅ **Exportación a Producción**: Herramienta `export_drugs_sql.js` para generar volcados SQL optimizados con lógica de _upsert_ (insert/update).
+- ✅ **Base de Datos Poblada**: Diccionario farmacéutico completo con nombres genéricos, componentes activos, indicaciones, posología y contraindicaciones.
+
+## 🆕 Novedades v1.8.6 (Marzo 2026)
 
 - ✅ **Soporte Multilingüe**: Implementación total de `LanguageService` en todos los módulos (Dashboard, Citas, Historial, Facturación, Equipo).
 - ✅ **Gestión de Planes Pro**: Nueva interfaz de suscripción con soporte bilingüe para límites, nombres y características de planes.
