@@ -1,31 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const labCatalogController = require('../controllers/labCatalog.controller');
-const { verifyToken } = require('../middleware/auth.middleware');
-const { checkRole } = require('../middleware/role.middleware');
+const authMiddleware = require('../middlewares/auth.middleware');
+const checkRole = require('../middlewares/role.middleware');
 const { createUpload } = require('../middlewares/upload.middleware');
 
-const upload = createUpload({ 
-  dest: 'uploads/temp/lab_catalog/', 
+const upload = createUpload({
+  dest: 'uploads/temp/lab_catalog/',
   maxSize: 5 * 1024 * 1024,
   allowedTypes: ['text/csv', 'application/csv', 'application/vnd.ms-excel']
 });
 
 // Public/All Roles Routes
-router.get('/tests', verifyToken, labCatalogController.getTests);
-router.get('/combos', verifyToken, labCatalogController.getCombos);
+router.get('/tests', authMiddleware, labCatalogController.getTests);
+router.get('/combos', authMiddleware, labCatalogController.getCombos);
 
 // Management Routes (Doctor and Administrative)
 const canManageCatalog = checkRole(['SUPERADMIN', 'DOCTOR', 'ADMINISTRATIVE']);
 
-router.post('/tests', verifyToken, canManageCatalog, labCatalogController.createTest);
-router.put('/tests/:id', verifyToken, canManageCatalog, labCatalogController.updateTest);
-router.delete('/tests/:id', verifyToken, canManageCatalog, labCatalogController.deleteTest);
+router.post('/tests', authMiddleware, canManageCatalog, labCatalogController.createTest);
+router.put('/tests/:id', authMiddleware, canManageCatalog, labCatalogController.updateTest);
+router.delete('/tests/:id', authMiddleware, canManageCatalog, labCatalogController.deleteTest);
 
-router.post('/combos', verifyToken, canManageCatalog, labCatalogController.createCombo);
-router.put('/combos/:id', verifyToken, canManageCatalog, labCatalogController.updateCombo);
-router.delete('/combos/:id', verifyToken, canManageCatalog, labCatalogController.deleteCombo);
+router.post('/combos', authMiddleware, canManageCatalog, labCatalogController.createCombo);
+router.put('/combos/:id', authMiddleware, canManageCatalog, labCatalogController.updateCombo);
+router.delete('/combos/:id', authMiddleware, canManageCatalog, labCatalogController.deleteCombo);
 
-router.post('/import-tests', verifyToken, canManageCatalog, upload.single('file'), labCatalogController.bulkImport);
+router.post('/import-tests', authMiddleware, canManageCatalog, upload.single('file'), labCatalogController.bulkImport);
 
 module.exports = router;
