@@ -255,30 +255,35 @@ sequelize.sync({ force: false })
       
       (async () => {
         try {
-          // 1. Buscar el usuario con el error tipográfico
-          const wrongUser = await User.findOne({ where: { email: 'edwarvilchez1977@gmail.com' } });
-          if (wrongUser) {
-            console.log('🚨 REPARANDO IDENTIDAD: Cambiando edwarvilchez1977@gmail.com a edwarvilchez977@gmail.com');
-            const salt = await bcrypt.genSalt(10);
-            await wrongUser.update({ 
-               email: 'edwarvilchez977@gmail.com',
-               username: 'admin', // O el nombre que prefieras
-               password: await bcrypt.hash('Med1cus!2026', salt),
-               mustChangePassword: false
-            }, { hooks: false });
-          }
+          // 1. Asegurar que edwarvilchez1977@gmail.com sea el correo correcto
+          const correctEmail = 'edwarvilchez1977@gmail.com';
+          const salt = await bcrypt.genSalt(10);
+          const hashedPassword = await bcrypt.hash('Med1cus!2026', salt);
 
-          // 2. Asegurar que el usuario correcto tenga la clave Med1cus!2026
-          const correctUser = await User.findOne({ where: { email: 'edwarvilchez977@gmail.com' } });
-          if (correctUser) {
-            const salt = await bcrypt.genSalt(10);
-            correctUser.password = await bcrypt.hash('Med1cus!2026', salt);
-            correctUser.mustChangePassword = false;
-            await correctUser.save({ hooks: false });
-            console.log(`🚨 RESET EXITOSO: Entra con edwarvilchez977@gmail.com y Med1cus!2026`);
+          let user = await User.findOne({ where: { email: correctEmail } });
+          
+          if (!user) {
+            // Si por error se renombró a 977 en el despliegue anterior, lo traemos de vuelta
+            user = await User.findOne({ where: { email: 'edwarvilchez977@gmail.com' } });
+            if (user) {
+              console.log(`🚨 RECTIFICANDO: Cambiando ${user.email} de vuelta a ${correctEmail}`);
+              await user.update({ 
+                email: correctEmail,
+                username: 'admin',
+                password: hashedPassword,
+                mustChangePassword: false
+              }, { hooks: false });
+            }
+          } else {
+            // El usuario existe, forzamos el reset de su contraseña
+            await user.update({ 
+              password: hashedPassword,
+              mustChangePassword: false
+            }, { hooks: false });
+            console.log(`🚨 RESET EXITOSO: Entra con ${correctEmail} y Med1cus!2026`);
           }
         } catch (err) {
-          console.error('Error en Reparación de Identidad:', err);
+          console.error('Error en Rectificación de Identidad:', err);
         }
       })();
 
