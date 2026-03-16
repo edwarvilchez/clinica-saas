@@ -12,13 +12,23 @@ const sendEmail = async (options) => {
     }
   });
 
+  const path = require('path');
+  const logoPath = path.join(__dirname, '../assets/logo.png');
+
   // 2. Define the email options
   const mailOptions = {
-    from: `${process.env.FROM_NAME || 'Clínica Medicus'} <${process.env.FROM_EMAIL || process.env.SMTP_EMAIL}>`,
+    from: `"${process.env.FROM_NAME || 'Medicus APP'}" <${process.env.FROM_EMAIL || process.env.SMTP_EMAIL}>`,
     to: options.email,
     subject: options.subject,
     text: options.message,
-    html: options.html
+    html: options.html,
+    attachments: [
+      {
+        filename: 'logo.png',
+        path: logoPath,
+        cid: 'logo_medicus' // same cid value as in the html img src
+      }
+    ]
   };
 
   // 3. Try to send, fallback to simulation on ANY error

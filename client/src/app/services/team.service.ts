@@ -8,7 +8,7 @@ export interface TeamMember {
   firstName: string;
   lastName: string;
   email: string;
-  Role: {
+  Role?: {
     name: string;
   };
   specialtyId?: number;
