@@ -27,7 +27,11 @@ export class ResetPassword implements OnInit {
     private route: ActivatedRoute
   ) {
     this.resetForm = this.fb.group({
-      password: ['', [Validators.required, Validators.minLength(6)]],
+      password: ['', [
+        Validators.required,
+        Validators.minLength(8),
+        Validators.pattern(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+      ]],
       confirmPassword: ['', Validators.required]
     }, { validators: this.passwordMatchValidator });
   }
@@ -42,7 +46,7 @@ export class ResetPassword implements OnInit {
   passwordMatchValidator(form: FormGroup) {
     const password = form.get('password');
     const confirmPassword = form.get('confirmPassword');
-    
+
     if (password && confirmPassword && password.value !== confirmPassword.value) {
       confirmPassword.setErrors({ passwordMismatch: true });
       return { passwordMismatch: true };
@@ -57,7 +61,8 @@ export class ResetPassword implements OnInit {
 
       const data = {
         token: this.token,
-        password: this.resetForm.value.password
+        password: this.resetForm.value.password,
+        confirmPassword: this.resetForm.value.confirmPassword
       };
 
       this.http.post(`${API_URL}/auth/reset-password`, data)
@@ -72,7 +77,7 @@ export class ResetPassword implements OnInit {
           },
           error: (err) => {
             this.loading.set(false);
-            const errorMessage = err.error?.error || 'Error al restablecer contraseña';
+            const errorMessage = err.error?.message || err.error?.error || 'Error al restablecer contraseña';
             this.status.set({ type: 'error', message: errorMessage });
           }
         });

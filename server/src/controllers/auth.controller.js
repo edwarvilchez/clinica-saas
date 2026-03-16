@@ -126,8 +126,25 @@ exports.register = async (req, res) => {
       { expiresIn: '8h' }
     );
 
+    // Enviar correo de bienvenida con contraseña temporal
+    const sendEmail = require('../utils/sendEmail');
+    const { getWelcomeEmail } = require('../utils/emailTemplates');
+    try {
+      const urlLogin = `${process.env.CLIENT_URL || 'http://localhost:4200'}/login`;
+      const htmlContent = getWelcomeEmail(user.firstName, user.email, tempPassword, urlLogin);
+
+      await sendEmail({
+        email: user.email,
+        subject: 'Bienvenido a Medicus - Tus accesos',
+        message: `Hola ${user.firstName},\n\nTu cuenta ha sido creada exitosamente.\n\nUsuario: ${user.email}\nContraseña temporal: ${tempPassword}\n\nURL de acceso: ${urlLogin}`,
+        html: htmlContent
+      });
+    } catch (emailError) {
+      console.error('Error al enviar correo de bienvenida:', emailError.message);
+    }
+
     res.status(201).json({
-      message: 'Cuenta creada con éxito. Debes cambiar tu contraseña temporal en tu primer ingreso.',
+      message: 'Cuenta creada con éxito. Se ha enviado un correo con tu contraseña temporal.',
       token,
       user: {
         id: user.id,
@@ -279,15 +296,17 @@ exports.forgotPassword = async (req, res) => {
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:4200';
     const resetUrl = `${clientUrl}/reset-password/${token}`;
 
-    const message = `Hola ${user.firstName},\n\nHas solicitado restablecer tu contraseña en Clínica Medicus. Por favor, utiliza el siguiente enlace para crear una nueva clave:\n\n${resetUrl}\n\nEste enlace expirará en 1 hora por tu seguridad.\n\nSi no solicitaste este cambio, simplemente ignora este correo.\n\nSaludos,\nEquipo de Clínica Medicus.`;
+    const message = `Hola ${user.firstName},\n\nHas solicitado restablecer tu contraseña en Medicus. Por favor, utiliza el siguiente enlace para crear una nueva clave:\n\n${resetUrl}\n\nEste enlace expirará en 1 hora por tu seguridad.\n\nSi no solicitaste este cambio, simplemente ignora este correo.\n\nSaludos,\nEquipo de Medicus.`;
 
     const sendEmail = require('../utils/sendEmail');
+    const { getPasswordResetEmail } = require('../utils/emailTemplates');
 
     try {
       await sendEmail({
         email: user.email,
-        subject: 'Recuperación de Contraseña - Clínica Medicus',
-        message: message
+        subject: 'Recuperación de Contraseña - Medicus',
+        message: message,
+        html: getPasswordResetEmail(user.firstName, resetUrl)
       });
 
       res.status(200).json({
@@ -345,11 +364,13 @@ exports.resetPassword = async (req, res) => {
 
     // Send confirmation email
     const sendEmail = require('../utils/sendEmail');
+    const { getPasswordChangedEmail } = require('../utils/emailTemplates');
     try {
       await sendEmail({
         email: user.email,
-        subject: 'Tu contraseña de Clínica Medicus ha sido actualizada',
-        message: `Hola ${user.firstName},\n\nTe informamos que la contraseña de tu cuenta en Clínica Medicus ha sido cambiada exitosamente.\n\nSi no realizaste este cambio, por favor contacta a soporte de inmediato.\n\nSaludos,\nEquipo de Clínica Medicus.`
+        subject: 'Actualización de Seguridad - Cambio de Contraseña',
+        message: `Hola ${user.firstName},\n\nTe informamos que la contraseña de tu cuenta en Medicus ha sido cambiada exitosamente.\n\nSi no realizaste este cambio, por favor contacta a soporte de inmediato.\n\nSaludos,\nEquipo de Medicus.`,
+        html: getPasswordChangedEmail(user.firstName)
       });
     } catch (emailError) {
       console.error('Confirmation email failed:', emailError.message);
@@ -382,6 +403,20 @@ exports.changePassword = async (req, res) => {
       mustChangePassword: false,  // El usuario ya cumplió con el cambio obligatorio
       temporaryPassword: null     // Limpiar la referencia a la clave temporal
     });
+
+    // Enviar correo de notificación del cambio de contraseña
+    const sendEmail = require('../utils/sendEmail');
+    const { getPasswordChangedEmail } = require('../utils/emailTemplates');
+    try {
+      await sendEmail({
+        email: user.email,
+        subject: 'Actualización de Seguridad - Cambio de Contraseña',
+        message: `Hola ${user.firstName},\n\nTe informamos que la contraseña de tu cuenta en Medicus acaba de ser cambiada exitosamente.\n\nSi tú no realizaste este cambio, por favor contacta al administrador del sistema inmediatamente.\n\nSaludos,\nEquipo de Medicus.`,
+        html: getPasswordChangedEmail(user.firstName)
+      });
+    } catch (emailError) {
+      console.error('Error al enviar correo de cambio de contraseña:', emailError.message);
+    }
 
     res.json({
       message: '✅ Contraseña actualizada exitosamente. Tu cuenta está completamente configurada.',
