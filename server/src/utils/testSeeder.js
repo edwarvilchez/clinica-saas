@@ -48,7 +48,12 @@ const seedTestData = async () => {
       });
 
       if (!created) {
-        await user.update({ password: SEED_PASSWORD });
+        await user.update({ 
+          password: SEED_PASSWORD,
+          roleId: roles[data.role].id,
+          accountType: data.accountType || user.accountType,
+          organizationId: data.organizationId || user.organizationId
+        });
       }
       return user;
     };
@@ -86,9 +91,30 @@ const seedTestData = async () => {
     // This is the stable environment for happy-path testing
     const admin = await upsertUser({
       username: 'admin',
-      email: 'edwarvilchez1977@gmail.com',
+      email: 'edwarvilchez1977@gmail.com', // Primary Admin 1
+      firstName: 'Edwar',
+      lastName: 'Vilchez',
+      role: 'SUPERADMIN',
+      accountType: 'HOSPITAL',
+      businessName: 'Hospital Central Medicus',
+    });
+
+    const admin2 = await upsertUser({
+      username: 'medicus_admin',
+      email: 'admin@medicus.com', // Primary Admin 2 (Classic)
       firstName: 'Admin',
       lastName: 'Medicus',
+      role: 'SUPERADMIN',
+      accountType: 'HOSPITAL',
+      businessName: 'Hospital Central Medicus',
+    });
+
+    // Alias from Screenshot (if they typed this)
+    await upsertUser({
+      username: 'edwar.vilchez',
+      email: 'edwarvilchez@medicus-app.com', 
+      firstName: 'Edwar',
+      lastName: 'Vilchez',
       role: 'SUPERADMIN',
       accountType: 'HOSPITAL',
       businessName: 'Hospital Central Medicus',
@@ -207,7 +233,9 @@ const seedTestData = async () => {
 
     console.log(`\n✅ Database Seeded Successfully!`);
     console.log(`   🔑 Password for all accounts: ${SEED_PASSWORD}`);
-    console.log(`   - admin@medicus.com (ACTIVE Hospital)`);
+    console.log(`   - admin@medicus.com (SUPERADMIN)`);
+    console.log(`   - edwarvilchez1977@gmail.com (SUPERADMIN)`);
+    console.log(`   - edwarvilchez@medicus-app.com (SUPERADMIN)`);
     console.log(`   - staff.mora@medicus.com (TRIAL Clinic - 7 days left)`);
     console.log(`   - dr.cardenas@medicus.com (EXPIRED Professional - blocked)`);
     console.log(`   - dr.luna@medicus.com (Doctor in Active Hospital)`);
