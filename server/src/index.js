@@ -249,21 +249,38 @@ sequelize.sync({ force: false })
     server.listen(PORT, () => {
       logger.info(`🚀 Server is running on port ${PORT}`);
       
-      // EMERGENCY ADMIN RESET - Solo corre una vez al arrancar
+      // EMERGENCY ADMIN RESET & FIX - Solo corre una vez al arrancar
       const { User } = require('./models');
       const bcrypt = require('bcryptjs');
-      const adminEmails = ['edwarvilchez1977@gmail.com', 'edwarvilchez977@gmail.com'];
       
-      Promise.all(adminEmails.map(async (email) => {
-        const user = await User.findOne({ where: { email } });
-        if (user) {
-          const salt = await bcrypt.genSalt(10);
-          user.password = await bcrypt.hash('Med1cus!2026', salt);
-          user.mustChangePassword = false;
-          await user.save({ hooks: false });
-          console.log(`🚨 EMERGENCY RESET: Contraseña de ${email} establecida a Med1cus!2026`);
+      (async () => {
+        try {
+          // 1. Buscar el usuario con el error tipográfico
+          const wrongUser = await User.findOne({ where: { email: 'edwarvilchez1977@gmail.com' } });
+          if (wrongUser) {
+            console.log('🚨 REPARANDO IDENTIDAD: Cambiando edwarvilchez1977@gmail.com a edwarvilchez977@gmail.com');
+            const salt = await bcrypt.genSalt(10);
+            await wrongUser.update({ 
+               email: 'edwarvilchez977@gmail.com',
+               username: 'admin', // O el nombre que prefieras
+               password: await bcrypt.hash('Med1cus!2026', salt),
+               mustChangePassword: false
+            }, { hooks: false });
+          }
+
+          // 2. Asegurar que el usuario correcto tenga la clave Med1cus!2026
+          const correctUser = await User.findOne({ where: { email: 'edwarvilchez977@gmail.com' } });
+          if (correctUser) {
+            const salt = await bcrypt.genSalt(10);
+            correctUser.password = await bcrypt.hash('Med1cus!2026', salt);
+            correctUser.mustChangePassword = false;
+            await correctUser.save({ hooks: false });
+            console.log(`🚨 RESET EXITOSO: Entra con edwarvilchez977@gmail.com y Med1cus!2026`);
+          }
+        } catch (err) {
+          console.error('Error en Reparación de Identidad:', err);
         }
-      })).catch(err => console.error('Error en Emergency Reset:', err));
+      })();
 
       logger.info('🎥 WebSocket server ready for video consultations');
       logger.info(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
