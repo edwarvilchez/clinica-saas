@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { HttpClient } from '@angular/common/http';
 import Swal from 'sweetalert2';
 import { Subscription } from 'rxjs';
+import { LanguageService } from '../../services/language.service';
 import { API_URL } from '../../api-config';
 
 @Component({
@@ -26,7 +27,8 @@ export class PublicBooking implements OnInit, OnDestroy {
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
-    private router: Router
+    private router: Router,
+    public langService: LanguageService
   ) {
     this.bookingForm = this.fb.group({
       // Patient info
@@ -156,32 +158,32 @@ export class PublicBooking implements OnInit, OnDestroy {
             const calendarLink = this.getGoogleCalendarLink(formValue, doctorName);
             
             Swal.fire({
-              title: '¡Cita Agendada!',
+              title: this.langService.translate('public_booking.success.title'),
               html: `
-                <p class="mb-3">Tu cita ha sido registrada exitosamente.</p>
+                <p class="mb-3">${this.langService.translate('public_booking.success.msg')}</p>
                 <div class="alert alert-info">
-                  <small>Hemos enviado la confirmación a tu WhatsApp y email.</small>
+                  <small>${this.langService.translate('public_booking.success.notification')}</small>
                 </div>
                 <div style="display: flex; gap: 10px; justify-content: center; margin-top: 20px;">
                   <a href="${waLink}" target="_blank" style="background-color: #25D366; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 5px;">
                     <i class="bi bi-whatsapp"></i> WhatsApp
                   </a>
                   <a href="${calendarLink}" target="_blank" style="background-color: #4285F4; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 5px;">
-                    <i class="bi bi-calendar-event"></i> Calendario
+                    <i class="bi bi-calendar-event"></i> ${this.langService.translate('public_booking.success.calendar')}
                   </a>
                 </div>
                 ${response.accountExists ? '' : `
                   <div class="mt-4 p-3" style="background-color: #f0f9ff; border-radius: 8px;">
-                    <p class="mb-2"><strong>💡 ¿Sabías que puedes crear una cuenta?</strong></p>
-                    <small>Con una cuenta podrás ver tu historial de citas, reagendar y mucho más.</small>
+                    <p class="mb-2"><strong>${this.langService.translate('public_booking.success.didYouKnow')}</strong></p>
+                    <small>${this.langService.translate('public_booking.success.accountBenefits')}</small>
                     <br>
-                    <a href="/register" class="btn btn-sm btn-primary mt-2">Crear Cuenta</a>
+                    <a href="/register" class="btn btn-sm btn-primary mt-2">${this.langService.translate('public_booking.success.createAccount')}</a>
                   </div>
                 `}
               `,
               icon: 'success',
               showConfirmButton: true,
-              confirmButtonText: 'Entendido',
+              confirmButtonText: this.langService.translate('public_booking.success.gotIt'),
               confirmButtonColor: '#0ea5e9'
             }).then(() => {
               localStorage.removeItem(this.STORAGE_KEY);
@@ -193,7 +195,7 @@ export class PublicBooking implements OnInit, OnDestroy {
             this.loading.set(false);
             Swal.fire({
               title: 'Error',
-              text: error.error?.message || 'No se pudo agendar la cita. Por favor, intenta de nuevo.',
+              text: error.error?.message || this.langService.translate('public_booking.errors.general'),
               icon: 'error',
               confirmButtonColor: '#ef4444'
             });
@@ -212,13 +214,15 @@ export class PublicBooking implements OnInit, OnDestroy {
   getWhatsAppLink(formData: any, doctorName: string): string {
     const patientName = `${formData.firstName} ${formData.lastName}`;
     const dateTime = `${formData.appointmentDate} ${formData.appointmentTime}`;
+    const isEs = this.langService.lang() === 'es';
+    
     const message = encodeURIComponent(
-      `*Confirmación de Cita - Clínica Medicus*\n\n` +
-      `Hola ${patientName}, tu cita ha sido agendada:\n\n` +
+      `*${isEs ? 'Confirmación de Cita - Clínica Medicus' : 'Appointment Confirmation - Medicus Clinic'}*\n\n` +
+      `${isEs ? 'Hola' : 'Hello'} ${patientName}, ${isEs ? 'tu cita ha sido agendada' : 'your appointment has been scheduled'}:\n\n` +
       `*Doctor:* ${doctorName}\n` +
-      `*Fecha:* ${dateTime}\n` +
-      `*Motivo:* ${formData.reason}\n\n` +
-      `Te esperamos. Si necesitas cancelar o reagendar, contáctanos al 0424-1599101.`
+      `*${isEs ? 'Fecha' : 'Date'}:* ${dateTime}\n` +
+      `*${isEs ? 'Motivo' : 'Reason'}:* ${formData.reason}\n\n` +
+      `${isEs ? 'Te esperamos. Si necesitas cancelar o reagendar, contáctanos al 0424-1599101.' : 'We look forward to seeing you. If you need to cancel or reschedule, contact us at +58 424-1599101.'}`
     );
     const cleanPhone = formData.phone.replace(/\D/g, '');
     return `https://wa.me/${cleanPhone}?text=${message}`;
@@ -237,20 +241,22 @@ export class PublicBooking implements OnInit, OnDestroy {
 
     const details = `Cita con Dr. ${doctorName}\nPaciente: ${patientName}\nMotivo: ${formData.reason}`;
     const location = 'Clínica Medicus';
+    const isEs = this.langService.lang() === 'es';
+    const title = isEs ? 'Cita Médica: ' : 'Medical Appointment: ';
 
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Cita Médica: ' + formData.reason)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}&dates=${startTime}/${endTime}&add=edwarvilchez1977@gmail.com`;
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title + formData.reason)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}&dates=${startTime}/${endTime}&add=edwarvilchez1977@gmail.com`;
   }
 
   getErrorMessage(fieldName: string): string {
     const control = this.bookingForm.get(fieldName);
     if (control?.hasError('required')) {
-      return 'Este campo es requerido';
+      return this.langService.translate('public_booking.errors.required');
     }
     if (control?.hasError('email')) {
-      return 'Email inválido';
+      return this.langService.translate('public_booking.errors.email');
     }
     if (control?.hasError('pattern')) {
-      return 'Formato inválido';
+      return this.langService.translate('public_booking.errors.pattern');
     }
     return '';
   }

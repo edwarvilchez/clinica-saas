@@ -1,4 +1,5 @@
 const { Payment, Patient, User, Appointment, Doctor, Organization } = require('../models');
+const sendEmail = require('../utils/sendEmail');
 
 exports.createPayment = async (req, res) => {
   try {
@@ -144,6 +145,16 @@ exports.collectPayment = async (req, res) => {
                     type: payment.planType,
                     trialEndsAt: newEndDate
                 });
+
+                // Send Confirmation Email to Owner
+                const owner = await User.findByPk(org.ownerId);
+                if (owner && owner.email) {
+                    await sendEmail({
+                        email: owner.email,
+                        subject: '¡Plan Medicus Activado!',
+                        message: `Hola ${owner.firstName},\n\nHemos verificado con éxito tu pago de ${payment.amount} USD. Tu organización ${org.name} ahora tiene un plan ${org.type} ACTIVO hasta el ${newEndDate.toLocaleDateString()}.\n\nPlan: ${payment.planType}\nCiclo: ${payment.billingCycle}\n\nGracias por confiar en Medicus.\n\nSaludos,\nEquipo de Facturación.`
+                    });
+                }
             }
         }
     }

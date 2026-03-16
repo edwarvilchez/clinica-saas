@@ -21,3 +21,7 @@ test.js
 # Archivos CSV con datos sensibles
 api_url_search.csv
 components_api_url.csv
+
+# Scraper de Vademécum — archivos de estado y logs
+server/scrape_progress.json
+server/scrape_log.txt

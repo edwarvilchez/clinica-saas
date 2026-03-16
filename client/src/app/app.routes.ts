@@ -104,10 +104,17 @@ export const routes: Routes = [
     title: 'Medicus - Historial Médico'
   },
   {
+    path: 'lab-catalog',
+    loadComponent: () => import('./components/lab-catalog/lab-catalog').then(m => m.LabCatalog),
+    canActivate: [authGuard, roleGuard, firstLoginGuard],
+    data: { roles: ['SUPERADMIN', 'DOCTOR', 'NURSE', 'ADMINISTRATIVE', 'PATIENT'] },
+    title: 'Medicus - Catálogo de Laboratorio'
+  },
+  {
     path: 'lab-results',
     loadComponent: () => import('./components/lab-results/lab-results').then(m => m.LabResults),
     canActivate: [authGuard, roleGuard, firstLoginGuard],
-    data: { roles: ['SUPERADMIN', 'DOCTOR', 'NURSE'] },
+    data: { roles: ['SUPERADMIN', 'DOCTOR', 'NURSE', 'ADMINISTRATIVE', 'PATIENT'] },
     title: 'Medicus - Resultados de Laboratorio'
   },
   {
@@ -139,10 +146,23 @@ export const routes: Routes = [
     title: 'Medicus - Gestión de Equipo'
   },
   {
+    path: 'drug-guide',
+    loadComponent: () => import('./components/drug-guide/drug-guide').then(m => m.DrugGuideComponent),
+    canActivate: [authGuard, roleGuard, firstLoginGuard],
+    data: { roles: ['SUPERADMIN', 'ADMINISTRATIVE', 'DOCTOR', 'NURSE', 'RECEPTIONIST'] },
+    title: 'Medicus - Guía Farmacéutica'
+  },
+  {
     path: 'subscription',
     loadComponent: () => import('./components/subscription/subscription').then(m => m.Subscription),
     canActivate: [authGuard, firstLoginGuard],
     title: 'Medicus - Planes y Precios'
+  },
+  {
+    path: 'billing',
+    loadComponent: () => import('./components/billing/billing').then(m => m.Billing),
+    canActivate: [authGuard, firstLoginGuard],
+    title: 'Medicus - Mi Suscripción'
   },
 
   // Catch all - redirect to dashboard

@@ -31,6 +31,11 @@ const LabResult = sequelize.define('LabResult', {
   deletedBy: {
     type: DataTypes.UUID,
     allowNull: true
+  },
+  price: {
+    type: DataTypes.DECIMAL(12, 2),
+    allowNull: true,
+    defaultValue: 0.00
   }
 }, {
   paranoid: true

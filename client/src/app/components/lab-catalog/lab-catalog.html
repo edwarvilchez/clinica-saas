@@ -1,0 +1,286 @@
+<div class="animate-fade-in">
+  <!-- Title, Management & Real-time Search -->
+  <div
+    class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4"
+  >
+    <div class="flex-grow-1">
+      <h2 class="fw-bold mb-1">{{ langService.translate('lab_catalog.title') }}</h2>
+      <p class="text-muted mb-0 small">{{ langService.translate('lab_catalog.subtitle') }}</p>
+    </div>
+
+    <!-- Search Bar -->
+    <div class="position-relative flex-grow-1 mx-md-4">
+      <i
+        class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"
+      ></i>
+      <input
+        type="text"
+        [formControl]="searchControl"
+        class="form-control ps-5 rounded-pill border-0 shadow-sm glass-morphism py-2"
+        [placeholder]="langService.translate('common.search')"
+      />
+    </div>
+
+    <!-- Management Buttons -->
+    <div *ngIf="canManage()" class="d-flex gap-2">
+      <button
+        *ngIf="activeTab() === 'tests'"
+        class="btn btn-outline-primary shadow-sm rounded-pill px-3"
+        (click)="importCsv()"
+      >
+        <i class="bi bi-upload me-1"></i> {{ langService.translate('lab_catalog.bulkImport') }}
+      </button>
+      <button
+        *ngIf="activeTab() === 'tests'"
+        class="btn btn-primary-premium shadow-sm rounded-pill px-3"
+        (click)="openTestModal()"
+      >
+        <i class="bi bi-plus-circle me-1"></i> {{ langService.translate('lab_catalog.newTest') }}
+      </button>
+      <button
+        *ngIf="activeTab() === 'combos'"
+        class="btn btn-primary-premium shadow-sm rounded-pill px-3"
+        (click)="openComboModal()"
+      >
+        <i class="bi bi-collection-plus me-1"></i>
+        {{ langService.translate('lab_catalog.newCombo') }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Exchange Rate Info Bar -->
+  <div
+    class="glass-morphism border-0 shadow-sm rounded-4 p-3 mb-4 d-flex justify-content-between align-items-center animate-fade-in"
+  >
+    <div class="d-flex align-items-center gap-3">
+      <div class="icon-shape bg-primary bg-opacity-10 text-primary rounded-circle p-2">
+        <i class="bi bi-info-circle-fill"></i>
+      </div>
+      <div>
+        <p class="mb-0 small fw-bold text-dark">
+          {{ langService.translate('lab_catalog.rateInfo') }}
+        </p>
+        <p class="mb-0 x-small text-muted">
+          {{ langService.translate('lab_catalog.rateDetail') }} {{ currencyService.rate() }} Bs.
+        </p>
+      </div>
+    </div>
+    <div class="text-end">
+      <span
+        class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 small fw-bold"
+      >
+        {{
+          currencyService.currency() === 'USD'
+            ? langService.translate('lab_catalog.showingInUsd')
+            : langService.translate('lab_catalog.showingInVes')
+        }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <ul class="nav nav-pills glass-morphism p-2 rounded-4 mb-4" id="pills-tab" role="tablist">
+    <li class="nav-item flex-grow-1 text-center" role="presentation">
+      <button
+        class="nav-link w-100 rounded-3 py-2 fw-medium"
+        [class.active]="activeTab() === 'tests'"
+        (click)="activeTab.set('tests')"
+      >
+        <i class="bi bi-clipboard2-pulse me-2"></i>
+        {{ langService.translate('lab_catalog.testsTab') }}
+      </button>
+    </li>
+    <li class="nav-item flex-grow-1 text-center" role="presentation">
+      <button
+        class="nav-link w-100 rounded-3 py-2 fw-medium"
+        [class.active]="activeTab() === 'combos'"
+        (click)="activeTab.set('combos')"
+      >
+        <i class="bi bi-grid-36-gap me-2"></i> {{ langService.translate('lab_catalog.combosTab') }}
+      </button>
+    </li>
+  </ul>
+
+  <!-- Tab Content: TESTS -->
+  <div class="test-tab-content animate-fade-in" *ngIf="activeTab() === 'tests'">
+    <div class="card-premium border-0 shadow-sm overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light">
+            <tr>
+              <th class="ps-4 py-3 text-muted text-uppercase small fw-bold">
+                {{ langService.translate('lab_catalog.table.category') }}
+              </th>
+              <th class="py-3 text-muted text-uppercase small fw-bold">
+                {{ langService.translate('lab_catalog.table.price') }}
+              </th>
+              <th class="py-3 text-muted text-uppercase small fw-bold text-center">
+                {{ langService.translate('lab_catalog.table.status') }}
+              </th>
+              <th
+                class="pe-4 py-3 text-end text-muted text-uppercase small fw-bold"
+                *ngIf="canManage()"
+              >
+                {{ langService.translate('lab_catalog.table.actions') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let test of filteredTests()" class="hover-row">
+              <td class="ps-4 py-3">
+                <div class="d-flex align-items-center">
+                  <div
+                    class="category-dot mt-1 me-3"
+                    [style.background-color]="
+                      test.category === 'Hematología' ? '#0ea5e9' : '#64748b'
+                    "
+                  ></div>
+                  <div>
+                    <span class="fw-bold d-block">{{ test.name }}</span>
+                    <small class="text-muted">{{ test.category }}</small>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3">
+                <div class="d-flex flex-column">
+                  <span class="fw-bold text-primary">
+                    {{ currencyService.formatAmount(test.price) }}
+                  </span>
+                  <small class="text-muted x-small">
+                    {{
+                      currencyService.currency() === 'USD'
+                        ? '≈ ' + currencyService.formatAmount(test.price, 'VES')
+                        : '≈ ' + currencyService.formatAmount(test.price, 'USD')
+                    }}
+                  </small>
+                </div>
+              </td>
+              <td class="py-3 text-center">
+                <span
+                  class="badge rounded-pill"
+                  [ngClass]="
+                    test.isActive
+                      ? 'bg-success bg-opacity-10 text-success'
+                      : 'bg-danger bg-opacity-10 text-danger'
+                  "
+                >
+                  {{
+                    test.isActive
+                      ? langService.translate('lab_catalog.active')
+                      : langService.translate('lab_catalog.inactive')
+                  }}
+                </span>
+              </td>
+              <td class="pe-4 py-3 text-end" *ngIf="canManage()">
+                <button
+                  class="btn btn-light btn-sm rounded-circle me-1"
+                  (click)="openTestModal(test)"
+                >
+                  <i class="bi bi-pencil text-primary"></i>
+                </button>
+                <button class="btn btn-light btn-sm rounded-circle" (click)="deleteTest(test.id!)">
+                  <i class="bi bi-trash text-danger"></i>
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="filteredTests().length === 0">
+              <td colspan="4" class="text-center py-5 text-muted">
+                {{ langService.translate('lab_catalog.noTests') }}
+                <div *ngIf="searchControl.value" class="mt-2 x-small">
+                  (Trate buscando por otro nombre o categoría)
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Content: COMBOS -->
+  <div class="combo-tab-content animate-fade-in" *ngIf="activeTab() === 'combos'">
+    <div class="card-premium border-0 shadow-sm overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light">
+            <tr>
+              <th class="ps-4 py-3 text-muted text-uppercase small fw-bold">
+                {{ langService.translate('lab_catalog.modals.comboName') }}
+              </th>
+              <th class="py-3 text-muted text-uppercase small fw-bold">
+                {{ langService.translate('lab_catalog.table.price') }}
+              </th>
+              <th class="py-3 text-muted text-uppercase small fw-bold">
+                {{ langService.translate('lab_catalog.modals.selectTests') }}
+              </th>
+              <th
+                class="pe-4 py-3 text-end text-muted text-uppercase small fw-bold"
+                *ngIf="canManage()"
+              >
+                {{ langService.translate('lab_catalog.table.actions') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let combo of filteredCombos()" class="hover-row">
+              <td class="ps-4 py-3">
+                <div>
+                  <span class="fw-bold d-block">{{ combo.name }}</span>
+                  <small class="text-muted text-truncate d-inline-block" style="max-width: 250px">{{
+                    combo.description
+                  }}</small>
+                </div>
+              </td>
+              <td class="py-3">
+                <div class="d-flex flex-column">
+                  <span class="fw-bold text-primary">
+                    {{ currencyService.formatAmount(combo.totalPrice) }}
+                  </span>
+                  <small class="text-muted x-small">
+                    {{
+                      currencyService.currency() === 'USD'
+                        ? '≈ ' + currencyService.formatAmount(combo.totalPrice, 'VES')
+                        : '≈ ' + currencyService.formatAmount(combo.totalPrice, 'USD')
+                    }}
+                  </small>
+                </div>
+              </td>
+              <td class="py-3">
+                <div class="d-flex flex-wrap gap-1">
+                  <span
+                    *ngFor="let test of combo.tests"
+                    class="badge bg-light text-secondary border fw-normal x-small-compact"
+                  >
+                    {{ test.name }}
+                  </span>
+                </div>
+              </td>
+              <td class="pe-4 py-3 text-end" *ngIf="canManage()">
+                <button
+                  class="btn btn-light btn-sm rounded-circle me-1"
+                  (click)="openComboModal(combo)"
+                >
+                  <i class="bi bi-pencil text-primary"></i>
+                </button>
+                <button
+                  class="btn btn-light btn-sm rounded-circle"
+                  (click)="deleteCombo(combo.id!)"
+                >
+                  <i class="bi bi-trash text-danger"></i>
+                </button>
+              </td>
+            </tr>
+            <tr *ngIf="filteredCombos().length === 0">
+              <td colspan="4" class="text-center py-5 text-muted">
+                {{ langService.translate('lab_catalog.noCombos') }}
+                <div *ngIf="searchControl.value" class="mt-2 x-small">
+                  (Trate buscando por otro nombre de combo o examen incluido)
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

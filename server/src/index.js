@@ -173,6 +173,9 @@ app.use('/api/specialties', authMiddleware, checkSubscription, require('./routes
 app.use('/api/video-consultations', authMiddleware, checkSubscription, require('./routes/videoConsultation.routes'));
 app.use('/api/bulk', authMiddleware, checkSubscription, require('./routes/bulk.routes'));
 app.use('/api/team', authMiddleware, checkSubscription, require('./routes/team.routes'));
+app.use('/api/drugs', require('./routes/drug.routes'));
+app.use('/api/prescriptions', require('./routes/prescription.routes'));
+app.use('/api/lab-catalog', require('./routes/labCatalog.routes'));
 
 // Health Check Endpoint
 app.get('/health', async (req, res) => {

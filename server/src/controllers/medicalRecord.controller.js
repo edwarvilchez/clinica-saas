@@ -1,4 +1,4 @@
-const { MedicalRecord, Patient, Doctor, User } = require('../models');
+const { MedicalRecord, Patient, Doctor, User, Prescription, Drug } = require('../models');
 
 exports.createRecord = async (req, res) => {
   try {
@@ -16,6 +16,16 @@ exports.createRecord = async (req, res) => {
     }
 
     const record = await MedicalRecord.create(req.body);
+
+    // Save associated prescriptions if present
+    if (req.body.prescriptions && Array.isArray(req.body.prescriptions)) {
+      const prescriptionsData = req.body.prescriptions.map(p => ({
+        ...p,
+        medicalRecordId: record.id
+      }));
+      await Prescription.bulkCreate(prescriptionsData);
+    }
+
     res.status(201).json(record);
   } catch (error) {
     console.error('Error creating record:', error);
@@ -29,7 +39,10 @@ exports.getPatientHistory = async (req, res) => {
     
     const records = await MedicalRecord.findAll({
       where: { patientId },
-      include: [{ model: Doctor, include: [User] }],
+      include: [
+        { model: Doctor, include: [User] },
+        { model: Prescription, as: 'prescriptions', include: [{ model: Drug, as: 'drug' }] }
+      ],
       order: [['createdAt', 'DESC']]
     });
     

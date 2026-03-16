@@ -1,0 +1,151 @@
+<div class="container-fluid p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="fw-bold mb-0">{{ langService.translate('billing.title') }}</h2>
+      <p class="text-muted">{{ langService.translate('billing.subtitle') }}</p>
+    </div>
+    <a routerLink="/subscription" class="btn btn-primary rounded-pill px-4">
+      <i class="bi bi-arrow-up-circle me-2"></i>{{ langService.translate('billing.updatePlan') }}
+    </a>
+  </div>
+
+  <div class="row g-4" *ngIf="orgData()">
+    <!-- Plan Status Card -->
+    <div class="col-md-6 col-lg-4">
+      <div class="card border-0 shadow-sm h-100 rounded-4 overflow-hidden">
+        <div class="card-body p-4">
+          <div class="d-flex align-items-center gap-3 mb-4">
+            <div class="icon-box bg-primary-soft rounded-3 p-3 text-primary">
+              <i class="bi bi-shield-check fs-2"></i>
+            </div>
+            <div>
+              <span
+                class="badge rounded-pill mb-1"
+                [ngClass]="getStatusBadge(orgData().subscriptionStatus)"
+              >
+                {{ orgData().subscriptionStatus }}
+              </span>
+              <h4 class="fw-bold mb-0">Plan {{ orgData().type }}</h4>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-muted small">{{
+                langService.translate('billing.timeRemaining')
+              }}</span>
+              <span class="fw-bold small"
+                >{{ daysLeft() }} {{ langService.translate('billing.days') }}</span
+              >
+            </div>
+            <div class="progress" style="height: 8px">
+              <div
+                class="progress-bar"
+                role="progressbar"
+                [style.width.%]="(daysLeft() / 7) * 100"
+                [ngClass]="daysLeft() < 3 ? 'bg-danger' : 'bg-primary'"
+              ></div>
+            </div>
+            <p class="text-muted small mt-2">
+              <i class="bi bi-calendar-event me-1"></i>
+              {{ langService.translate('billing.expiresOn') }}:
+              <strong>{{ orgData().trialEndsAt | date: 'dd/MM/yyyy' }}</strong>
+            </p>
+          </div>
+
+          <div class="alert alert-secondary border-0 small mb-0">
+            <i class="bi bi-info-circle me-1"></i>
+            {{ langService.translate('billing.reminderNotice') }}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Billing Stats -->
+    <div class="col-md-6 col-lg-8">
+      <div class="card border-0 shadow-sm h-100 rounded-4">
+        <div class="card-header bg-transparent border-0 pt-4 px-4 pb-0">
+          <h5 class="fw-bold mb-0">{{ langService.translate('billing.paymentHistory') }}</h5>
+        </div>
+        <div class="card-body p-4">
+          <div class="table-responsive" *ngIf="payments().length > 0; else noPayments">
+            <table class="table table-hover align-middle border-top">
+              <thead>
+                <tr class="text-muted small">
+                  <th>{{ langService.translate('billing.table.date') }}</th>
+                  <th>{{ langService.translate('billing.table.concept') }}</th>
+                  <th>{{ langService.translate('billing.table.method') }}</th>
+                  <th>{{ langService.translate('billing.table.amount') }}</th>
+                  <th>{{ langService.translate('billing.table.status') }}</th>
+                  <th>{{ langService.translate('billing.table.receipt') }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let payment of payments()">
+                  <td class="small">{{ payment.createdAt | date: 'dd/MM/yy' }}</td>
+                  <td>
+                    <div class="fw-medium">{{ payment.concept }}</div>
+                    <div class="text-muted x-small">Ref: {{ payment.reference }}</div>
+                  </td>
+                  <td class="text-muted small">{{ payment.instrument }}</td>
+                  <td class="fw-bold text-primary">${{ payment.amount }}</td>
+                  <td>
+                    <span
+                      class="badge rounded-pill"
+                      [ngClass]="
+                        payment.status === 'Paid'
+                          ? 'bg-success-soft text-success'
+                          : 'bg-warning-soft text-warning'
+                      "
+                    >
+                      {{
+                        payment.status === 'Paid'
+                          ? langService.lang() === 'es'
+                            ? 'Verificado'
+                            : 'Verified'
+                          : langService.lang() === 'es'
+                            ? 'Pendiente'
+                            : 'Pending'
+                      }}
+                    </span>
+                  </td>
+                  <td>
+                    <a
+                      [href]="payment.receiptUrl"
+                      target="_blank"
+                      *ngIf="payment.receiptUrl"
+                      class="btn btn-sm btn-light rounded-circle"
+                    >
+                      <i class="bi bi-file-earmark-pdf"></i>
+                    </a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #noPayments>
+            <div class="text-center py-5 text-muted">
+              <i class="bi bi-receipt fs-1 d-block mb-3 opacity-25"></i>
+              <p>{{ langService.translate('billing.noPayments') }}</p>
+            </div>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .bg-primary-soft {
+    background-color: rgba(14, 165, 233, 0.1);
+  }
+  .bg-success-soft {
+    background-color: rgba(34, 197, 94, 0.1);
+  }
+  .bg-warning-soft {
+    background-color: rgba(234, 179, 8, 0.1);
+  }
+  .x-small {
+    font-size: 0.7rem;
+  }
+</style>

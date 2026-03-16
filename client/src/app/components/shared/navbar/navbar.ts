@@ -150,4 +150,38 @@ export class Navbar {
       }
     });
   }
+
+  canManageRate() {
+    const role = this.authService.currentUser()?.Role?.name || this.authService.currentUser()?.role;
+    return ['SUPERADMIN', 'DOCTOR', 'ADMINISTRATIVE'].includes(role);
+  }
+
+  openExchangeRateModal() {
+    if (!this.canManageRate()) return;
+    
+    Swal.fire({
+      title: 'Actualizar Tasa BCV',
+      text: `Tasa actual: ${this.currencyService.rate()} Bs.`,
+      input: 'number',
+      inputAttributes: {
+        step: '0.01',
+        min: '1'
+      },
+      showCancelButton: true,
+      confirmButtonText: 'Actualizar',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: '#0ea5e9',
+      preConfirm: (value) => {
+        if (!value || isNaN(parseFloat(value))) {
+          Swal.showValidationMessage('Ingrese un valor válido');
+        }
+        return parseFloat(value);
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.currencyService.setRate(result.value);
+        Swal.fire('¡Éxito!', `La tasa se ha actualizado a ${result.value} Bs.`, 'success');
+      }
+    });
+  }
 }

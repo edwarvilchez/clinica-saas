@@ -14,7 +14,7 @@ export class LanguageService {
   private translations: any = {
     es: {
       common: {
-        dashboard: 'Panel Lateral',
+        dashboard: 'Dashboard',
         search: 'Buscar...',
         actions: 'Acciones',
         status: 'Estado',
@@ -134,7 +134,81 @@ export class LanguageService {
         debit: 'Débito',
         credit: 'Crédito',
         currency: 'Moneda',
-        bulkData: 'Carga Masiva'
+        bulkData: 'Carga Masiva',
+        drugGuide: 'Guía Farmacéutica',
+        labCatalog: 'Catálogo de Exámenes'
+      },
+      drug_guide: {
+        title: 'Guía Farmacéutica Spilva',
+        subtitle: 'Consulta de componentes, posología e indicaciones de medicamentos.',
+        vademecumLabel: 'Vademécum Venezuela en línea',
+        vademecumDesc: 'Accede al directorio completo de medicamentos disponibles en Venezuela.',
+        vademecumLink: 'Abrir Vademécum',
+        newDrug: 'Nuevo Medicamento',
+        searchPlaceholder: 'Buscar por nombre, genérico o componentes...',
+        allCategories: 'Todas las categorías',
+        search: 'Buscar',
+        noResults: 'No se encontraron medicamentos',
+        noResultsHint: 'Intenta con otros términos o agrega el primero.',
+        results: 'resultados',
+        table: {
+          commercial: 'Nombre Comercial',
+          generic: 'Nombre Genérico',
+          components: 'Componentes Activos',
+          presentation: 'Presentación',
+          category: 'Categoría',
+          actions: 'Acciones'
+        },
+        noCategory: 'Sin categoría',
+        detail: {
+          title: 'Detalle de Medicamento',
+          presentation: 'Presentación',
+          category: 'Categoría',
+          components: 'Componentes Activos',
+          indications: 'Indicaciones',
+          posology: 'Posología',
+          contraindications: 'Contraindicaciones',
+          adverseReactions: 'Reacciones Adversas',
+          precautions: 'PRECAUCIONES',
+          noSpecified: 'No especificado',
+          close: 'Cerrar',
+          edit: 'Editar'
+        },
+        form: {
+          create: 'Agregar a la Guía',
+          edit: 'Editar Medicamento',
+          commercial: 'Nombre Comercial',
+          commercialPlaceholder: 'Ej: Atamel, Voltarén...',
+          generic: 'Nombre Genérico',
+          genericPlaceholder: 'Ej: Acetaminofén, Diclofenaco...',
+          components: 'Componentes Activos',
+          componentsPlaceholder: 'Ej: Paracetamol 500mg, Cafeína 65mg...',
+          componentsHint: 'Separe los componentes por comas.',
+          presentation: 'Presentación',
+          presentationPlaceholder: 'Ej: Tabletas 500mg, Jarabe 250ml/5mg',
+          category: 'Categoría',
+          categoryPlaceholder: 'Selecciona o escribe...',
+          indications: 'Indicaciones',
+          indicationsPlaceholder: 'Usos terapéuticos...',
+          posology: 'Posología',
+          posologyPlaceholder: 'Dosis recomendada, frecuencia...',
+          contraindications: 'Contraindicaciones',
+          contraindicationsPlaceholder: 'Situaciones donde está contraindicado...',
+          adverseReactions: 'Reacciones Adversas',
+          adverseReactionsPlaceholder: 'Efectos secundarios conocidos...',
+          precautions: 'Precauciones',
+          precautionsPlaceholder: 'Advertencias especiales, interacciones...',
+          cancel: 'Cancelar',
+          save: 'Guardar Cambios',
+          create_btn: 'Crear Registro'
+        },
+        validation: 'Nombre y componentes activos son requeridos',
+        savedOk: 'El medicamento fue guardado correctamente',
+        deletedOk: 'Medicamento eliminado de la guía',
+        confirmDelete: '¿Eliminar medicamento?',
+        confirmDeleteText: 'Se eliminará "{{name}}" de la guía',
+        yes: 'Sí, eliminar',
+        no: 'Cancelar'
       },
       landing: {
         title: 'Tu Socio en',
@@ -152,7 +226,7 @@ export class LanguageService {
         registerHere: 'Regístrate aquí',
         publicBooking: 'Agendar Cita (Sin cuenta)',
         accountType: 'Tipo de Cuenta',
-        professional: 'Profesional Independiente',
+        professional: 'Profesional Independiente (Médicos)',
         clinic: 'Clínica / Centro Médico',
         hospital: 'Hospital / Institución',
         businessName: 'Nombre Institucional / Comercial',
@@ -353,7 +427,170 @@ export class LanguageService {
         schedule: 'Agendar',
         available: 'Disponible'
       },
-
+      billing: {
+        title: 'Mi Suscripción',
+        subtitle: 'Gestiona tu plan y historial de facturación',
+        sidebar: 'Estado de Suscripción',
+        updatePlan: 'Actualizar Plan',
+        timeRemaining: 'Tiempo Restante',
+        days: 'días',
+        expiresOn: 'Vence el',
+        reminderNotice: 'Recibirás un recordatorio 2 días antes del vencimiento.',
+        paymentHistory: 'Historial de Pagos',
+        noPayments: 'No tienes pagos de suscripción registrados aún.',
+        table: {
+          date: 'FECHA',
+          concept: 'CONCEPTO',
+          method: 'MÉTODO',
+          amount: 'MONTO',
+          status: 'ESTADO',
+          receipt: 'RECIBO'
+        }
+      },
+      team: {
+        title: 'Gestión de Equipo',
+        subtitle: 'Administra los miembros de tu organización.',
+        sidebar: 'Mi Equipo',
+        addMember: 'Añadir Miembro',
+        newMember: 'Nuevo Miembro',
+        role: 'Rol',
+        selectRole: 'Seleccionar Rol',
+        gender: 'Género',
+        license: 'Licencia / ID',
+        invitationButton: 'Guardar y Enviar Invitación',
+        member: 'Miembro',
+        noMembers: 'No hay miembros en tu equipo aún.',
+        messages: {
+          loading: 'Añadiendo miembro...',
+          success: 'Miembro añadido correctamente',
+          confirmDelete: '¿Estás seguro?',
+          confirmDeleteText: 'Esta acción no se puede deshacer.',
+          yesDelete: 'Sí, eliminar'
+        }
+      },
+      subscription: {
+        trialTitle: '¡Prueba Gratis por 7 Días!',
+        trialDesc: 'Experimenta todas las funcionalidades premium sin compromiso.',
+        sidebar: 'Planes y Precios',
+        startTrial: 'Comenzar Prueba',
+        activeSession: 'Sesión Activa',
+        pricingTitle: 'PLANES Y PRECIOS',
+        choosePlan: 'Elige el plan perfecto para tu organización',
+        scalePlan: 'Escala tu plan a medida que crece tu práctica.',
+        choosePlanBtn: 'Elegir Plan',
+        currentPlan: 'Plan Actual',
+        customDeployment: '¿Necesitas un despliegue personalizado?',
+        customDeploymentDesc: 'Si eres una red de hospitales o una corporación multinacional, contacta con nuestro equipo para una solución a medida.',
+        supportEmail: 'Email de Atención',
+        recommended: 'Recomendado',
+        monthly: 'mes',
+        quarterly: 'trimestre',
+        semester: 'semestre',
+        yearly: 'año'
+      },
+      public_booking: {
+        backToLogin: 'Volver al Login',
+        title: 'Agenda tu Cita Médica',
+        subtitle: 'Rápido, fácil y sin necesidad de crear una cuenta',
+        steps: {
+          personal: 'Tus Datos',
+          appointment: 'Agendar Cita'
+        },
+        personalInfo: {
+          title: 'Información Personal',
+          firstName: 'Nombre',
+          lastName: 'Apellido',
+          email: 'Email',
+          phone: 'Teléfono / WhatsApp',
+          document: 'Cédula / Documento',
+          placeholders: {
+            firstName: 'Juan',
+            lastName: 'Pérez',
+            email: 'correo@ejemplo.com',
+            phone: '+58 424-1234567',
+            document: 'V-12345678'
+          }
+        },
+        appointmentInfo: {
+          title: 'Detalles de la Cita',
+          doctor: 'Doctor / Especialidad',
+          doctorPlaceholder: 'Selecciona un doctor...',
+          date: 'Fecha',
+          time: 'Hora',
+          timePlaceholder: 'Selecciona una hora...',
+          reason: 'Motivo de Consulta',
+          reasonPlaceholder: 'Ej: Consulta General, Control, Chequeo...',
+          notes: 'Observaciones (Opcional)',
+          notesPlaceholder: 'Información adicional que quieras compartir...'
+        },
+        actions: {
+          continue: 'Continuar',
+          back: 'Atrás',
+          confirm: 'Confirmar Cita',
+          booking: 'Agendando...',
+          hasAccount: '¿Ya tienes cuenta?',
+          loginNow: 'Inicia sesión'
+        },
+        errors: {
+          required: 'Este campo es requerido',
+          email: 'Email inválido',
+          pattern: 'Formato inválido',
+          general: 'No se pudo agendar la cita. Por favor, intenta de nuevo.'
+        },
+        success: {
+          title: '¡Cita Agendada!',
+          msg: 'Tu cita ha sido registrada exitosamente.',
+          notification: 'Hemos enviado la confirmación a tu WhatsApp y email.',
+          calendar: 'Calendario',
+          didYouKnow: '💡 ¿Sabías que puedes crear una cuenta?',
+          accountBenefits: 'Con una cuenta podrás ver tu historial de citas, reagendar y mucho más.',
+          createAccount: 'Crear Cuenta',
+          gotIt: 'Entendido'
+        }
+      },
+      lab_catalog: {
+        title: 'Catálogo de Laboratorio',
+        subtitle: 'Gestión de exámenes individuales y perfiles combinados',
+        rateInfo: 'Tu Guía de Precios y Tasa BCV',
+        rateDetail: 'Mantenemos nuestros precios actualizados según la tasa oficial de 1 USD = ',
+        showingInUsd: 'Mostrando en Dólares ($)',
+        showingInVes: 'Mostrando en Bolívares (Bs)',
+        bulkImport: 'Carga Masiva (CSV)',
+        newTest: 'Nuevo Examen',
+        newCombo: 'Nuevo Combo',
+        testsTab: 'Exámenes Individuales',
+        combosTab: 'Combos y Perfiles',
+        table: {
+          category: 'Categoría / Examen',
+          price: 'Precio (USD)',
+          status: 'Estado',
+          actions: 'Acciones'
+        },
+        active: 'Activo',
+        inactive: 'Inactivo',
+        noTests: 'No hay exámenes registrados.',
+        noCombos: 'No hay combos o perfiles registrados.',
+        includes: 'Incluye:',
+        comboPrice: 'Precio Combo',
+        modals: {
+          editTest: 'Editar Examen',
+          newTest: 'Nuevo Examen',
+          testName: 'Nombre del Examen',
+          price: 'Precio (USD)',
+          category: 'Categoría',
+          description: 'Descripción (Opcional)',
+          editCombo: 'Editar Combo/Perfil',
+          newCombo: 'Nuevo Combo/Perfil',
+          comboName: 'Nombre del Combo',
+          suggestedPrice: 'Precio Total Sugerido (USD)',
+          selectTests: 'Seleccionar Exámenes Incluidos',
+          importTitle: 'Importar Exámenes (CSV)',
+          importText: 'Seleccione un archivo CSV con las columnas: name, price, category, description.',
+          importSuccess: 'Importación Finalizada',
+          imported: 'Exitosos',
+          failed: 'Fallidos'
+        }
+      }
     },
     en: {
       common: {
@@ -477,7 +714,81 @@ export class LanguageService {
         debit: 'Debit Card',
         credit: 'Credit Card',
         currency: 'Currency',
-        bulkData: 'Bulk Import'
+        bulkData: 'Bulk Import',
+        drugGuide: 'Drug Guide',
+        labCatalog: 'Lab Catalog'
+      },
+      drug_guide: {
+        title: 'Spilva Drug Guide',
+        subtitle: 'Reference for drug components, dosage and indications.',
+        vademecumLabel: 'Venezuela Online Vademecum',
+        vademecumDesc: 'Access the complete directory of drugs available in Venezuela.',
+        vademecumLink: 'Open Vademecum',
+        newDrug: 'New Drug',
+        searchPlaceholder: 'Search by name, generic or components...',
+        allCategories: 'All categories',
+        search: 'Search',
+        noResults: 'No drugs found',
+        noResultsHint: 'Try different terms or add the first one.',
+        results: 'results',
+        table: {
+          commercial: 'Commercial Name',
+          generic: 'Generic Name',
+          components: 'Active Components',
+          presentation: 'Presentation',
+          category: 'Category',
+          actions: 'Actions'
+        },
+        noCategory: 'Uncategorized',
+        detail: {
+          title: 'Drug Detail',
+          presentation: 'Presentation',
+          category: 'Category',
+          components: 'Active Components',
+          indications: 'Indications',
+          posology: 'Dosage',
+          contraindications: 'Contraindications',
+          adverseReactions: 'Adverse Reactions',
+          precautions: 'PRECAUTIONS',
+          noSpecified: 'Not specified',
+          close: 'Close',
+          edit: 'Edit'
+        },
+        form: {
+          create: 'Add to Guide',
+          edit: 'Edit Drug',
+          commercial: 'Commercial Name',
+          commercialPlaceholder: 'e.g. Tylenol, Voltaren...',
+          generic: 'Generic Name',
+          genericPlaceholder: 'e.g. Acetaminophen, Diclofenac...',
+          components: 'Active Components',
+          componentsPlaceholder: 'e.g. Paracetamol 500mg, Caffeine 65mg...',
+          componentsHint: 'Separate components with commas.',
+          presentation: 'Presentation',
+          presentationPlaceholder: 'e.g. Tablets 500mg, Syrup 250ml/5mg',
+          category: 'Category',
+          categoryPlaceholder: 'Select or type...',
+          indications: 'Indications',
+          indicationsPlaceholder: 'Therapeutic uses...',
+          posology: 'Dosage',
+          posologyPlaceholder: 'Recommended dose, frequency...',
+          contraindications: 'Contraindications',
+          contraindicationsPlaceholder: 'Situations where it is contraindicated...',
+          adverseReactions: 'Adverse Reactions',
+          adverseReactionsPlaceholder: 'Known side effects...',
+          precautions: 'Precautions',
+          precautionsPlaceholder: 'Special warnings, interactions...',
+          cancel: 'Cancel',
+          save: 'Save Changes',
+          create_btn: 'Create Record'
+        },
+        validation: 'Name and active components are required',
+        savedOk: 'Drug saved successfully',
+        deletedOk: 'Drug removed from the guide',
+        confirmDelete: 'Delete drug?',
+        confirmDeleteText: 'This will remove "{{name}}" from the guide',
+        yes: 'Yes, delete',
+        no: 'Cancel'
       },
       landing: {
         title: 'Your Partner in',
@@ -683,6 +994,67 @@ export class LanguageService {
         schedule: 'Schedule',
         available: 'Available'
       },
+      billing: {
+        title: 'My Subscription',
+        subtitle: 'Manage your plan and billing history',
+        sidebar: 'Subscription Status',
+        updatePlan: 'Upgrade Plan',
+        timeRemaining: 'Time Remaining',
+        days: 'days',
+        expiresOn: 'Expires on',
+        reminderNotice: 'You will receive a reminder 2 days before expiration.',
+        paymentHistory: 'Payment History',
+        noPayments: 'You have no subscription payments recorded yet.',
+        table: {
+          date: 'DATE',
+          concept: 'CONCEPT',
+          method: 'METHOD',
+          amount: 'AMOUNT',
+          status: 'STATUS',
+          receipt: 'RECEIPT'
+        }
+      },
+      team: {
+        title: 'Team Management',
+        subtitle: 'Manage your organization members.',
+        sidebar: 'My Team',
+        addMember: 'Add Member',
+        newMember: 'New Member',
+        role: 'Role',
+        selectRole: 'Select Role',
+        gender: 'Gender',
+        license: 'License / ID',
+        invitationButton: 'Save and Send Invitation',
+        member: 'Member',
+        noMembers: 'No members in your team yet.',
+        messages: {
+          loading: 'Adding member...',
+          success: 'Member added successfully',
+          confirmDelete: 'Are you sure?',
+          confirmDeleteText: 'This action cannot be undone.',
+          yesDelete: 'Yes, delete'
+        }
+      },
+      subscription: {
+        trialTitle: '7-Day Free Trial!',
+        trialDesc: 'Experience all premium features with no commitment.',
+        sidebar: 'Plans & Pricing',
+        startTrial: 'Start Trial',
+        activeSession: 'Active Session',
+        pricingTitle: 'PLANS & PRICING',
+        choosePlan: 'Choose the perfect plan for your organization',
+        scalePlan: 'Scale your plan as your practice grows.',
+        choosePlanBtn: 'Choose Plan',
+        currentPlan: 'Current Plan',
+        customDeployment: 'Need a custom deployment?',
+        customDeploymentDesc: 'If you are a hospital network or a multinational corporation, contact our team for a tailored solution.',
+        supportEmail: 'Support Email',
+        recommended: 'Recommended',
+        monthly: 'month',
+        quarterly: 'quarter',
+        semester: 'semester',
+        yearly: 'year'
+      },
       navbar: {
         updateInfo: 'Update Info',
         changePassword: 'Change Password',
@@ -695,6 +1067,109 @@ export class LanguageService {
         PATIENT: 'Patient',
         NURSE: 'Nurse',
         STAFF: 'Staff'
+      },
+      public_booking: {
+        backToLogin: 'Back to Login',
+        title: 'Book your Medical Appointment',
+        subtitle: 'Quick, easy and no account required',
+        steps: {
+          personal: 'Your Info',
+          appointment: 'Schedule'
+        },
+        personalInfo: {
+          title: 'Personal Information',
+          firstName: 'First Name',
+          lastName: 'Last Name',
+          email: 'Email',
+          phone: 'Phone / WhatsApp',
+          document: 'ID / Document',
+          placeholders: {
+            firstName: 'John',
+            lastName: 'Doe',
+            email: 'email@example.com',
+            phone: '+1 555-123-4567',
+            document: 'ID-12345678'
+          }
+        },
+        appointmentInfo: {
+          title: 'Appointment Details',
+          doctor: 'Doctor / Specialty',
+          doctorPlaceholder: 'Select a doctor...',
+          date: 'Date',
+          time: 'Time',
+          timePlaceholder: 'Select a time...',
+          reason: 'Reason for Visit',
+          reasonPlaceholder: 'e.g. General Consultation, Checkup...',
+          notes: 'Notes (Optional)',
+          notesPlaceholder: 'Any additional information you want to share...'
+        },
+        actions: {
+          continue: 'Continue',
+          back: 'Back',
+          confirm: 'Confirm Appointment',
+          booking: 'Booking...',
+          hasAccount: 'Already have an account?',
+          loginNow: 'Login'
+        },
+        errors: {
+          required: 'This field is required',
+          email: 'Invalid email',
+          pattern: 'Invalid format',
+          general: 'Could not book appointment. Please try again.'
+        },
+        success: {
+          title: 'Appointment Scheduled!',
+          msg: 'Your appointment has been registered successfully.',
+          notification: 'We have sent confirmation to your WhatsApp and email.',
+          calendar: 'Calendar',
+          didYouKnow: '💡 Did you know you can create an account?',
+          accountBenefits: 'With an account you can view your appointment history, reschedule and more.',
+          createAccount: 'Create Account',
+          gotIt: 'Got it'
+        }
+      },
+      lab_catalog: {
+        title: 'Laboratory Catalog',
+        subtitle: 'Management of individual tests and combined profiles',
+        rateInfo: 'Your Pricing Guide & BCV Rate',
+        rateDetail: 'We keep our prices updated according to the official rate of 1 USD = ',
+        showingInUsd: 'Showing in Dollars ($)',
+        showingInVes: 'Showing in Bolivars (Bs)',
+        bulkImport: 'Bulk Import (CSV)',
+        newTest: 'New Test',
+        newCombo: 'New Combo',
+        testsTab: 'Individual Tests',
+        combosTab: 'Combos & Profiles',
+        table: {
+          category: 'Category / Test',
+          price: 'Price (USD)',
+          status: 'Status',
+          actions: 'Actions'
+        },
+        active: 'Active',
+        inactive: 'Inactive',
+        noTests: 'No tests registered.',
+        noCombos: 'No combos or profiles registered.',
+        includes: 'Includes:',
+        comboPrice: 'Combo Price',
+        modals: {
+          editTest: 'Edit Test',
+          newTest: 'New Test',
+          testName: 'Test Name',
+          price: 'Price (USD)',
+          category: 'Category',
+          description: 'Description (Optional)',
+          editCombo: 'Edit Combo/Profile',
+          newCombo: 'New Combo/Profile',
+          comboName: 'Combo Name',
+          suggestedPrice: 'Suggested Total Price (USD)',
+          selectTests: 'Select Included Tests',
+          importTitle: 'Import Tests (CSV)',
+          importText: 'Select a CSV file with columns: name, price, category, description.',
+          importSuccess: 'Import Finished',
+          imported: 'Successful',
+          failed: 'Failed'
+        }
       }
     }
   };

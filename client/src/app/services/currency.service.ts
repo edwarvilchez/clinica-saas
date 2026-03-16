@@ -14,6 +14,10 @@ export class CurrencyService {
     if (savedCurrency) {
       this.currentCurrency.set(savedCurrency);
     }
+    const savedRate = localStorage.getItem('exchangeRate');
+    if (savedRate) {
+      this.exchangeRate.set(parseFloat(savedRate));
+    }
   }
 
   get currency() {
@@ -31,6 +35,7 @@ export class CurrencyService {
 
   setRate(rate: number) {
     this.exchangeRate.set(rate);
+    localStorage.setItem('exchangeRate', rate.toString());
   }
 
   // Utilidad para convertir montos

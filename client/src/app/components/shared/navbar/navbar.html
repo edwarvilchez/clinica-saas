@@ -62,6 +62,30 @@
 
           <div class="vr my-1 opacity-25"></div>
 
+          <!-- Rate Management Toggle (Visible to all, editable by authorized) -->
+          <div class="d-flex align-items-center">
+            <button
+              *ngIf="canManageRate(); else viewOnlyRate"
+              class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 x-small-compact hover-shadow transition"
+              (click)="openExchangeRateModal()"
+              [title]="'Actualizar Tasa BCV'"
+              style="font-size: 10px; font-weight: bold; border-style: dashed"
+            >
+              BCV: {{ currencyService.rate() }}
+            </button>
+            <ng-template #viewOnlyRate>
+              <div
+                class="badge bg-light text-secondary border rounded-pill px-2 py-1 x-small-compact"
+                style="font-size: 10px; font-weight: bold"
+                [title]="'Tasa referencial del día'"
+              >
+                BCV: {{ currencyService.rate() }}
+              </div>
+            </ng-template>
+          </div>
+
+          <div class="vr my-1 opacity-25"></div>
+
           <!-- Language Toggle -->
           <div class="d-flex align-items-center gap-1">
             <button

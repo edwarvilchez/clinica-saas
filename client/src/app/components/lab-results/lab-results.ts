@@ -6,6 +6,11 @@ import Swal from 'sweetalert2';
 import { LabPdfService } from '../../services/lab-pdf.service';
 import { LanguageService } from '../../services/language.service';
 import { LabReport, HEMATOLOGY_STRUCTURE, CHEMISTRY_STRUCTURE } from './lab-report.model';
+import { LabCatalogService, LabTest } from '../../services/lab-catalog.service';
+import { AuthService } from '../../services/auth.service';
+import { MedicalService } from '../../services/medical.service';
+import { HttpClient } from '@angular/common/http';
+import { API_URL } from '../../api-config';
 
 @Component({
   selector: 'app-lab-results',
@@ -51,12 +56,73 @@ export class LabResults implements OnInit {
     }
   ]);
 
+  currentUser = signal<any>(null);
+  canManage = signal(false);
+  canViewPrices = signal(false);
+  isPatient = signal(false);
+  catalogTests = signal<LabTest[]>([]);
+  patients = signal<any[]>([]);
+
   constructor(
     private pdfService: LabPdfService,
-    public langService: LanguageService
-  ) {}
+    public langService: LanguageService,
+    private authService: AuthService,
+    private medicalService: MedicalService,
+    private catalogService: LabCatalogService,
+    private http: HttpClient
+  ) {
+    this.currentUser.set(this.authService.currentUser());
+    const role = this.currentUser()?.Role?.name;
+    this.canManage.set(['SUPERADMIN', 'DOCTOR'].includes(role));
+    this.canViewPrices.set(['SUPERADMIN', 'ADMINISTRATIVE'].includes(role));
+    this.isPatient.set(role === 'PATIENT');
+  }
 
   ngOnInit() {
+    this.loadLabResults();
+    this.loadCatalog();
+    this.loadPatients();
+  }
+
+  loadCatalog() {
+    this.catalogService.getTests().subscribe(tests => this.catalogTests.set(tests));
+  }
+
+  loadPatients() {
+    this.http.get<any[]>(`${API_URL}/patients`).subscribe(data => this.patients.set(data));
+  }
+
+  loadLabResults() {
+    if (this.isPatient()) {
+      const patientId = this.currentUser()?.Patient?.id;
+      if (patientId) {
+        this.medicalService.getPatientLabs(patientId).subscribe(data => {
+          this.formatResults(data);
+        });
+      }
+    } else {
+      // In a real app, we'd have a getall labs endpoint
+      // For now, let's try to get all patients and then their labs or keep mocks if no endpoint
+      this.http.get<any[]>(`${API_URL}/patients`).subscribe(patients => {
+        // This is a simplified approach for the demo/v1.8
+        // Ideally the backend should have GET /api/lab-results
+      });
+    }
+  }
+
+  private formatResults(data: any[]) {
+    const formatted = data.map(lab => ({
+      id: lab.id,
+      patientName: lab.Patient ? `${lab.Patient.User.firstName} ${lab.Patient.User.lastName}` : 'N/A',
+      patientInitials: lab.Patient ? (lab.Patient.User.firstName[0] + lab.Patient.User.lastName[0]) : '??',
+      patientId: lab.Patient ? lab.Patient.documentId : 'N/A',
+      testType: lab.testName,
+      date: lab.createdAt,
+      status: lab.status === 'Completed' ? 'Completado' : 'Pendiente',
+      labOrder: lab.id.substring(0, 8).toUpperCase(),
+      price: lab.price
+    }));
+    this.labResults.set(formatted);
   }
 
   viewResult(result: any) {
@@ -153,17 +219,22 @@ export class LabResults implements OnInit {
     Swal.fire({
       title: 'Subir Resultado',
       html: `
-        <input type="file" class="form-control mb-3">
-        <select class="form-select mb-3">
-          <option selected>Seleccionar Paciente</option>
-          <option value="1">Juan González</option>
-          <option value="2">Elena Pérez</option>
-        </select>
-        <select class="form-select">
-          <option selected>Tipo de Examen</option>
-          <option value="Hematologia">Hematología</option>
-          <option value="Orina">Orina</option>
-        </select>
+        <div class="text-start">
+          <label class="form-label small fw-bold">1. Seleccionar Paciente</label>
+          <select id="swal-patient-id" class="form-select mb-3">
+            <option value="">Seleccione...</option>
+            ${this.patients().map(p => `<option value="${p.id}">${p.User.firstName} ${p.User.lastName}</option>`).join('')}
+          </select>
+
+          <label class="form-label small fw-bold">2. Tipo de Examen</label>
+          <select id="swal-test-type" class="form-select mb-3">
+            <option value="">Seleccione...</option>
+            ${this.catalogTests().map(t => `<option value="${t.name}">${t.name} ($${t.price})</option>`).join('')}
+          </select>
+
+          <label class="form-label small fw-bold">3. Cargar Archivo (PDF/Imágenes)</label>
+          <input id="swal-lab-file" type="file" class="form-control mb-3">
+        </div>
       `,
       showCancelButton: true,
       confirmButtonText: 'Subir',

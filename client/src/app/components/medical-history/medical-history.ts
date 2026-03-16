@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl, FormsModule } from '@angular/forms';
 import { MedicalService } from '../../services/medical.service';
 import { HttpClient } from '@angular/common/http';
 import { API_URL } from '../../api-config';
@@ -10,11 +10,12 @@ import Swal from 'sweetalert2';
 import { LanguageService } from '../../services/language.service';
 import { ExportService } from '../../services/export.service';
 import { AuthService } from '../../services/auth.service';
+import { DrugService, Drug } from '../../services/drug.service';
 
 @Component({
   selector: 'app-medical-history',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, FormsModule],
   templateUrl: './medical-history.html',
   styleUrl: './medical-history.css',
 })
@@ -23,6 +24,12 @@ export class MedicalHistory implements OnInit {
   patient = signal<any>(null);
   records = signal<any[]>([]);
   labs = signal<any[]>([]);
+  
+  // Prescription management
+  prescriptionsList = signal<any[]>([]);
+  drugSearchResults = signal<Drug[]>([]);
+  isSearchingDrugs = signal(false);
+  drugSearchControl = new FormControl('');
   
   showRecordModal = signal(false);
   activeTab = signal<'consultations' | 'labs' | 'treatments'>('consultations');
@@ -37,7 +44,8 @@ export class MedicalHistory implements OnInit {
     private route: ActivatedRoute,
     public langService: LanguageService,
     private exportService: ExportService,
-    public authService: AuthService
+    public authService: AuthService,
+    private drugService: DrugService
   ) {
     this.recordForm = this.fb.group({
       diagnosis: ['', Validators.required],
@@ -96,6 +104,22 @@ export class MedicalHistory implements OnInit {
             this.selectPatient(params['id']);
         }
     });
+
+    // Drug Autocomplete Logic
+    this.drugSearchControl.valueChanges.subscribe((val: string | null) => {
+      if (val && val.length > 2) {
+        this.isSearchingDrugs.set(true);
+        this.drugService.getAll({ search: val, limit: 10 }).subscribe({
+          next: (res) => {
+            this.drugSearchResults.set(res.drugs);
+            this.isSearchingDrugs.set(false);
+          },
+          error: () => this.isSearchingDrugs.set(false)
+        });
+      } else {
+        this.drugSearchResults.set([]);
+      }
+    });
   }
 
   loadPatients() {
@@ -143,9 +167,34 @@ export class MedicalHistory implements OnInit {
     this.showRecordModal.set(true);
   }
 
+  addPrescription(drug: Drug) {
+    const exists = this.prescriptionsList().find(x => x.drugName === drug.name);
+    if (exists) return;
+
+    this.prescriptionsList.set([...this.prescriptionsList(), {
+      drugId: drug.id,
+      drugName: drug.name,
+      dosage: '',
+      frequency: '',
+      duration: '',
+      instructions: ''
+    }]);
+    this.drugSearchControl.setValue('', { emitEvent: false });
+    this.drugSearchResults.set([]);
+  }
+
+  removePrescription(index: number) {
+    const list = [...this.prescriptionsList()];
+    list.splice(index, 1);
+    this.prescriptionsList.set(list);
+  }
+
   submitRecord() {
     if(this.recordForm.valid) {
-        const formData = { ...this.recordForm.getRawValue() };
+        const formData = { 
+          ...this.recordForm.getRawValue(),
+          prescriptions: this.prescriptionsList()
+        };
         
         // Handle empty date string
         if (!formData.medicalLeaveStartDate) {
@@ -162,6 +211,7 @@ export class MedicalHistory implements OnInit {
                   patientId: this.patientId(),
                   doctorId: this.recordForm.get('doctorId')?.value
                 });
+                this.prescriptionsList.set([]);
                 Swal.fire(
                   this.langService.translate('common.success'), 
                   this.langService.translate('medical_history.save'), 
@@ -266,6 +316,32 @@ export class MedicalHistory implements OnInit {
           <div class="section">
             <h3>Indicaciones</h3>
             <p>${rec.indications}</p>
+          </div>` : ''}
+
+          ${rec.prescriptions && rec.prescriptions.length > 0 ? `
+          <div class="section">
+            <h3>Receta Médica (Rp)</h3>
+            <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+              <thead>
+                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                  <th style="text-align: left; padding: 10px;">Medicamento</th>
+                  <th style="text-align: left; padding: 10px;">Dosis / Frecuencia</th>
+                  <th style="text-align: left; padding: 10px;">Duración</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rec.prescriptions.map((p: any) => `
+                  <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <td style="padding: 10px;">
+                      <strong>${p.drugName}</strong><br>
+                      <small style="color: #64748b;">${p.instructions || ''}</small>
+                    </td>
+                    <td style="padding: 10px;">${p.dosage || ''} - ${p.frequency || ''}</td>
+                    <td style="padding: 10px;">${p.duration || ''}</td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
           </div>` : ''}
 
           ${leaveHtml}

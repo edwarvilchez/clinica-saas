@@ -12,17 +12,23 @@
  */
 module.exports = {
     async up(queryInterface, Sequelize) {
-        await queryInterface.addColumn('Users', 'mustChangePassword', {
-            type: Sequelize.BOOLEAN,
-            allowNull: false,
-            defaultValue: true
-        });
+        const tableInfo = await queryInterface.describeTable('Users');
+        
+        if (!tableInfo.mustChangePassword) {
+            await queryInterface.addColumn('Users', 'mustChangePassword', {
+                type: Sequelize.BOOLEAN,
+                allowNull: false,
+                defaultValue: true
+            });
+        }
 
-        await queryInterface.addColumn('Users', 'temporaryPassword', {
-            type: Sequelize.STRING,
-            allowNull: true,
-            defaultValue: null
-        });
+        if (!tableInfo.temporaryPassword) {
+            await queryInterface.addColumn('Users', 'temporaryPassword', {
+                type: Sequelize.STRING,
+                allowNull: true,
+                defaultValue: null
+            });
+        }
     },
 
     async down(queryInterface, Sequelize) {

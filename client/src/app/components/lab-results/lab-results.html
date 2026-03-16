@@ -5,7 +5,7 @@
       <h2 class="fw-bold mb-1">{{ langService.translate('lab.title') }}</h2>
       <p class="text-muted">{{ langService.translate('lab.subtitle') }}</p>
     </div>
-    <button class="btn btn-primary-premium shadow-sm" (click)="uploadResult()">
+    <button *ngIf="canManage()" class="btn btn-primary-premium shadow-sm" (click)="uploadResult()">
       <i class="bi bi-cloud-upload me-2"></i> {{ langService.translate('lab.new') }}
     </button>
   </div>
@@ -64,6 +64,9 @@
                 <th class="py-3 text-muted text-uppercase small fw-bold">
                   {{ langService.translate('common.status') }}
                 </th>
+                <th *ngIf="canViewPrices()" class="py-3 text-muted text-uppercase small fw-bold">
+                  Precio
+                </th>
                 <th class="pe-4 py-3 text-end text-muted text-uppercase small fw-bold">
                   {{ langService.translate('common.actions') }}
                 </th>
@@ -111,6 +114,9 @@
                     ></i>
                     {{ result.status }}
                   </span>
+                </td>
+                <td *ngIf="canViewPrices()" class="py-3 fw-bold text-primary">
+                  {{ result.price | currency: 'USD' }}
                 </td>
                 <td class="pe-4 py-3 text-end">
                   <button

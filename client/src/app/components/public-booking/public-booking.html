@@ -4,7 +4,8 @@
     <div class="text-center mb-3">
       <div class="d-flex align-items-center justify-content-between mb-2">
         <a routerLink="/login" class="btn btn-sm btn-outline-primary rounded-pill px-3">
-          <i class="bi bi-arrow-left me-1"></i> Volver al Login
+          <i class="bi bi-arrow-left me-1"></i>
+          {{ langService.translate('public_booking.backToLogin') }}
         </a>
         <div class="d-flex align-items-center gap-2">
           <div class="bg-primary rounded-3 p-2 d-inline-flex">
@@ -12,11 +13,29 @@
           </div>
           <h2 class="fw-bold mb-0 text-primary">MEDICUS</h2>
         </div>
-        <div style="width: 100px"></div>
-        <!-- Spacer -->
+
+        <!-- Language Switcher -->
+        <div class="d-flex align-items-center gap-2">
+          <button
+            (click)="langService.setLanguage('es')"
+            class="btn btn-sm rounded-circle p-1 d-flex align-items-center justify-content-center"
+            [ngClass]="langService.lang() === 'es' ? 'btn-primary' : 'btn-outline-secondary'"
+            style="width: 32px; height: 32px; font-weight: 800; font-size: 0.75rem"
+          >
+            ES
+          </button>
+          <button
+            (click)="langService.setLanguage('en')"
+            class="btn btn-sm rounded-circle p-1 d-flex align-items-center justify-content-center"
+            [ngClass]="langService.lang() === 'en' ? 'btn-primary' : 'btn-outline-secondary'"
+            style="width: 32px; height: 32px; font-weight: 800; font-size: 0.75rem"
+          >
+            EN
+          </button>
+        </div>
       </div>
-      <h3 class="h5 fw-bold mb-1">Agenda tu Cita Médica</h3>
-      <p class="text-muted small mb-0">Rápido, fácil y sin necesidad de crear una cuenta</p>
+      <h3 class="h5 fw-bold mb-1">{{ langService.translate('public_booking.title') }}</h3>
+      <p class="text-muted small mb-0">{{ langService.translate('public_booking.subtitle') }}</p>
     </div>
 
     <!-- Progress Steps -->
@@ -36,7 +55,7 @@
               [ngClass]="step() >= 1 ? 'text-primary' : 'text-muted'"
               style="font-size: 0.75rem"
             >
-              Tus Datos
+              {{ langService.translate('public_booking.steps.personal') }}
             </small>
           </div>
           <div
@@ -57,7 +76,7 @@
               [ngClass]="step() >= 2 ? 'text-primary' : 'text-muted'"
               style="font-size: 0.75rem"
             >
-              Agendar Cita
+              {{ langService.translate('public_booking.steps.appointment') }}
             </small>
           </div>
         </div>
@@ -73,17 +92,21 @@
             <div *ngIf="step() === 1" class="animate-fade-in">
               <h5 class="fw-bold mb-3" style="font-size: 1rem">
                 <i class="bi bi-person-circle text-primary me-2"></i>
-                Información Personal
+                {{ langService.translate('public_booking.personalInfo.title') }}
               </h5>
 
               <div class="row g-2">
                 <div class="col-md-6">
-                  <label class="form-label small fw-bold text-uppercase">Nombre</label>
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.personalInfo.firstName')
+                  }}</label>
                   <input
                     type="text"
                     class="form-control glass-morphism border rounded-3 py-2"
                     formControlName="firstName"
-                    placeholder="Juan"
+                    [placeholder]="
+                      langService.translate('public_booking.personalInfo.placeholders.firstName')
+                    "
                   />
                   <small
                     class="text-danger"
@@ -96,12 +119,16 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label small fw-bold text-uppercase">Apellido</label>
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.personalInfo.lastName')
+                  }}</label>
                   <input
                     type="text"
                     class="form-control glass-morphism border rounded-3 py-2"
                     formControlName="lastName"
-                    placeholder="Pérez"
+                    [placeholder]="
+                      langService.translate('public_booking.personalInfo.placeholders.lastName')
+                    "
                   />
                   <small
                     class="text-danger"
@@ -114,12 +141,16 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label small fw-bold text-uppercase">Email</label>
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.personalInfo.email')
+                  }}</label>
                   <input
                     type="email"
                     class="form-control glass-morphism border rounded-3 py-2"
                     formControlName="email"
-                    placeholder="correo@ejemplo.com"
+                    [placeholder]="
+                      langService.translate('public_booking.personalInfo.placeholders.email')
+                    "
                   />
                   <small
                     class="text-danger"
@@ -131,13 +162,16 @@
 
                 <div class="col-md-6">
                   <label class="form-label small fw-bold text-uppercase">
-                    <i class="bi bi-whatsapp text-success me-1"></i>Teléfono / WhatsApp
+                    <i class="bi bi-whatsapp text-success me-1"></i
+                    >{{ langService.translate('public_booking.personalInfo.phone') }}
                   </label>
                   <input
                     type="tel"
                     class="form-control glass-morphism border rounded-3 py-2"
                     formControlName="phone"
-                    placeholder="+58 424-1234567"
+                    [placeholder]="
+                      langService.translate('public_booking.personalInfo.placeholders.phone')
+                    "
                   />
                   <small
                     class="text-danger"
@@ -148,12 +182,16 @@
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label small fw-bold text-uppercase">Cédula / Documento</label>
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.personalInfo.document')
+                  }}</label>
                   <input
                     type="text"
                     class="form-control glass-morphism border rounded-3 py-2"
                     formControlName="documentId"
-                    placeholder="V-12345678"
+                    [placeholder]="
+                      langService.translate('public_booking.personalInfo.placeholders.document')
+                    "
                   />
                   <small
                     class="text-danger"
@@ -169,10 +207,14 @@
 
               <div class="d-grid gap-2 mt-3">
                 <button type="button" class="btn btn-primary-premium py-2" (click)="nextStep()">
-                  Continuar <i class="bi bi-arrow-right ms-2"></i>
+                  {{ langService.translate('public_booking.actions.continue') }}
+                  <i class="bi bi-arrow-right ms-2"></i>
                 </button>
                 <a routerLink="/login" class="text-center text-muted small">
-                  ¿Ya tienes cuenta? <span class="text-primary fw-bold">Inicia sesión</span>
+                  {{ langService.translate('public_booking.actions.hasAccount') }}
+                  <span class="text-primary fw-bold">{{
+                    langService.translate('public_booking.actions.loginNow')
+                  }}</span>
                 </a>
               </div>
             </div>
@@ -181,19 +223,23 @@
             <div *ngIf="step() === 2" class="animate-fade-in">
               <h5 class="fw-bold mb-3" style="font-size: 1rem">
                 <i class="bi bi-calendar-check text-primary me-2"></i>
-                Detalles de la Cita
+                {{ langService.translate('public_booking.appointmentInfo.title') }}
               </h5>
 
               <div class="row g-3">
                 <div class="col-12">
-                  <label class="form-label small fw-bold text-uppercase"
-                    >Doctor / Especialidad</label
-                  >
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.appointmentInfo.doctor')
+                  }}</label>
                   <select
                     class="form-select glass-morphism border rounded-3 py-2"
                     formControlName="doctorId"
                   >
-                    <option value="">Selecciona un doctor...</option>
+                    <option value="">
+                      {{
+                        langService.translate('public_booking.appointmentInfo.doctorPlaceholder')
+                      }}
+                    </option>
                     <option *ngFor="let d of doctors()" [value]="d.id">
                       Dr. {{ d.User.firstName }} {{ d.User.lastName }} -
                       {{ d.Specialty?.name || 'Medicina General' }}
@@ -210,7 +256,9 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label small fw-bold text-uppercase">Fecha</label>
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.appointmentInfo.date')
+                  }}</label>
                   <input
                     type="date"
                     class="form-control glass-morphism border rounded-3 py-2"
@@ -229,12 +277,16 @@
                 </div>
 
                 <div class="col-md-6">
-                  <label class="form-label small fw-bold text-uppercase">Hora</label>
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.appointmentInfo.time')
+                  }}</label>
                   <select
                     class="form-select glass-morphism border rounded-3 py-2"
                     formControlName="appointmentTime"
                   >
-                    <option value="">Selecciona una hora...</option>
+                    <option value="">
+                      {{ langService.translate('public_booking.appointmentInfo.timePlaceholder') }}
+                    </option>
                     <option *ngFor="let time of timeSlots" [value]="time">{{ time }}</option>
                   </select>
                   <small
@@ -249,12 +301,16 @@
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label small fw-bold text-uppercase">Motivo de Consulta</label>
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.appointmentInfo.reason')
+                  }}</label>
                   <input
                     type="text"
                     class="form-control glass-morphism border rounded-3 py-2"
                     formControlName="reason"
-                    placeholder="Ej: Consulta General, Control, Chequeo..."
+                    [placeholder]="
+                      langService.translate('public_booking.appointmentInfo.reasonPlaceholder')
+                    "
                   />
                   <small
                     class="text-danger"
@@ -265,14 +321,16 @@
                 </div>
 
                 <div class="col-12">
-                  <label class="form-label small fw-bold text-uppercase"
-                    >Observaciones (Opcional)</label
-                  >
+                  <label class="form-label small fw-bold text-uppercase">{{
+                    langService.translate('public_booking.appointmentInfo.notes')
+                  }}</label>
                   <textarea
                     class="form-control glass-morphism border rounded-3 py-2"
                     formControlName="notes"
                     rows="2"
-                    placeholder="Información adicional que quieras compartir..."
+                    [placeholder]="
+                      langService.translate('public_booking.appointmentInfo.notesPlaceholder')
+                    "
                   ></textarea>
                 </div>
               </div>
@@ -284,7 +342,8 @@
                     class="btn btn-outline-secondary w-100 py-2"
                     (click)="previousStep()"
                   >
-                    <i class="bi bi-arrow-left me-2"></i>Atrás
+                    <i class="bi bi-arrow-left me-2"></i
+                    >{{ langService.translate('public_booking.actions.back') }}
                   </button>
                 </div>
                 <div class="col-md-8">
@@ -294,11 +353,12 @@
                     [disabled]="loading()"
                   >
                     <span *ngIf="!loading()">
-                      <i class="bi bi-check-circle-fill me-2"></i>Confirmar Cita
+                      <i class="bi bi-check-circle-fill me-2"></i
+                      >{{ langService.translate('public_booking.actions.confirm') }}
                     </span>
                     <span *ngIf="loading()">
                       <span class="spinner-border spinner-border-sm me-2"></span>
-                      Agendando...
+                      {{ langService.translate('public_booking.actions.booking') }}
                     </span>
                   </button>
                 </div>
@@ -308,5 +368,16 @@
         </div>
       </div>
     </div>
+
+    <!-- Footer -->
+    <footer class="mt-5 pb-5">
+      <div class="container text-center">
+        <div class="brand-footer-wrapper">
+          <span class="brand-footer-version">v1.8.6</span>
+          <span class="mx-2 text-dark">|</span>
+          <span class="brand-footer-copyright">Piridawly Software &copy; 2026</span>
+        </div>
+      </div>
+    </footer>
   </div>
 </div>

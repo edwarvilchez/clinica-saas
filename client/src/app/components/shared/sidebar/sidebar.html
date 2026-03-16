@@ -69,6 +69,15 @@
       <span class="fw-medium">{{ langService.translate('sidebar.lab') }}</span>
     </a>
 
+    <a
+      routerLink="/lab-catalog"
+      routerLinkActive="active"
+      class="list-group-item list-group-item-action border-0 rounded-3 py-1-5 d-flex align-items-center gap-3"
+    >
+      <i class="bi bi-clipboard-list fs-5"></i>
+      <span class="fw-medium">{{ langService.translate('sidebar.labCatalog') }}</span>
+    </a>
+
     <div
       *ngIf="!authService.hasRole(['PATIENT'])"
       class="text-uppercase x-small-compact fw-bold text-muted px-3 mt-2 mb-1"
@@ -104,7 +113,17 @@
       class="list-group-item list-group-item-action border-0 rounded-3 py-1-5 d-flex align-items-center gap-3"
     >
       <i class="bi bi-people-fill fs-5"></i>
-      <span class="fw-medium">Mi Equipo</span>
+      <span class="fw-medium">{{ langService.translate('team.sidebar') }}</span>
+    </a>
+
+    <a
+      *ngIf="!authService.hasRole(['PATIENT'])"
+      routerLink="/drug-guide"
+      routerLinkActive="active"
+      class="list-group-item list-group-item-action border-0 rounded-3 py-1-5 d-flex align-items-center gap-3"
+    >
+      <i class="bi bi-book-half fs-5 text-primary"></i>
+      <span class="fw-medium">{{ langService.translate('sidebar.drugGuide') }}</span>
     </a>
 
     <div
@@ -150,8 +169,18 @@
       routerLinkActive="active"
       class="list-group-item list-group-item-action border-0 rounded-3 py-1-5 d-flex align-items-center gap-3"
     >
+      <i class="bi bi-cart-plus-fill fs-5 text-success"></i>
+      <span class="fw-medium">{{ langService.translate('subscription.sidebar') }}</span>
+    </a>
+
+    <a
+      *ngIf="authService.currentUser()?.organizationId"
+      routerLink="/billing"
+      routerLinkActive="active"
+      class="list-group-item list-group-item-action border-0 rounded-3 py-1-5 d-flex align-items-center gap-3"
+    >
       <i class="bi bi-stars fs-5 text-warning"></i>
-      <span class="fw-medium">Planes y Precios</span>
+      <span class="fw-medium">{{ langService.translate('billing.sidebar') }}</span>
     </a>
   </div>
 
@@ -164,6 +193,13 @@
       <i class="bi bi-box-arrow-left fs-5"></i>
       <span class="fw-bold x-small">{{ langService.translate('navbar.logout') }}</span>
     </a>
+
+    <div class="mt-4 px-3 text-center pb-2">
+      <div class="brand-footer-wrapper" style="font-size: 0.7rem !important">
+        <span class="d-block brand-footer-version mb-1">VERSION 1.8.6</span>
+        <span class="d-block brand-footer-copyright">Piridawly Software &copy; 2026</span>
+      </div>
+    </div>
   </div>
 </div>
 

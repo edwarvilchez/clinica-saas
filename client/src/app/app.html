@@ -9,8 +9,21 @@
     <!-- Sidebar visible except on login/register -->
     <app-sidebar *ngIf="!isAuthPage()"></app-sidebar>
 
-    <main class="main-content">
-      <router-outlet></router-outlet>
+    <main class="main-content d-flex flex-column h-100">
+      <div class="flex-grow-1">
+        <router-outlet></router-outlet>
+      </div>
+
+      <!-- Global Footer for Modules -->
+      <footer *ngIf="!isAuthPage()" class="p-3 pb-5 mt-auto">
+        <div class="text-center">
+          <div class="brand-footer-wrapper">
+            <span class="brand-footer-version">v1.8.6</span>
+            <span class="mx-2 text-dark">|</span>
+            <span class="brand-footer-copyright">Piridawly Software &copy; 2026</span>
+          </div>
+        </div>
+      </footer>
     </main>
   </div>
 </div>

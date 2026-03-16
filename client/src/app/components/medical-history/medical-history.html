@@ -146,6 +146,26 @@
               </h6>
               <p class="small mb-0 text-break">{{ rec.indications }}</p>
             </div>
+            <div class="col-12 mt-3" *ngIf="rec.prescriptions && rec.prescriptions.length > 0">
+              <h6 class="small fw-bold text-uppercase text-primary mb-2">
+                <i class="bi bi-prescription2 me-1"></i>Receta Médica
+              </h6>
+              <div class="glass-morphism rounded-3 p-1">
+                <div
+                  *ngFor="let p of rec.prescriptions"
+                  class="border-bottom-custom py-1 px-2 last-no-border"
+                >
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                      <strong class="small">{{ p.drugName }}</strong>
+                      <span class="x-small text-muted ms-2"
+                        >({{ p.dosage }} - {{ p.frequency }} - {{ p.duration }})</span
+                      >
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <div class="col-12 mt-3" *ngIf="rec.medicalLeaveDays > 0">
               <div
                 class="p-2 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-3 d-inline-flex align-items-center"
@@ -292,6 +312,120 @@
                   rows="3"
                   [placeholder]="langService.translate('medical_history.indicationsPlaceholder')"
                 ></textarea>
+              </div>
+
+              <!-- Prescription (Recipe) Section -->
+              <div class="col-12 mt-4">
+                <div
+                  class="p-3 bg-light rounded-3 border-primary-premium border-opacity-25 border position-relative"
+                >
+                  <h6 class="small fw-bold text-uppercase text-primary mb-3">
+                    <i class="bi bi-prescription2 me-2"></i>Receta Médica (Rp)
+                  </h6>
+
+                  <!-- Drug Search Autocomplete -->
+                  <div class="position-relative mb-3">
+                    <div class="input-group shadow-sm">
+                      <span class="input-group-text bg-white border-end-0 rounded-start-3"
+                        ><i class="bi bi-search"></i
+                      ></span>
+                      <input
+                        type="text"
+                        [formControl]="drugSearchControl"
+                        class="form-control border-start-0 ps-0 rounded-end-3"
+                        placeholder="Buscar medicamento en guía farmacéutica..."
+                      />
+                    </div>
+
+                    <!-- Autocomplete Results -->
+                    <div
+                      class="autocomplete-dropdown shadow-lg rounded-3 border mt-1 w-100 bg-white"
+                      *ngIf="drugSearchResults().length > 0"
+                      style="z-index: 1000; position: absolute"
+                    >
+                      <div class="list-group list-group-flush">
+                        <button
+                          type="button"
+                          *ngFor="let drug of drugSearchResults()"
+                          class="list-group-item list-group-item-action py-2 px-3 border-0"
+                          (click)="addPrescription(drug)"
+                        >
+                          <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                              <strong class="d-block">{{ drug.name }}</strong>
+                              <small class="text-muted"
+                                >{{ drug.genericName }} - {{ drug.presentation }}</small
+                              >
+                            </div>
+                            <i class="bi bi-plus-circle text-primary"></i>
+                          </div>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Selected Drugs List -->
+                  <div class="table-responsive" *ngIf="prescriptionsList().length > 0">
+                    <table class="table table-sm align-middle mb-0 mt-2">
+                      <thead class="bg-white">
+                        <tr class="x-small text-muted text-uppercase fw-bold">
+                          <th style="width: 30%">Medicamento</th>
+                          <th>Dosis</th>
+                          <th>Frecuencia</th>
+                          <th>Duración</th>
+                          <th style="width: 40px"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let p of prescriptionsList(); let i = index">
+                          <td class="small fw-bold">{{ p.drugName }}</td>
+                          <td>
+                            <input
+                              type="text"
+                              [(ngModel)]="p.dosage"
+                              [ngModelOptions]="{ standalone: true }"
+                              class="form-control form-control-sm border-0 bg-transparent"
+                              placeholder="500mg"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              [(ngModel)]="p.frequency"
+                              [ngModelOptions]="{ standalone: true }"
+                              class="form-control form-control-sm border-0 bg-transparent"
+                              placeholder="c/8h"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              [(ngModel)]="p.duration"
+                              [ngModelOptions]="{ standalone: true }"
+                              class="form-control form-control-sm border-0 bg-transparent"
+                              placeholder="7 días"
+                            />
+                          </td>
+                          <td class="text-end">
+                            <button
+                              type="button"
+                              class="btn btn-link text-danger p-0 shadow-none"
+                              (click)="removePrescription(i)"
+                            >
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <p
+                    class="text-muted small text-center my-3"
+                    *ngIf="prescriptionsList().length === 0"
+                  >
+                    No hay medicamentos agregados a la receta.
+                  </p>
+                </div>
               </div>
 
               <!-- Medical Leave Section -->

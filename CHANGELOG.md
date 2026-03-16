@@ -2,6 +2,18 @@
 
 Todas las modificaciones notables del proyecto serán documentadas en este archivo.
 
+## [1.8.8] - 2026-03-09
+
+### 🔬 Laboratorio: Catálogo Maestro y Dualidad Monetaria
+
+- ✅ **Gestión de Exámenes y Combos**: CRUD completo para exámenes individuales y paquetes (perfiles) con interfaz de tabla unificada.
+- ✅ **Carga Masiva (CSV)**: Importación de tarifarios masivos con validación de registros y reporte de resultados.
+- ✅ **Dualidad de Moneda Pro**: Implementación de precios dinámicos en USD y VES con indicador de equivalencia (≈).
+- ✅ **Gestión de Tasa BCV**: Botón de actualización de tasa en vivo en el Navbar para personal autorizado.
+- ✅ **Búsqueda Reactiva**: Buscador global en el catálogo para filtrado instantáneo de pruebas y contenidos de combos.
+
+---
+
 ## [1.9.0] - 2026-03-02
 
 ### 🔐 Contraseña Temporal y Cambio Obligatorio en Primer Ingreso
@@ -56,7 +68,6 @@ Todas las modificaciones notables del proyecto serán documentadas en este archi
 ---
 
 ## [1.8.5] - 2026-02-19
-
 
 ### 🛡️ Integridad de Datos y Reparación en Producción
 
