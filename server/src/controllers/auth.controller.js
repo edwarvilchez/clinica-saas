@@ -227,7 +227,14 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Credenciales inválidas (Contraseña incorrecta)' });
     }
 
-    log(`Password Match. Generating Token...`);
+    log(`Password Match. Checking account status...`);
+    
+    if (user.isActive === false) {
+      log(`[LOGIN FAIL] Account inactive for: ${email}`);
+      return res.status(401).json({ message: 'Tu cuenta ha sido desactivada. Por favor, contacta al administrador.' });
+    }
+
+    log(`Account active. Generating Token...`);
 
     // Incluir mustChangePassword en el token JWT para que el guard del frontend pueda verificarlo
     const token = jwt.sign(

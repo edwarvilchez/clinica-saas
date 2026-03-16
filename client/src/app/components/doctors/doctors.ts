@@ -70,13 +70,25 @@ import { API_URL } from '../../api-config';
             <p class="text-primary small fw-bold mb-2">{{ doctor.Specialty?.name || 'Especialista' }}</p>
             
             <div class="d-flex justify-content-center gap-2 mb-2">
-              <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1" style="font-size: 0.75rem;">{{ langService.translate('doctors.available') }}</span>
+              <span 
+                class="badge rounded-pill px-2 py-1 cursor-pointer" 
+                [ngClass]="doctor.User.isActive ? 'bg-success bg-opacity-10 text-success' : 'bg-danger bg-opacity-10 text-danger'"
+                style="font-size: 0.75rem;"
+                (click)="toggleStatus(doctor)">
+                {{ doctor.User.isActive ? 'Activo' : 'Inactivo' }}
+              </span>
               <span class="badge bg-light text-muted rounded-pill px-2 py-1" style="font-size: 0.75rem;">Lic: {{ doctor.licenseNumber }}</span>
             </div>
 
             <div class="d-grid gap-1">
               <button class="btn btn-light rounded-pill py-1 border-0 btn-sm" (click)="viewProfile(doctor)">{{ langService.translate('doctors.viewProfile') }}</button>
-              <button class="btn btn-primary-premium rounded-pill py-1 btn-sm" (click)="scheduleAppointment(doctor)">{{ langService.translate('doctors.schedule') }}</button>
+              <button 
+                class="btn rounded-pill py-1 btn-sm" 
+                [ngClass]="doctor.User.isActive ? 'btn-primary-premium' : 'btn-secondary opacity-50'"
+                [disabled]="!doctor.User.isActive"
+                (click)="scheduleAppointment(doctor)">
+                {{ langService.translate('doctors.schedule') }}
+              </button>
             </div>
           </div>
         </div>
@@ -334,6 +346,39 @@ export class Doctors implements OnInit {
               Swal.fire('Eliminado', 'El doctor ha sido retirado del sistema.', 'success');
             },
             error: () => Swal.fire('Error', 'No se pudo completar la acción', 'error')
+          });
+      }
+    });
+  }
+  toggleStatus(doctor: any) {
+    const action = doctor.User.isActive ? 'desactivar' : 'activar';
+    
+    Swal.fire({
+      title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} Doctor?`,
+      text: `El doctor ${doctor.User.firstName} ${doctor.User.lastName} quedará ${doctor.User.isActive ? 'inactivo' : 'activo'} en el sistema.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: doctor.User.isActive ? '#ef4444' : '#28a745',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: `Sí, ${action}`,
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.http.patch(`${API_URL}/doctors/${doctor.id}/toggle-status`, {}, { headers: this.getHeaders() })
+          .subscribe({
+            next: (response: any) => {
+              this.loadDoctors();
+              Swal.fire({
+                title: 'Éxito',
+                text: response.message,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+              });
+            },
+            error: (err) => {
+              Swal.fire('Error', err.error?.message || 'No se pudo cambiar el estado', 'error');
+            }
           });
       }
     });

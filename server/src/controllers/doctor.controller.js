@@ -9,6 +9,27 @@ exports.getDoctors = async (req, res) => {
   }
 };
 
+exports.toggleDoctorStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doctor = await Doctor.findByPk(id, { include: [User] });
+    
+    if (!doctor || !doctor.User) {
+      return res.status(404).json({ message: 'Doctor or associated user not found' });
+    }
+
+    const newStatus = !doctor.User.isActive;
+    await doctor.User.update({ isActive: newStatus });
+
+    res.json({ 
+      message: `Doctor ${newStatus ? 'activado' : 'desactivado'} con éxito`,
+      isActive: newStatus 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 exports.deleteDoctor = async (req, res) => {
   try {
     const { id } = req.params;
@@ -21,3 +42,4 @@ exports.deleteDoctor = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+

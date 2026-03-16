@@ -12,9 +12,15 @@ router.get('/',
   doctorController.getDoctors
 );
 
+router.patch('/:id/toggle-status', authMiddleware, roleMiddleware(['SUPERADMIN']), async (req, res, next) => {
+  await invalidateCache('cache:doctors:*');
+  next();
+}, doctorController.toggleDoctorStatus);
+
 router.delete('/:id', authMiddleware, roleMiddleware(['SUPERADMIN']), async (req, res, next) => {
   await invalidateCache('cache:doctors:*');
   next();
 }, doctorController.deleteDoctor);
+
 
 module.exports = router;
