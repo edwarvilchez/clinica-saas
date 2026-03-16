@@ -14,6 +14,20 @@ Todas las modificaciones notables del proyecto serán documentadas en este archi
 
 ---
 
+## [2.0.0] - 2026-03-16
+
+### 🛡️ Seguridad Enterprise & Administración VIP
+
+- ✅ **Repositorio Privado**: Transición completa a repositorio privado con despliegue vía SSH Deploy Keys en EasyPanel.
+- ✅ **Bypass de Suscripción (VIP)**: Implementada funcionalidad para otorgar acceso ilimitado a usuarios estratégicos, saltando los límites de planes.
+- ✅ **Control de Activación Profesional**: Nuevo sistema de activación/desactivación de doctores desde el panel administrativo.
+- ✅ **Seguridad de Acceso**: Restricción de funciones VIP exclusivamente a correos autorizados (Founder/Admin).
+- ✅ **Limpieza de Recursos**: Eliminación definitiva de scripts de depuración, logs y archivos sensibles del historial de Git.
+- ✅ **UX Personalizada**: Bienvenida dinámica con el nombre del usuario en el popup de inicio de sesión.
+- ✅ **Filtro de Despliegue**: Refuerzo de `.gitignore` para evitar la subida accidental de scripts locales y archivos SQL.
+
+---
+
 ## [1.9.0] - 2026-03-02
 
 ### 🔐 Contraseña Temporal y Cambio Obligatorio en Primer Ingreso
