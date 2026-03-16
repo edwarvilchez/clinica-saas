@@ -354,13 +354,16 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Token inválido o expirado' });
     }
 
-    await user.update({
-      password: password,
-      resetToken: null,
-      resetExpires: null,
-      mustChangePassword: false,   // Reset externo también limpia el flag
-      temporaryPassword: null
-    });
+    console.log(`[RESET PASSWORD] Token valid for user: ${user.email}`);
+    
+    user.password = password;
+    user.resetToken = null;
+    user.resetExpires = null;
+    user.mustChangePassword = false;
+    user.temporaryPassword = null;
+    
+    await user.save();
+    console.log(`[RESET PASSWORD] Success for: ${user.email}`);
 
     // Send confirmation email
     const sendEmail = require('../utils/sendEmail');
@@ -398,11 +401,14 @@ exports.changePassword = async (req, res) => {
     }
 
     // Actualizar contraseña y desactivar el flag de cambio obligatorio
-    await user.update({
-      password: newPassword,
-      mustChangePassword: false,  // El usuario ya cumplió con el cambio obligatorio
-      temporaryPassword: null     // Limpiar la referencia a la clave temporal
-    });
+    console.log(`[CHANGE PASSWORD] Changing password for user: ${user.email}`);
+    
+    user.password = newPassword;
+    user.mustChangePassword = false;
+    user.temporaryPassword = null;
+    
+    await user.save();
+    console.log(`[CHANGE PASSWORD] Success for: ${user.email}`);
 
     // Enviar correo de notificación del cambio de contraseña
     const sendEmail = require('../utils/sendEmail');
