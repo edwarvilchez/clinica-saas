@@ -89,7 +89,7 @@ export class Login implements OnInit, OnDestroy {
           } else {
             // Acceso normal
             Swal.fire({
-              title: '¡Bienvenido!',
+              title: `¡Bienvenido, ${res.user.firstName}!`,
               text: 'Sesión iniciada correctamente.',
               icon: 'success',
               timer: 1500,
