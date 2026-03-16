@@ -8,6 +8,15 @@ build/
 .vscode/
 coverage/
 *.log
+server/*.log
+client/*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Archivos de base de datos
+*.sql
+server/*.sql
 
 # Archivos sensibles de testing y credenciales
 CREDENCIALES_TESTING.txt
@@ -16,6 +25,15 @@ USUARIOS_PRUEBA.md
 server/check_users.js
 server/list_all_users.js
 server/manual_seed.js
+server/*.js
+!server/src/
+!server/package.json
+!server/package-lock.json
+!server/Dockerfile
+!server/.dockerignore
+!server/.env.example
+!server/.sequelizerc
+!server/scrape_vademecum.js
 test.js
 
 # Archivos CSV con datos sensibles
