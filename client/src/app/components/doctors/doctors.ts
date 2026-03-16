@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { LanguageService } from '../../services/language.service';
+import { AuthService } from '../../services/auth.service';
 import { API_URL } from '../../api-config';
 
 @Component({
@@ -77,6 +78,15 @@ import { API_URL } from '../../api-config';
                 (click)="toggleStatus(doctor)">
                 {{ doctor.User.isActive ? 'Activo' : 'Inactivo' }}
               </span>
+              <span 
+                *ngIf="isAdmin()"
+                class="badge rounded-pill px-2 py-1 cursor-pointer" 
+                [ngClass]="doctor.User.subscriptionBypass ? 'bg-warning bg-opacity-20 text-warning' : 'bg-light text-muted'"
+                style="font-size: 0.75rem;"
+                (click)="toggleBypass(doctor)"
+                title="Bypass de suscripción (VIP)">
+                <i class="bi" [ngClass]="doctor.User.subscriptionBypass ? 'bi-star-fill' : 'bi-star'"></i>
+              </span>
               <span class="badge bg-light text-muted rounded-pill px-2 py-1" style="font-size: 0.75rem;">Lic: {{ doctor.licenseNumber }}</span>
             </div>
 
@@ -128,8 +138,13 @@ export class Doctors implements OnInit {
   constructor(
     private http: HttpClient,
     public langService: LanguageService,
-    private router: Router
+    private router: Router,
+    private authService: AuthService
   ) {}
+
+  isAdmin() {
+    return this.authService.hasRole(['SUPERADMIN']);
+  }
 
   ngOnInit() {
     this.loadDoctors();
@@ -378,6 +393,39 @@ export class Doctors implements OnInit {
             },
             error: (err) => {
               Swal.fire('Error', err.error?.message || 'No se pudo cambiar el estado', 'error');
+            }
+          });
+      }
+    });
+  }
+  toggleBypass(doctor: any) {
+    const action = doctor.User.subscriptionBypass ? 'desactivar' : 'activar';
+    
+    Swal.fire({
+      title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} Bypass?`,
+      text: `El doctor ${doctor.User.firstName} ${doctor.User.lastName} ${doctor.User.subscriptionBypass ? 'dejará de saltar' : 'saltará'} los límites de suscripción.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#f59e0b',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: `Sí, ${action}`,
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.http.patch(`${API_URL}/doctors/${doctor.id}/toggle-bypass`, {}, { headers: this.getHeaders() })
+          .subscribe({
+            next: (response: any) => {
+              this.loadDoctors();
+              Swal.fire({
+                title: 'VIP Actualizado',
+                text: response.message,
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false
+              });
+            },
+            error: (err) => {
+              Swal.fire('Error', err.error?.message || 'No se pudo cambiar el bypass', 'error');
             }
           });
       }

@@ -17,6 +17,12 @@ router.patch('/:id/toggle-status', authMiddleware, roleMiddleware(['SUPERADMIN']
   next();
 }, doctorController.toggleDoctorStatus);
 
+router.patch('/:id/toggle-bypass', authMiddleware, roleMiddleware(['SUPERADMIN']), async (req, res, next) => {
+  await invalidateCache('cache:doctors:*');
+  next();
+}, doctorController.toggleDoctorBypass);
+
+
 router.delete('/:id', authMiddleware, roleMiddleware(['SUPERADMIN']), async (req, res, next) => {
   await invalidateCache('cache:doctors:*');
   next();

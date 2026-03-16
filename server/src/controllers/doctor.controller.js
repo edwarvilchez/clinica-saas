@@ -43,3 +43,23 @@ exports.deleteDoctor = async (req, res) => {
   }
 };
 
+exports.toggleDoctorBypass = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const doctor = await Doctor.findByPk(id, { include: [User] });
+    
+    if (!doctor || !doctor.User) {
+      return res.status(404).json({ message: 'Doctor or associated user not found' });
+    }
+
+    const newBypass = !doctor.User.subscriptionBypass;
+    await doctor.User.update({ subscriptionBypass: newBypass });
+
+    res.json({ 
+      message: `Bypass de suscripción ${newBypass ? 'activado' : 'desactivado'} con éxito`,
+      subscriptionBypass: newBypass 
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

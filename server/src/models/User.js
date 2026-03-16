@@ -76,6 +76,10 @@ const User = sequelize.define('User', {
     type: DataTypes.STRING,
     allowNull: true,
     defaultValue: null
+  },
+  subscriptionBypass: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 }, {
   hooks: {

@@ -16,8 +16,13 @@ exports.addMember = async (req, res) => {
 
     // ENFORCE PLAN LIMITS
     if (roleName === 'DOCTOR') {
+      const doctorRole = await Role.findOne({ where: { name: 'DOCTOR' } });
       const doctorCount = await User.count({ 
-        where: { organizationId, roleId: (await Role.findOne({ where: { name: 'DOCTOR' } })).id } 
+        where: { 
+          organizationId, 
+          roleId: doctorRole.id,
+          subscriptionBypass: false // No cuentan para el límite los que tienen bypass (VIP)
+        } 
       });
 
       if (org.type === 'PROFESSIONAL' && doctorCount >= 1) {
