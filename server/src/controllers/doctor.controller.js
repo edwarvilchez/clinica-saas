@@ -45,6 +45,11 @@ exports.deleteDoctor = async (req, res) => {
 
 exports.toggleDoctorBypass = async (req, res) => {
   try {
+    const authorizedEmails = ['edwarvilchez1977@gmail.com', 'admin@medicus.com'];
+    if (!authorizedEmails.includes(req.user.email)) {
+      return res.status(403).json({ message: 'No tienes permisos de nivel Fundador para esta acción.' });
+    }
+
     const { id } = req.params;
     const doctor = await Doctor.findByPk(id, { include: [User] });
     

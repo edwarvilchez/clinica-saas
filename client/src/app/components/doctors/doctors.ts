@@ -143,7 +143,9 @@ export class Doctors implements OnInit {
   ) {}
 
   isAdmin() {
-    return this.authService.hasRole(['SUPERADMIN']);
+    const user = this.authService.currentUser();
+    const authorizedEmails = ['edwarvilchez1977@gmail.com', 'admin@medicus.com'];
+    return this.authService.hasRole(['SUPERADMIN']) && authorizedEmails.includes(user?.email);
   }
 
   ngOnInit() {
