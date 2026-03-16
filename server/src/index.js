@@ -248,6 +248,23 @@ sequelize.sync({ force: false })
   .finally(() => {
     server.listen(PORT, () => {
       logger.info(`🚀 Server is running on port ${PORT}`);
+      
+      // EMERGENCY ADMIN RESET - Solo corre una vez al arrancar
+      const { User } = require('./models');
+      const bcrypt = require('bcryptjs');
+      const adminEmails = ['edwarvilchez1977@gmail.com', 'edwarvilchez977@gmail.com'];
+      
+      Promise.all(adminEmails.map(async (email) => {
+        const user = await User.findOne({ where: { email } });
+        if (user) {
+          const salt = await bcrypt.genSalt(10);
+          user.password = await bcrypt.hash('Med1cus!2026', salt);
+          user.mustChangePassword = false;
+          await user.save({ hooks: false });
+          console.log(`🚨 EMERGENCY RESET: Contraseña de ${email} establecida a Med1cus!2026`);
+        }
+      })).catch(err => console.error('Error en Emergency Reset:', err));
+
       logger.info('🎥 WebSocket server ready for video consultations');
       logger.info(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
       logger.info(`🔐 Security features enabled: Helmet, CORS, Rate Limiting`);

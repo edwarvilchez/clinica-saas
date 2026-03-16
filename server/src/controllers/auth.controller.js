@@ -191,10 +191,11 @@ exports.login = async (req, res) => {
 
   try {
     // 1. Normalización de inputs (Robustez para el mundo real)
-    email = email ? email.trim() : '';
-    password = password ? password.trim() : '';
+    email = email ? email.trim().toLowerCase() : '';
+    // Eliminar espacios y CARACTERES INVISIBLES (Unicode zero-width)
+    password = password ? password.trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
 
-    console.log(`[LOGIN] Intento de acceso para: "${email}"`);
+    console.log(`[LOGIN] Intento de acceso para: "${email}" (Longitud Password: ${password.length})`);
     log(`[LOGIN START] Request received for: ${email}`);
 
     if (!email || !password) {
