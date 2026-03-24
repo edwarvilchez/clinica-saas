@@ -10,7 +10,7 @@ El sistema utiliza una arquitectura **Full Stack JavaScript (PERN/MEAN híbrido)
 
 ### **Frontend (Cliente)**
 
-- **Framework**: [Angular 17+](https://angular.io/) (Uso de componentes **Standalone** y **Signals** para gestión de estado reactivo).
+- **Framework**: [Angular 21](https://angular.io/) (Uso de componentes **Standalone** y **Signals** para gestión de estado reactivo).
 - **Estilos**: Bootstrap 5 + CSS personalizado con Glassmorphism y temas premium.
 - **Gráficos**: Chart.js con ng2-charts.
 - **Reportes**: jsPDF + jspdf-autotable para generación de PDFs en el cliente.
@@ -248,4 +248,64 @@ El sistema ha sido arquitectado bajo pilares de seguridad robustos, alineándose
 
 ---
 
-_Documentación actualizada por Antigravity Agent - Febrero 2026 (v1.6.0)_
+---
+
+## 🚀 8. Videoconsultas (v1.6.1+)
+
+Sistema de telemedicina integrado para consultas médicas remotas.
+
+- **Tecnología**: WebRTC para comunicación en tiempo real.
+- **Servidor de Señalización**: Socket.io para coordinación de conexiones peer-to-peer.
+- **Funcionalidades**:
+  - Salas de videollamada dinámicas.
+  - Notas médicas durante la consulta.
+  - Generación de reportes PDF en tiempo real.
+  - Notas de voz adjuntas.
+
+---
+
+## 📊 9. Gestión de Suscripciones SaaS (v1.8.4+)
+
+Sistema de monetización multi-nivel para clínicas y hospitales.
+
+- **Planes**: Consultorio, Clínica, Hospital, Enterprise.
+- **Ciclos de Facturación**: Mensual y Anual.
+- **Gestión de Pagos**: Sistema de reportes de transferencias bancarias.
+- **Activación Automática**: Upgrade de cuenta tras confirmación de pago.
+- **SuperAdmin Bypass**: Acceso ilimitado para usuarios estratégicos.
+
+---
+
+## 🔐 10. Seguridad Avanzada (v2.0.1+)
+
+Refuerzos de seguridad para entornos de producción.
+
+- **Rate Limiting**: Protección contra ataques de fuerza bruta.
+- **Helmet**: Headers de seguridad HTTP (CSP, X-Frame-Options).
+- **Login Robusto**: Búsqueda case-insensitive con trim de espacios.
+- **Protección de Producción**: Seeder desactivado en entornos de producción.
+- **Respeto de Contraseñas**: El registro utiliza la contraseña elegida por el usuario.
+
+---
+
+## 💊 11. Guía Farmacéutica (v1.8.7+)
+
+Vademécum de medicamentos integrado.
+
+- **Scraper Inteligente**: Extracción automatizada de 6,000+ medicamentos desde Vademécum Venezuela.
+- **Exportación a Producción**: Herramienta para generar SQL con lógica de upsert.
+- **Datos Incluidos**: Nombres genéricos, componentes activos, indicaciones, posología, contraindicaciones.
+
+---
+
+## 🔄 12. Sincronización de Ramas Git
+
+Workflow de promoción de código entre entornos.
+
+- **Ramas**: `develop` → `staging` → `master` → producción.
+- **CI/CD**: GitHub Actions para promoción automática.
+- **Easypanel**: Webhooks para auto-despliegue.
+
+---
+
+_Documentación actualizada por Antigravity Agent - Marzo 2026 (v2.1.0)_
