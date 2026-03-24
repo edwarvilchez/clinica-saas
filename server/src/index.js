@@ -74,11 +74,11 @@ const corsOptions = {
   origin: (origin, callback) => {
     // Lista de orígenes permitidos explícitamente
     const allowedOrigins = [
-      process.env.CLIENT_URL, // URL desde variable de entorno (Prioridad)
-      /^https?:\/\/localhost(:\d+)?$/, // Localhost con cualquier puerto
-      /^https?:\/\/127\.0\.0\.1(:\d+)?$/, // IP local
-      /\.easypanel\.host$/, // Dominios de Easypanel (subdominios)
-      /\.nominusve\.com$/ // Dominios de producción personalizados
+      process.env.CLIENT_URL,
+      /^https?:\/\/localhost(:\d+)?$/,
+      /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+      /easypanel\.host$/, // Permite cualquier subdominio de easypanel.host
+      /nominusve\.com$/  // Permite cualquier subdominio de nominusve.com
     ];
 
     // Permitir si no hay origen (apps móviles, curl, postman)
@@ -88,14 +88,29 @@ const corsOptions = {
     const isAllowed = allowedOrigins.some(allowed => {
       if (!allowed) return false;
       if (allowed instanceof RegExp) return allowed.test(origin);
-      return allowed === origin;
+      // Comprobación flexible (sin barras finales, todo a minúsculas)
+      const sanitizedOrigin = origin.toLowerCase().trim().replace(/\/$/, '');
+      const sanitizedAllowed = allowed.toString().toLowerCase().trim().replace(/\/$/, '');
+      return sanitizedAllowed === sanitizedOrigin;
     });
 
     if (isAllowed) {
       callback(null, true);
     } else {
-      logger.warn({ origin }, 'CORS Blocked - Origin not allowed');
-      callback(new Error('Not allowed by CORS'));
+      // Log detallado en producción para identificar qué origen está siendo bloqueado
+      logger.warn({
+        blockedOrigin: origin,
+        allowedOrigins: allowedOrigins.map(o => o.toString()),
+        clientUrlSet: !!process.env.CLIENT_URL,
+        nodeEnv: process.env.NODE_ENV
+      }, 'CORS Blocked - Origin not allowed');
+      
+      // En desarrollo, podemos ser más permisivos
+      if (process.env.NODE_ENV !== 'production') {
+        return callback(null, true);
+      }
+      
+      callback(new Error(`CORS Error: Origin ${origin} is not allowed by Medicus API Security Policy`));
     }
   },
   credentials: true,
