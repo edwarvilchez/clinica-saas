@@ -31,12 +31,12 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'MEDICUS API',
+      title: 'CLINICA SAAS API',
       version: '1.8.0',
       description: 'Sistema integral de gestión clínica y hospitalaria',
       contact: {
-        name: 'Edwar Vilchez',
-        email: 'edwarvilchez1977@gmail.com',
+        name: 'CGK888Digital',
+        email: 'cgk888digital@gmail.com',
       },
       license: {
         name: 'MIT',
@@ -162,7 +162,7 @@ app.use('/uploads', express.static('uploads'));
 // Swagger Documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'MEDICUS API Docs',
+  customSiteTitle: 'CLINICA SAAS API Docs',
 }));
 
 // Test DB Connection
@@ -217,7 +217,7 @@ app.get('/health', async (req, res) => {
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to Medicus API' });
+  res.json({ message: 'Welcome to Clinica SaaS API' });
 });
 
 // Global Error Handler

@@ -112,10 +112,8 @@ export class Subscription implements OnInit {
   ];
 
   team = [
-    { role: 'Sales Manager', name: 'Yanina Muñoz', tel: '+58 416-6078036' },
-    { role: 'CFO', name: 'Lic. Omar Pérez', tel: '+58 412-9438088' },
-    { role: 'CTO', name: 'Ing. Argimiro Crespo', tel: '+58 424-4275609' },
-    { role: 'CEO', name: 'Ing. Edwar Vilchez', tel: null }
+    { role: 'Sales Manager', name: 'César González', tel: '+58 412-XXXXXXX' },
+    { role: 'CEO', name: 'CGK888Digital', tel: null }
   ];
 
   constructor(
@@ -239,7 +237,7 @@ export class Subscription implements OnInit {
             <p class="mb-0"><strong>${isEs ? 'Datos de Pago:' : 'Payment Details:'}</strong></p>
             <p class="mb-0">Banesco: 0134-XXXX-XX-XXXXXXXXXX</p>
             <p class="mb-0">Pago Móvil: 0412-XXXXXXX / J-12345678</p>
-            <p class="mb-0">Zelle: pagos@medicus.com</p>
+            <p class="mb-0">Zelle: cgk888digital@gmail.com</p>
           </div>
 
           <div class="mb-3">

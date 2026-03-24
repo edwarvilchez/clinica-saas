@@ -245,7 +245,7 @@ export class PublicBooking implements OnInit, OnDestroy {
     const isEs = this.langService.lang() === 'es';
     const title = isEs ? 'Cita Médica: ' : 'Medical Appointment: ';
 
-    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title + formData.reason)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}&dates=${startTime}/${endTime}&add=edwarvilchez1977@gmail.com`;
+    return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title + formData.reason)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}&dates=${startTime}/${endTime}&add=cgk888digital@gmail.com`;
   }
 
   getErrorMessage(fieldName: string): string {

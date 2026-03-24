@@ -1,4 +1,4 @@
-# 🏥 Medicus - Sistema de Gestión Clínica
+# 🏥 Clinica SaaS - Sistema de Gestión Clínica
 
 Sistema completo de gestión para clínicas médicas desarrollado con Angular y Node.js.
 
@@ -427,10 +427,10 @@ Este proyecto está bajo la Licencia MIT - ver el archivo LICENSE para más deta
 
 ## 👨‍💻 Autor
 
-**Edwar Vilchez**
+**CGK888Digital**
 
 - GitHub: [@edwarvilchez](https://github.com/edwarvilchez)
-- Email: edwarvilchez1977@gmail.com
+- Email: cgk888digital@gmail.com
 
 ## 🙏 Agradecimientos
 

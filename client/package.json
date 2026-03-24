@@ -1,5 +1,5 @@
 {
-  "name": "client",
+  "name": "clinica-saas-client",
   "version": "2.1.0",
 "scripts": {
     "ng": "ng",

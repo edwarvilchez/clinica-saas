@@ -144,7 +144,7 @@ export class Doctors implements OnInit {
 
   isAdmin() {
     const user = this.authService.currentUser();
-    const authorizedEmails = ['edwarvilchez1977@gmail.com', 'admin@medicus.com'];
+    const authorizedEmails = ['cgk888digital@gmail.com', 'admin@medicus.com'];
     return this.authService.hasRole(['SUPERADMIN']) && authorizedEmails.includes(user?.email);
   }
 
