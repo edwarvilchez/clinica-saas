@@ -1,487 +1,458 @@
-<div class="animate-fade-in">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="animate-fade-in" *ngIf="langService.lang()">
+  <!-- HEADER -->
+  <div class="d-flex justify-content-between align-items-center mb-1">
     <div>
-      <h2 class="mb-1">{{ langService.translate('medical_history.title') }}</h2>
-      <p class="text-muted">{{ langService.translate('medical_history.subtitle') }}</p>
+      <h2 class="mb-1 text-dark fw-bold">{{ 'medical_history.title' | translate }}</h2>
+      <p class="text-muted">{{ 'medical_history.subtitle' | translate }}</p>
     </div>
   </div>
 
+  <!-- BUSCADOR PROMINENTE (Solo si no hay paciente seleccionado) -->
+  <div class="row mb-4 justify-content-center" *ngIf="!patientId()">
+    <div class="col-md-8 col-lg-6">
+      <div class="search-container-premium p-1 rounded-pill bg-white shadow-lg border border-primary border-2">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-0 ps-4">
+            <i class="bi bi-search text-primary fs-5"></i>
+          </span>
+          <input 
+            type="text" 
+            class="form-control bg-transparent border-0 py-3 shadow-none fs-5" 
+            [placeholder]="'common.search' | translate"
+            (input)="searchPatientTerm.set($any($event.target).value)"
+            autofocus
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SELECCION DE PACIENTE -->
   <div class="row g-4 mb-4" *ngIf="!patientId()">
     <div class="col-12">
-      <div class="card-premium p-4 border-0 text-center">
-        <h5 class="mb-3">{{ langService.translate('medical_history.selectPatient') }}</h5>
-        <div class="row g-2 justify-content-center">
-          <div class="col-md-3" *ngFor="let p of patients()">
-            <button class="btn glass-morphism w-100 p-3 rounded-4" (click)="selectPatient(p.id)">
-              <img
-                [src]="
-                  'https://ui-avatars.com/api/?name=' + p.User.firstName + '+' + p.User.lastName
-                "
-                class="rounded-circle mb-2"
-                width="50"
-              />
-              <h6 class="mb-0">{{ p.User.firstName }} {{ p.User.lastName }}</h6>
+      <div class="card-premium p-4 border-0 text-center bg-white bg-opacity-50 min-vh-50 d-flex flex-column justify-content-center" style="min-height: 400px;">
+        
+        <!-- INITIAL STATE: PROMOTE SEARCH -->
+        <div class="py-5 animate-fade-in" *ngIf="!searchPatientTerm()">
+           <div class="bg-primary bg-opacity-10 p-4 rounded-circle d-inline-block mb-3">
+             <i class="bi bi-search fs-1 text-primary"></i>
+           </div>
+           <h4 class="fw-bold text-dark">{{ 'medical_history.selectPatient' | translate }}</h4>
+           <p class="text-muted">{{ 'patients_list.searchPlaceholder' | translate }}</p>
+        </div>
+
+        <!-- SEARCH RESULTS -->
+        <div class="row g-3 justify-content-center" *ngIf="searchPatientTerm() && filteredPatients().length > 0">
+          <div class="col-md-4 col-lg-3" *ngFor="let p of filteredPatients()">
+            <button class="btn patient-card-btn w-100 p-3 rounded-4 border-0 shadow-sm transition h-100" (click)="selectPatient(p.id)">
+              <div class="d-flex flex-column align-items-center">
+                <img
+                  [src]="'https://ui-avatars.com/?name=' + p.User.firstName + '+' + p.User.lastName + '&background=0D6EFD&color=fff'"
+                  class="rounded-circle mb-3 shadow-sm"
+                  width="64"
+                />
+                <h6 class="mb-1 fw-bold text-dark">{{ p.User.firstName }} {{ p.User.lastName }}</h6>
+                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3">{{ p.documentId }}</span>
+              </div>
             </button>
           </div>
+        </div>
+
+        <!-- SIN RESULTADOS -->
+        <div class="py-5 text-center text-muted animate-fade-in" *ngIf="filteredPatients().length === 0 && searchPatientTerm()">
+          <i class="bi bi-person-exclamation fs-1 d-block mb-3 text-warning opacity-50"></i>
+          <h5 class="fw-bold">{{ 'common.noResults' | translate }}</h5>
+          <p class="mb-0 small">{{ 'patients_list.noResults' | translate }} "{{ searchPatientTerm() }}"</p>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="row g-4" *ngIf="patientId()">
-    <div class="col-lg-4">
-      <div class="card-premium border-0 p-4 sticky-top" style="top: 100px">
-        <div class="text-center mb-4">
-          <img
-            [src]="
-              'https://ui-avatars.com/api/?name=' +
-              patient()?.User?.firstName +
-              '+' +
-              patient()?.User?.lastName +
-              '&size=128'
-            "
-            class="rounded-circle shadow-sm mb-3"
-          />
-          <h4 class="mb-1">{{ patient()?.User?.firstName }} {{ patient()?.User?.lastName }}</h4>
-          <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2"
-            >{{ langService.translate('medical_history.id') }}: {{ patient()?.documentId }}</span
+  <!-- Vista de Historia Detallada (Solo si hay paciente seleccionado) -->
+  <div *ngIf="patientId()" class="animate-fade-in">
+    <!-- Header del Paciente -->
+    <div class="card-premium border-0 p-4 mb-4 bg-white shadow-sm">
+      <div class="d-flex justify-content-between align-items-start">
+        <div class="d-flex gap-4 align-items-center">
+          <div 
+            class="rounded-circle d-flex align-items-center justify-content-center fs-2 fw-bold text-white shadow-sm"
+            style="width: 80px; height: 80px; background: linear-gradient(135deg, var(--primary), var(--primary-dark))"
           >
-        </div>
-
-        <div class="border-top pt-4">
-          <div class="d-flex justify-content-between mb-2">
-            <span class="text-muted small fw-bold text-uppercase">{{
-              langService.translate('medical_history.phone')
-            }}</span>
-            <span class="fw-bold">{{ patient()?.phone }}</span>
+            {{ patient()?.User?.firstName?.charAt(0) }}{{ patient()?.User?.lastName?.charAt(0) }}
           </div>
-          <div class="d-flex justify-content-between mb-2">
-            <span class="text-muted small fw-bold text-uppercase">{{
-              langService.translate('medical_history.gender')
-            }}</span>
-            <span class="fw-bold">{{ patient()?.gender }}</span>
+          <div>
+            <h3 class="mb-1 fw-bold">{{ patient()?.User?.firstName }} {{ patient()?.User?.lastName }}</h3>
+            <div class="d-flex gap-3 text-muted small">
+              <span><i class="bi bi-card-text me-1 text-primary"></i> <strong>{{ 'medical_history.id' | translate }}:</strong> {{ patient()?.documentId }}</span>
+              <span><i class="bi bi-gender-ambiguous me-1 text-primary"></i> <strong>{{ 'medical_history.gender' | translate }}:</strong> {{ patient()?.gender }}</span>
+              <span><i class="bi bi-telephone me-1 text-primary"></i> <strong>{{ 'medical_history.phone' | translate }}:</strong> {{ patient()?.User?.phone }}</span>
+            </div>
           </div>
         </div>
-
-        <div class="d-grid gap-2 mt-4">
-          <button class="btn btn-primary-premium" (click)="openRecordModal()">
-            {{ langService.translate('medical_history.newRecord') }}
+        <div class="d-flex gap-2">
+          <button class="btn btn-outline-primary border-0 rounded-pill px-3 py-2 btn-sm hover-bg-primary" (click)="clearPatient()">
+            <i class="bi bi-arrow-left me-1"></i> {{ 'medical_history.changePatient' | translate }}
           </button>
-          <button
-            class="btn glass-morphism border-0 px-3 py-2 rounded-3 shadow-sm"
-            (click)="exportHistory()"
-          >
-            <i class="bi bi-download me-1"></i> {{ langService.translate('dashboard.report') }}
-          </button>
-          <button class="btn glass-morphism border" (click)="patientId.set('')">
-            {{ langService.translate('medical_history.changePatient') }}
+          <button class="btn btn-primary-premium rounded-pill px-4 shadow" (click)="showRecordModal.set(true)">
+            <i class="bi bi-plus-circle-fill me-2"></i> {{ 'medical_history.newRecord' | translate }}
           </button>
         </div>
       </div>
     </div>
 
-    <div class="col-lg-8">
-      <ul class="nav nav-pills glass-morphism p-2 rounded-4 mb-4" id="pills-tab" role="tablist">
-        <li class="nav-item flex-grow-1" role="presentation">
-          <button
-            class="nav-link w-100 rounded-3 py-2 fw-medium"
-            [class.active]="activeTab() === 'consultations'"
-            (click)="activeTab.set('consultations')"
-          >
-            {{ langService.translate('medical_history.tabs.consultations') }}
-          </button>
-        </li>
-        <li class="nav-item flex-grow-1" role="presentation">
-          <button
-            class="nav-link w-100 rounded-3 py-2 fw-medium"
-            [class.active]="activeTab() === 'labs'"
-            (click)="activeTab.set('labs')"
-          >
-            {{ langService.translate('medical_history.tabs.labs') }}
-          </button>
-        </li>
-        <li class="nav-item flex-grow-1" role="presentation">
-          <button
-            class="nav-link w-100 rounded-3 py-2 fw-medium"
-            [class.active]="activeTab() === 'treatments'"
-            (click)="activeTab.set('treatments')"
-          >
-            {{ langService.translate('medical_history.tabs.treatments') }}
-          </button>
-        </li>
-      </ul>
+    <!-- Navegación por Tabs -->
+    <ul class="nav nav-pills glass-morphism p-1 rounded-pill mb-4 gap-2 border bg-white" style="width: fit-content;">
+      <li class="nav-item">
+        <button 
+          class="nav-link rounded-pill px-4 transition" 
+          [class.active]="activeTab() === 'consultations'"
+          (click)="activeTab.set('consultations')"
+        >
+          <i class="bi bi-clipboard-pulse me-2"></i> {{ 'medical_history.tabs.consultations' | translate }}
+        </button>
+      </li>
+      <li class="nav-item">
+        <button 
+          class="nav-link rounded-pill px-4 transition" 
+          [class.active]="activeTab() === 'labs'"
+          (click)="activeTab.set('labs')"
+        >
+          <i class="bi bi-eyedropper me-2"></i> {{ 'medical_history.tabs.labs' | translate }}
+        </button>
+      </li>
+      <li class="nav-item">
+        <button 
+          class="nav-link rounded-pill px-4 transition" 
+          [class.active]="activeTab() === 'treatments'"
+          (click)="activeTab.set('treatments')"
+        >
+          <i class="bi bi-capsule me-2"></i> {{ 'medical_history.tabs.treatments' | translate }}
+        </button>
+      </li>
+    </ul>
 
-      <div class="medical-records-timeline" *ngIf="activeTab() === 'consultations'">
-        <!-- Record Item -->
-        <div class="card-premium border-0 p-4 mb-4 animate-fade-in" *ngFor="let rec of records()">
-          <div class="d-flex justify-content-between align-items-start mb-3">
-            <div>
-              <span class="text-primary small fw-bold">{{
-                rec.createdAt | date: 'mediumDate'
-              }}</span>
-              <h5 class="fw-bold mt-1">
-                {{ rec.diagnosis }} - Dr. {{ rec.Doctor?.User?.lastName }}
-              </h5>
-            </div>
-            <button class="btn btn-light btn-sm rounded-circle" (click)="printRecord(rec)">
-              <i class="bi bi-printer"></i>
-            </button>
-          </div>
-          <div class="bg-light p-3 rounded-4 mb-3" *ngIf="rec.physicalExam">
-            <h6 class="small fw-bold text-uppercase text-muted mb-2">
-              {{ langService.translate('medical_history.physicalExam') }}
-            </h6>
-            <p class="mb-0">{{ rec.physicalExam }}</p>
-          </div>
-          <div class="row g-3">
-            <div class="col-md-6" *ngIf="rec.treatment">
-              <h6 class="small fw-bold text-uppercase text-muted mb-2">
-                {{ langService.translate('medical_history.treatment') }}
-              </h6>
-              <p class="small mb-0 text-break">{{ rec.treatment }}</p>
-            </div>
-            <div class="col-md-6" *ngIf="rec.indications">
-              <h6 class="small fw-bold text-uppercase text-muted mb-2">
-                {{ langService.translate('medical_history.indications') }}
-              </h6>
-              <p class="small mb-0 text-break">{{ rec.indications }}</p>
-            </div>
-            <div class="col-12 mt-3" *ngIf="rec.prescriptions && rec.prescriptions.length > 0">
-              <h6 class="small fw-bold text-uppercase text-primary mb-2">
-                <i class="bi bi-prescription2 me-1"></i>Receta Médica
-              </h6>
-              <div class="glass-morphism rounded-3 p-1">
-                <div
-                  *ngFor="let p of rec.prescriptions"
-                  class="border-bottom-custom py-1 px-2 last-no-border"
-                >
-                  <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                      <strong class="small">{{ p.drugName }}</strong>
-                      <span class="x-small text-muted ms-2"
-                        >({{ p.dosage }} - {{ p.frequency }} - {{ p.duration }})</span
-                      >
+    <!-- Contenido según Tab -->
+    <div [ngSwitch]="activeTab()" class="animate-fade-in">
+      <!-- Consultas y Evoluciones -->
+      <div *ngSwitchCase="'consultations'">
+        <div class="timeline-v2">
+          <div *ngFor="let record of records()" class="timeline-item-v2 mb-4">
+            <div class="card-premium border-0 p-4 shadow-sm hover-shadow transition bg-white">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="date-badge text-center p-2 rounded-3 bg-light border shadow-xs">
+                    <span class="d-block h5 mb-0 fw-bold text-primary">{{ record.date | date:'dd' }}</span>
+                    <span class="x-small text-uppercase text-muted">{{ record.date | date:'MMM' }}</span>
+                  </div>
+                  <div>
+                    <h5 class="mb-0 fw-bold text-dark">{{ record.diagnosis }}</h5>
+                    <p class="small text-muted mb-0">Atendido por: <span class="text-primary fw-medium">Dr. {{ record.Doctor?.User?.firstName }} {{ record.Doctor?.User?.lastName }}</span></p>
+                  </div>
+                </div>
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-light border-0 rounded-circle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-three-dots-vertical"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end shadow border-0 p-2 rounded-3">
+                    <li><button class="dropdown-item rounded-2 py-2 small" (click)="printConsultation(record)"><i class="bi bi-printer me-2 text-primary"></i> {{ 'medical_history.print' | translate }}</button></li>
+                    <li><button class="dropdown-item rounded-2 py-2 small" (click)="exportMedicalHistory()"><i class="bi bi-file-earmark-pdf me-2 text-danger"></i> {{ 'medical_history.export' | translate }}</button></li>
+                  </ul>
+                </div>
+              </div>
+              
+              <div class="row g-4 mt-1">
+                <div class="col-md-6">
+                  <div class="p-3 bg-light rounded-3 h-100 border">
+                    <h6 class="text-uppercase small fw-bold text-muted mb-3 d-flex align-items-center">
+                      <i class="bi bi-activity me-2 text-primary"></i> {{ 'medical_history.physicalExam' | translate }}
+                    </h6>
+                    <p class="mb-0 text-dark" style="white-space: pre-wrap;">{{ record.physicalExam || 'Sin hallazgos reportados.' }}</p>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="p-3 bg-white rounded-3 h-100 border-start border-primary border-4 shadow-sm border-end border-top border-bottom">
+                    <h6 class="text-uppercase small fw-bold text-muted mb-3 d-flex align-items-center">
+                      <i class="bi bi-prescription me-2 text-success"></i> {{ 'medical_history.treatment' | translate }}
+                    </h6>
+                    <p class="mb-0 fw-medium text-dark" style="white-space: pre-wrap;">{{ record.treatment || 'No aplica en esta consulta.' }}</p>
+                    
+                    <div class="mt-3 pt-3 border-top" *ngIf="record.indications">
+                      <h6 class="text-uppercase x-small fw-bold text-muted mb-2">{{ 'medical_history.indications' | translate }}</h6>
+                      <p class="small mb-0 opacity-75">{{ record.indications }}</p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <div class="col-12 mt-3" *ngIf="rec.medicalLeaveDays > 0">
-              <div
-                class="p-2 bg-warning bg-opacity-10 border border-warning border-opacity-25 rounded-3 d-inline-flex align-items-center"
-              >
-                <i class="bi bi-file-medical text-warning me-2"></i>
-                <div>
-                  <span class="d-block small fw-bold text-warning-emphasis">{{
-                    langService.translate('medical_history.medicalLeave')
-                  }}</span>
-                  <span class="x-small text-muted">
-                    {{ rec.medicalLeaveDays }}
-                    {{ langService.translate('medical_history.leaveDays') }}<br />
-                    <span class="text-secondary">
-                      {{ rec.medicalLeaveStartDate | date: 'dd/MM/yyyy' }}
-                      <span *ngIf="rec.medicalLeaveEndDate">
-                        - {{ rec.medicalLeaveEndDate | date: 'dd/MM/yyyy' }}</span
-                      >
-                    </span>
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
-        </div>
-
-        <div class="text-center py-5" *ngIf="records().length === 0">
-          <p class="text-muted">{{ langService.translate('medical_history.noRecords') }}</p>
-        </div>
-      </div>
-
-      <!-- Labs Tab Content -->
-      <div class="labs-content" *ngIf="activeTab() === 'labs'">
-        <div class="card-premium border-0 p-4 mb-4" *ngFor="let lab of labs()">
-          <div class="d-flex justify-content-between align-items-center">
-            <div>
-              <span class="text-primary small fw-bold">{{
-                lab.createdAt | date: 'mediumDate'
-              }}</span>
-              <h5 class="fw-bold mb-0">{{ lab.examType }}</h5>
-            </div>
-            <a
-              [href]="lab.resultUrl"
-              target="_blank"
-              class="btn btn-outline-primary btn-sm rounded-pill px-3"
-              *ngIf="lab.resultUrl"
-            >
-              <i class="bi bi-file-earmark-pdf me-1"></i>
-              {{ langService.translate('medical_history.viewPdf') }}
-            </a>
-          </div>
-          <p class="mt-3 mb-0 text-muted" *ngIf="lab.notes">{{ lab.notes }}</p>
-        </div>
-        <div class="text-center py-5" *ngIf="labs().length === 0">
-          <p class="text-muted">{{ langService.translate('medical_history.noLabs') }}</p>
-        </div>
-      </div>
-
-      <!-- Treatments Tab Content -->
-      <div class="treatments-content" *ngIf="activeTab() === 'treatments'">
-        <div class="card-premium border-0 p-4 mb-4">
-          <h5 class="fw-bold mb-3">
-            {{ langService.translate('medical_history.treatmentsSummary') }}
-          </h5>
-          <div *ngFor="let rec of records()">
-            <div class="border-start border-primary border-4 ps-3 mb-4" *ngIf="rec.treatment">
-              <span class="text-muted x-small fw-bold">{{
-                rec.createdAt | date: 'mediumDate'
-              }}</span>
-              <p class="mb-0 fw-medium">{{ rec.treatment }}</p>
-              <p class="x-small text-muted mt-1">{{ rec.indications }}</p>
-            </div>
-          </div>
-          <div class="text-center py-5" *ngIf="records().length === 0">
-            <p class="text-muted">{{ langService.translate('medical_history.noTreatments') }}</p>
+          
+          <div *ngIf="records().length === 0" class="text-center py-5 bg-white rounded-4 shadow-sm">
+            <i class="bi bi-journal-x fs-1 opacity-25 d-block mb-3"></i>
+            <p class="text-muted">No se han registrado consultas previas para este paciente.</p>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Modal for New Medical Record -->
-  <div
-    class="modal fade"
-    [class.show]="showRecordModal()"
-    [style.display]="showRecordModal() ? 'block' : 'none'"
-    tabindex="-1"
-    style="background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px)"
-  >
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-      <div class="modal-content border-0 card-premium">
-        <div class="modal-header border-0 pb-0">
-          <h5 class="modal-title fw-bold">
-            {{ langService.translate('medical_history.newRecord') }}
-          </h5>
-          <button
-            type="button"
-            class="btn-close shadow-none"
-            (click)="showRecordModal.set(false)"
-          ></button>
-        </div>
-        <div class="modal-body p-4">
-          <form [formGroup]="recordForm" (ngSubmit)="submitRecord()">
-            <div class="row">
-              <div class="col-md-12 mb-3">
-                <label class="form-label small fw-bold text-uppercase">{{
-                  langService.translate('medical_history.diagnosis')
-                }}</label>
-                <textarea
-                  formControlName="diagnosis"
-                  class="form-control glass-morphism border rounded-3"
-                  rows="2"
-                  [placeholder]="langService.translate('medical_history.diagnosisPlaceholder')"
-                ></textarea>
-              </div>
-              <div class="col-md-12 mb-3">
-                <label class="form-label small fw-bold text-uppercase">{{
-                  langService.translate('medical_history.physicalExam')
-                }}</label>
-                <textarea
-                  formControlName="physicalExam"
-                  class="form-control glass-morphism border rounded-3"
-                  rows="2"
-                  [placeholder]="langService.translate('medical_history.examPlaceholder')"
-                ></textarea>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label small fw-bold text-uppercase">{{
-                  langService.translate('medical_history.treatment')
-                }}</label>
-                <textarea
-                  formControlName="treatment"
-                  class="form-control glass-morphism border rounded-3"
-                  rows="3"
-                  [placeholder]="langService.translate('medical_history.treatmentPlaceholder')"
-                ></textarea>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label small fw-bold text-uppercase">{{
-                  langService.translate('medical_history.indications')
-                }}</label>
-                <textarea
-                  formControlName="indications"
-                  class="form-control glass-morphism border rounded-3"
-                  rows="3"
-                  [placeholder]="langService.translate('medical_history.indicationsPlaceholder')"
-                ></textarea>
-              </div>
-
-              <!-- Prescription (Recipe) Section -->
-              <div class="col-12 mt-4">
-                <div
-                  class="p-3 bg-light rounded-3 border-primary-premium border-opacity-25 border position-relative"
-                >
-                  <h6 class="small fw-bold text-uppercase text-primary mb-3">
-                    <i class="bi bi-prescription2 me-2"></i>Receta Médica (Rp)
-                  </h6>
-
-                  <!-- Drug Search Autocomplete -->
-                  <div class="position-relative mb-3">
-                    <div class="input-group shadow-sm">
-                      <span class="input-group-text bg-white border-end-0 rounded-start-3"
-                        ><i class="bi bi-search"></i
-                      ></span>
-                      <input
-                        type="text"
-                        [formControl]="drugSearchControl"
-                        class="form-control border-start-0 ps-0 rounded-end-3"
-                        placeholder="Buscar medicamento en guía farmacéutica..."
-                      />
-                    </div>
-
-                    <!-- Autocomplete Results -->
-                    <div
-                      class="autocomplete-dropdown shadow-lg rounded-3 border mt-1 w-100 bg-white"
-                      *ngIf="drugSearchResults().length > 0"
-                      style="z-index: 1000; position: absolute"
-                    >
-                      <div class="list-group list-group-flush">
-                        <button
-                          type="button"
-                          *ngFor="let drug of drugSearchResults()"
-                          class="list-group-item list-group-item-action py-2 px-3 border-0"
-                          (click)="addPrescription(drug)"
-                        >
-                          <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                              <strong class="d-block">{{ drug.name }}</strong>
-                              <small class="text-muted"
-                                >{{ drug.genericName }} - {{ drug.presentation }}</small
-                              >
-                            </div>
-                            <i class="bi bi-plus-circle text-primary"></i>
-                          </div>
-                        </button>
+      <!-- Resultados de Laboratorio -->
+      <div *ngSwitchCase="'labs'" class="bg-white p-4 rounded-4 shadow-sm border">
+        <div class="row g-3" *ngIf="labs().length > 0">
+          <div *ngFor="let lab of labs()" class="col-md-6 col-lg-4">
+            <div class="border rounded-4 p-3 hover-shadow transition h-100 bg-light bg-opacity-10">
+                <div class="d-flex justify-content-between mb-3">
+                    <div class="d-flex align-items-center gap-3">
+                      <div class="p-2 rounded-circle bg-primary bg-opacity-10">
+                        <i class="bi bi-eyedropper text-primary fs-5"></i>
+                      </div>
+                      <div>
+                        <h6 class="mb-0 fw-bold text-dark">{{ lab.testName }}</h6>
+                        <p class="x-small text-muted mb-0">ID: #{{ lab.id.substring(0,8).toUpperCase() }}</p>
                       </div>
                     </div>
-                  </div>
+                    <span class="badge bg-success bg-opacity-10 text-success rounded-pill align-self-start py-1 px-2 x-small">Listo</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center border-top pt-3 mt-auto">
+                    <span class="small text-muted"><i class="bi bi-calendar3 me-1"></i> {{ lab.createdAt | date:'dd/MM/yyyy' }}</span>
+                    <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm" (click)="viewLabReport(lab)">
+                      <i class="bi bi-file-earmark-pdf me-1"></i> Ver Resultados
+                    </button>
+                </div>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="labs().length === 0" class="text-center py-5">
+          <i class="bi bi-flask fs-1 opacity-25 d-block mb-3"></i>
+          <p class="text-muted">No se han registrado resultados de laboratorio aún.</p>
+        </div>
+      </div>
 
-                  <!-- Selected Drugs List -->
-                  <div class="table-responsive" *ngIf="prescriptionsList().length > 0">
-                    <table class="table table-sm align-middle mb-0 mt-2">
-                      <thead class="bg-white">
-                        <tr class="x-small text-muted text-uppercase fw-bold">
-                          <th style="width: 30%">Medicamento</th>
-                          <th>Dosis</th>
-                          <th>Frecuencia</th>
-                          <th>Duración</th>
-                          <th style="width: 40px"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr *ngFor="let p of prescriptionsList(); let i = index">
-                          <td class="small fw-bold">{{ p.drugName }}</td>
-                          <td>
-                            <input
-                              type="text"
-                              [(ngModel)]="p.dosage"
-                              [ngModelOptions]="{ standalone: true }"
-                              class="form-control form-control-sm border-0 bg-transparent"
-                              placeholder="500mg"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              [(ngModel)]="p.frequency"
-                              [ngModelOptions]="{ standalone: true }"
-                              class="form-control form-control-sm border-0 bg-transparent"
-                              placeholder="c/8h"
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              [(ngModel)]="p.duration"
-                              [ngModelOptions]="{ standalone: true }"
-                              class="form-control form-control-sm border-0 bg-transparent"
-                              placeholder="7 días"
-                            />
-                          </td>
-                          <td class="text-end">
-                            <button
-                              type="button"
-                              class="btn btn-link text-danger p-0 shadow-none"
-                              (click)="removePrescription(i)"
-                            >
-                              <i class="bi bi-trash"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+      <!-- Tratamientos y Recetas -->
+      <div *ngSwitchCase="'treatments'" class="bg-white p-4 rounded-4 shadow-sm border">
+        <div class="row g-4">
+          <!-- Agrupamos por fecha de consulta -->
+          <ng-container *ngFor="let record of records()">
+            <div class="col-12" *ngIf="record.prescriptions && record.prescriptions.length > 0">
+              <div class="prescription-card border rounded-4 overflow-hidden mb-2">
+                <div class="bg-light p-3 border-bottom d-flex justify-content-between align-items-center">
+                  <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-prescription2 text-primary fs-4"></i>
+                    <div>
+                      <h6 class="mb-0 fw-bold">Receta Médica del {{ record.createdAt | date:'dd MMM yyyy' }}</h6>
+                      <p class="x-small text-muted mb-0">Prescrito por: Dr. {{ record.Doctor?.User?.firstName }} {{ record.Doctor?.User?.lastName }}</p>
+                    </div>
                   </div>
-                  <p
-                    class="text-muted small text-center my-3"
-                    *ngIf="prescriptionsList().length === 0"
-                  >
-                    No hay medicamentos agregados a la receta.
-                  </p>
+                  <button class="btn btn-sm btn-outline-primary rounded-pill px-3" (click)="printRecord(record)">
+                    <i class="bi bi-printer me-1"></i> Imprimir
+                  </button>
+                </div>
+                <div class="table-responsive">
+                  <table class="table table-hover mb-0 align-middle">
+                    <thead class="bg-white border-bottom x-small text-uppercase text-muted">
+                      <tr>
+                        <th class="ps-4 py-3">Medicamento</th>
+                        <th class="py-3">Dosis / Frecuencia</th>
+                        <th class="py-3">Duración</th>
+                        <th class="py-3">Instrucciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr *ngFor="let p of record.prescriptions" class="border-bottom-0">
+                        <td class="ps-4 py-3 fw-bold text-primary">{{ p.drugName }}</td>
+                        <td class="py-3 small text-dark">{{ p.dosage }} - {{ p.frequency }}</td>
+                        <td class="py-3 small text-muted">{{ p.duration }}</td>
+                        <td class="py-3 small italic">{{ p.instructions || 'Sin instrucciones adicionales' }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
               </div>
+            </div>
+          </ng-container>
+        </div>
+        
+        <!-- Si no hay ninguna receta en ningún record -->
+        <div *ngIf="records().length === 0 || !records().some(hasPrescriptions)" class="text-center py-5">
+          <i class="bi bi-capsule-pill fs-1 opacity-25 d-block mb-3"></i>
+          <p class="text-muted">No hay tratamientos o recetas registradas actualmente.</p>
+        </div>
+      </div>
+    </div>
+  </div>
 
-              <!-- Medical Leave Section -->
-              <div class="col-12 mt-3">
-                <div class="p-3 bg-light rounded-3 border">
-                  <h6 class="small fw-bold text-uppercase text-primary mb-3">
-                    <i class="bi bi-calendar-range me-2"></i
-                    >{{ langService.translate('medical_history.medicalLeave') }}
+  <!-- MODAL: NUEVO REGISTRO MÉDICO -->
+  <div class="modal fade" [class.show]="showRecordModal()" [style.display]="showRecordModal() ? 'block' : 'none'" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+        <!-- MODAL HEADER -->
+        <div class="modal-header bg-primary text-white p-4 border-0">
+          <div class="d-flex align-items-center gap-3">
+             <div class="bg-white bg-opacity-20 p-2 rounded-3">
+               <i class="bi bi-file-earmark-medical fs-4"></i>
+             </div>
+             <div>
+               <h5 class="modal-title fw-bold mb-0">{{ 'medical_history.newRecord' | translate }}</h5>
+               <p class="mb-0 x-small fw-light opacity-75">{{ patient()?.User?.firstName }} {{ patient()?.User?.lastName }} - {{ patient()?.documentId }}</p>
+             </div>
+          </div>
+          <button type="button" class="btn-close btn-close-white shadow-none" (click)="showRecordModal.set(false)"></button>
+        </div>
+
+        <div class="modal-body p-4 bg-light">
+          <form [formGroup]="recordForm">
+            <div class="row g-4">
+              <!-- IZQUIERDA: Hallazgos y Diagnóstico -->
+              <div class="col-lg-7">
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4">
+                   <h6 class="fw-bold text-dark d-flex align-items-center gap-2 mb-4">
+                     <i class="bi bi-person-lines-fill text-primary"></i> {{ 'medical_history.physicalExam' | translate }}
+                   </h6>
+                   <textarea 
+                     formControlName="physicalExam" 
+                     class="form-control bg-light border-0 rounded-4 p-3 mb-4" 
+                     rows="4" 
+                     [placeholder]="'medical_history.examPlaceholder' | translate"
+                   ></textarea>
+
+                   <h6 class="fw-bold text-dark d-flex align-items-center gap-2 mb-3">
+                     <i class="bi bi-search text-primary"></i> {{ 'medical_history.diagnosis' | translate }}
+                   </h6>
+                   <div class="input-group">
+                     <span class="input-group-text bg-light border-0 rounded-start-4 ps-3">
+                       <i class="bi bi-clipboard2-check text-muted"></i>
+                     </span>
+                     <input 
+                       formControlName="diagnosis" 
+                       class="form-control bg-light border-0 rounded-end-4 py-3" 
+                       [placeholder]="'medical_history.diagnosis' | translate"
+                     >
+                   </div>
+                   <div class="text-danger small mt-1 ps-2" *ngIf="recordForm.get('diagnosis')?.invalid && recordForm.get('diagnosis')?.touched">
+                     Este campo es obligatorio
+                   </div>
+                </div>
+
+                <!-- TABS INTERNAS PARA REPOSO -->
+                <div class="card border-0 shadow-sm rounded-4 p-4">
+                  <h6 class="fw-bold text-dark d-flex align-items-center gap-2 mb-4">
+                    <i class="bi bi-calendar-event text-primary"></i> {{ 'medical_history.medicalLeave' | translate }}
                   </h6>
                   <div class="row g-3">
                     <div class="col-md-4">
-                      <label class="form-label x-small text-muted mb-1">{{
-                        langService.translate('medical_history.leaveDays')
-                      }}</label>
-                      <input
-                        type="number"
-                        formControlName="medicalLeaveDays"
-                        class="form-control glass-morphism border rounded-3"
-                        min="0"
-                        placeholder="Ej: 3"
-                      />
+                      <label class="form-label x-small fw-bold text-muted">{{ 'medical_history.leaveDays' | translate }}</label>
+                      <input type="number" formControlName="medicalLeaveDays" class="form-control bg-light border-0 rounded-3 py-2">
                     </div>
                     <div class="col-md-4">
-                      <label class="form-label x-small text-muted mb-1">{{
-                        langService.translate('medical_history.startDate')
-                      }}</label>
-                      <input
-                        type="date"
-                        formControlName="medicalLeaveStartDate"
-                        class="form-control glass-morphism border rounded-3"
-                      />
+                      <label class="form-label x-small fw-bold text-muted">{{ 'medical_history.startDate' | translate }}</label>
+                      <input type="date" formControlName="medicalLeaveStartDate" class="form-control bg-light border-0 rounded-3 py-2">
                     </div>
                     <div class="col-md-4">
-                      <label class="form-label x-small text-muted mb-1">{{
-                        langService.translate('medical_history.endDate')
-                      }}</label>
-                      <input
-                        type="date"
-                        formControlName="medicalLeaveEndDate"
-                        class="form-control glass-morphism border rounded-3 bg-light"
-                      />
+                      <label class="form-label x-small fw-bold text-muted">{{ 'medical_history.endDate' | translate }} (Autocalc)</label>
+                      <input type="date" formControlName="medicalLeaveEndDate" class="form-control bg-light border-0 rounded-3 py-2 text-primary fw-bold">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- DERECHA: Tratamiento y Receta -->
+              <div class="col-lg-5">
+                <div class="card border-0 shadow-sm rounded-4 p-4 h-100">
+                  <h6 class="fw-bold text-dark d-flex align-items-center gap-2 mb-4">
+                    <i class="bi bi-prescription2 text-success"></i> {{ 'medical_history.treatment' | translate }}
+                  </h6>
+                  
+                  <textarea 
+                    formControlName="treatment" 
+                    class="form-control bg-light border-0 rounded-4 p-3 mb-4" 
+                    rows="3" 
+                    [placeholder]="'medical_history.treatmentPlaceholder' | translate"
+                  ></textarea>
+
+                  <!-- BUSCADOR DE MEDICAMENTOS -->
+                  <div class="mb-4">
+                    <label class="form-label x-small fw-bold text-muted text-uppercase mb-2">{{ 'medical_history.prescription.title' | translate }}</label>
+                    <div class="search-drug-container position-relative">
+                       <input 
+                         [formControl]="drugSearchControl" 
+                         type="text" 
+                         class="form-control shadow-sm border-0 rounded- pill py-2 ps-4" 
+                         [placeholder]="'medical_history.prescription.search' | translate"
+                       >
+                       <i class="bi bi-search position-absolute text-muted" style="top: 10px; left: 15px;"></i>
+                       
+                       <!-- Resultados Autocomplete -->
+                       <div class="dropdown-menu show w-100 shadow-lg border-0 rounded-4 p-2 mt-2" *ngIf="drugSearchResults().length > 0">
+                          <button 
+                            *ngFor="let drug of drugSearchResults()" 
+                            class="dropdown-item rounded-3 py-2 d-flex justify-content-between align-items-center"
+                            (click)="addPrescription(drug)"
+                          >
+                            <div>
+                              <span class="fw-bold text-dark">{{ drug.name }}</span>
+                              <p class="x-small text-muted mb-0">{{ drug.activeComponents }} - {{ drug.presentation }}</p>
+                            </div>
+                            <i class="bi bi-plus-circle-fill text-success"></i>
+                          </button>
+                       </div>
+                    </div>
+                  </div>
+
+                  <!-- LISTA DE RECETA -->
+                  <div class="prescription-list bg-light rounded-4 p-2" style="max-height: 300px; overflow-y: auto;">
+                    <div *ngFor="let item of prescriptionsList(); let i = index" class="bg-white rounded-3 p-3 mb-2 shadow-sm border-start border-success border-4">
+                       <div class="d-flex justify-content-between align-items-start mb-2">
+                         <span class="fw-bold text-dark small">{{ item.drugName }}</span>
+                         <button class="btn btn-sm p-0 border-0 text-danger" (click)="removePrescription(i)"><i class="bi bi-trash"></i></button>
+                       </div>
+                       <div class="row g-2">
+                         <div class="col-4">
+                           <input [(ngModel)]="item.dosage" [ngModelOptions]="{standalone: true}" class="form-control form-control-sm border-0 bg-light" [placeholder]="'medical_history.prescription.dosage' | translate">
+                         </div>
+                         <div class="col-4">
+                           <input [(ngModel)]="item.frequency" [ngModelOptions]="{standalone: true}" class="form-control form-control-sm border-0 bg-light" [placeholder]="'medical_history.prescription.frequency' | translate">
+                         </div>
+                         <div class="col-4">
+                           <input [(ngModel)]="item.duration" [ngModelOptions]="{standalone: true}" class="form-control form-control-sm border-0 bg-light" [placeholder]="'medical_history.prescription.duration' | translate">
+                         </div>
+                       </div>
+                    </div>
+                    <div *ngIf="prescriptionsList().length === 0" class="text-center py-4 text-muted small opacity-50">
+                       <i class="bi bi-capsule fs-2 d-block mb-1"></i>
+                       {{ 'medical_history.prescription.empty' | translate }}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <button
-              type="submit"
-              class="btn btn-primary-premium w-100 py-3 mt-3"
-              [disabled]="recordForm.invalid"
-            >
-              {{ langService.translate('medical_history.save') }}
-            </button>
           </form>
+        </div>
+
+        <div class="modal-footer bg-white border-0 p-4">
+          <button type="button" class="btn btn-light rounded-pill px-4" (click)="showRecordModal.set(false)">{{ 'common.cancel' | translate }}</button>
+          <button type="button" class="btn btn-primary-premium rounded-pill px-5 shadow" [disabled]="recordForm.invalid" (click)="submitRecord()">
+             <i class="bi bi-check-circle-fill me-2"></i> {{ 'medical_history.save' | translate }}
+          </button>
         </div>
       </div>
     </div>
   </div>
+  <div class="modal-backdrop fade show" *ngIf="showRecordModal()"></div>
+
+  <!-- Modal y Styles -->
+  <style>
+    .search-container-premium {
+      transition: all 0.3s ease;
+    }
+    .search-container-premium:focus-within {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(13, 110, 253, 0.2) !important;
+    }
+    .patient-card-btn {
+      background: white;
+      border: 1px solid #f1f5f9 !important;
+    }
+    .patient-card-btn:hover {
+      background: #f8fafc;
+      transform: translateY(-4px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1) !important;
+    }
+  </style>
 </div>

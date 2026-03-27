@@ -17,6 +17,7 @@ const { sanitizeInput } = require('./utils/sanitize');
 const checkSubscription = require('./middlewares/subscription.middleware');
 const authMiddleware = require('./middlewares/auth.middleware');
 const validateEnv = require('./utils/validateEnv');
+const { initializeDatabase } = require('./utils/migrationManager');
 
 // Validate Environment before anything else
 validateEnv();
@@ -155,15 +156,16 @@ app.use('/api/', apiLimiter);
 app.use(morgan('dev'));
 app.use(express.json({ limit: '10kb' })); // Limit body size
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-// TEMPORARILY DISABLED: sanitizeInput causing email issues
-// app.use(sanitizeInput);
+app.use(sanitizeInput);
 app.use('/uploads', express.static('uploads'));
 
-// Swagger Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: 'CLINICA SAAS API Docs',
-}));
+// Swagger Documentation (only in development)
+if (process.env.NODE_ENV !== 'production') {
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customCss: '.swagger-ui .topbar { display: none }',
+    customSiteTitle: 'CLINICA SAAS API Docs',
+  }));
+}
 
 // Test DB Connection
 sequelize.authenticate()
@@ -191,6 +193,7 @@ app.use('/api/team', authMiddleware, checkSubscription, require('./routes/team.r
 app.use('/api/drugs', require('./routes/drug.routes'));
 app.use('/api/prescriptions', require('./routes/prescription.routes'));
 app.use('/api/lab-catalog', require('./routes/labCatalog.routes'));
+app.use('/api/exchange', require('./routes/exchange.routes'));
 
 // Health Check Endpoint
 app.get('/health', async (req, res) => {
@@ -245,27 +248,31 @@ app.use((err, req, res, next) => {
 // Port
 const PORT = process.env.PORT || 5000;
 
-// Sync Database and Start Server
-sequelize.sync({ force: false })
-  .then(async () => {
+// Initialize Database and Start Server
+const startServer = async () => {
+  try {
+    await initializeDatabase();
+    
     await seedRoles();
     if (process.env.NODE_ENV !== 'production') {
       await seedTestData();
     }
 
-    // Inicializar Socket.io para videoconsultas
     initializeSocket(server);
 
-    // Start Scheduler
     require('./utils/scheduler')();
-  })
-  .catch(err => logger.warn({ err }, 'Error syncing database (Ignoring)'))
-  .finally(() => {
+
     server.listen(PORT, () => {
       logger.info(`🚀 Server is running on port ${PORT}`);
       logger.info('🎥 WebSocket server ready for video consultations');
       logger.info(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`🔐 Security features enabled: Helmet, CORS, Rate Limiting`);
+      logger.info(`🔐 Security features enabled: Helmet, CORS, Rate Limiting, RBAC`);
     });
-  });
+  } catch (error) {
+    logger.error({ error }, 'Failed to start server');
+    process.exit(1);
+  }
+};
+
+startServer();
 

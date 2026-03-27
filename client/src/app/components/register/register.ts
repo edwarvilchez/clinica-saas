@@ -4,8 +4,8 @@ import { RouterModule, Router } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 import { API_URL, APP_VERSION } from '../../api-config';
-
 import Swal from 'sweetalert2';
 import { Subscription } from 'rxjs';
 
@@ -22,7 +22,7 @@ interface OrgOption {
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslatePipe],
   templateUrl: './register.html',
   styleUrl: './register.css',
 })

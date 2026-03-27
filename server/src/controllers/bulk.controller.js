@@ -8,6 +8,12 @@ exports.importData = async (req, res) => {
   const errors = [];
   let successCount = 0;
 
+  const { organizationId, role } = req.user;
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
+
+  // Non-superadmins must have an organization
+  const userOrgId = isSuperAdmin ? null : organizationId;
+
   try {
     let records = [];
     if (isCsvFile(filePath)) records = await parseCsv(filePath);
@@ -25,8 +31,8 @@ exports.importData = async (req, res) => {
 
       const t = await sequelize.transaction();
       try {
-        if (type === 'patients') await importPatient(record, t);
-        else if (type === 'doctors') await importDoctor(record, t);
+        if (type === 'patients') await importPatient(record, t, userOrgId);
+        else if (type === 'doctors') await importDoctor(record, t, userOrgId);
         else throw new Error('Invalid import type');
         await t.commit();
         successCount++;
@@ -50,7 +56,7 @@ exports.importData = async (req, res) => {
   }
 };
 
-async function importPatient(data, transaction) {
+async function importPatient(data, transaction, organizationId) {
     const patientRole = await Role.findOne({ where: { name: 'PATIENT' } });
     if (!patientRole) throw new Error('Patient role not found');
 
@@ -61,7 +67,8 @@ async function importPatient(data, transaction) {
         firstName: data.firstName,
         lastName: data.lastName,
         gender: data.gender,
-        roleId: patientRole.id
+        roleId: patientRole.id,
+        organizationId
     }, { transaction });
 
     await Patient.create({
@@ -76,7 +83,7 @@ async function importPatient(data, transaction) {
     }, { transaction });
 }
 
-async function importDoctor(data, transaction) {
+async function importDoctor(data, transaction, organizationId) {
     const doctorRole = await Role.findOne({ where: { name: 'DOCTOR' } });
     if (!doctorRole) throw new Error('Doctor role not found');
 
@@ -98,7 +105,8 @@ async function importDoctor(data, transaction) {
         firstName: data.firstName,
         lastName: data.lastName,
         gender: data.gender,
-        roleId: doctorRole.id
+        roleId: doctorRole.id,
+        organizationId
     }, { transaction });
 
     await Doctor.create({

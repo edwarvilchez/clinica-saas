@@ -1,11 +1,11 @@
 <div class="animate-fade-in">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h2 class="mb-1">{{ langService.translate('payments.title') }}</h2>
-      <p class="text-muted">{{ langService.translate('payments.subtitle') }}</p>
+      <h2 class="mb-1">{{ 'payments.title' | translate }}</h2>
+      <p class="text-muted">{{ 'payments.subtitle' | translate }}</p>
     </div>
     <button class="btn btn-primary-premium" (click)="createNewPayment()">
-      <i class="bi bi-plus-circle me-2"></i> {{ langService.translate('payments.newPayment') }}
+      <i class="bi bi-plus-circle me-2"></i> {{ 'payments.newPayment' | translate }}
     </button>
   </div>
 
@@ -19,14 +19,14 @@
           <input
             type="text"
             class="form-control bg-transparent border-0 py-2 shadow-none"
-            [placeholder]="langService.translate('common.search')"
+            [placeholder]="'common.search' | translate"
             (input)="updateSearch($event)"
           />
         </div>
       </div>
       <div class="col-md-3" *ngIf="!authService.hasRole(['PATIENT'])">
         <button class="btn btn-primary-premium w-100 py-2" (click)="exportReport()">
-          {{ langService.translate('payments.export') }}
+          {{ 'payments.export' | translate }}
         </button>
       </div>
     </div>
@@ -37,16 +37,16 @@
       <table class="table table-hover align-middle mb-0">
         <thead class="bg-light">
           <tr>
-            <th class="ps-4 py-3">{{ langService.translate('payments.reference') }}</th>
+            <th class="ps-4 py-3">{{ 'payments.reference' | translate }}</th>
             <th *ngIf="!authService.hasRole(['PATIENT'])">
-              {{ langService.translate('payments.patient') }}
+              {{ 'payments.patient' | translate }}
             </th>
-            <th>{{ langService.translate('payments.doctorConsultation') }}</th>
-            <th>{{ langService.translate('payments.concept') }}</th>
-            <th>{{ langService.translate('payments.amount') }}</th>
-            <th>{{ langService.translate('payments.fecha') }}</th>
-            <th>{{ langService.translate('common.status') }}</th>
-            <th class="text-end pe-4">{{ langService.translate('common.actions') }}</th>
+            <th>{{ 'payments.doctorConsultation' | translate }}</th>
+            <th>{{ 'payments.concept' | translate }}</th>
+            <th>{{ 'payments.amount' | translate }}</th>
+            <th>{{ 'payments.fecha' | translate }}</th>
+            <th>{{ 'common.status' | translate }}</th>
+            <th class="text-end pe-4">{{ 'common.actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -56,7 +56,7 @@
               <i
                 class="bi bi-paperclip text-primary ms-1"
                 *ngIf="p.receiptUrl"
-                title="Tiene adjunto"
+                [title]="'common.printing' | translate"
               ></i>
             </td>
             <td *ngIf="!authService.hasRole(['PATIENT'])">
@@ -78,13 +78,13 @@
                       : 'bi-person-workspace text-primary'
                   "
                 ></i>
-                {{ p.Appointment.type === 'Video' ? 'Videoconsulta' : 'Presencial' }}
+                {{ (p.Appointment.type === 'Video' ? 'dashboard.stats.videoCalls' : 'dashboard.stats.inPerson') | translate }}
               </div>
               <div class="x-small text-muted" *ngIf="p.Appointment?.Doctor">
                 {{ p.Appointment.Doctor.User.firstName }} {{ p.Appointment.Doctor.User.lastName }}
               </div>
               <span class="text-muted small" *ngIf="!p.Appointment">{{
-                langService.translate('payments.generalPayment')
+                'payments.generalPayment' | translate
               }}</span>
             </td>
             <td>{{ p.concept }}</td>
@@ -107,16 +107,14 @@
                     : 'bg-warning bg-opacity-10 text-warning'
                 "
                 >{{
-                  p.status === 'Paid'
-                    ? langService.translate('payments.paid')
-                    : langService.translate('payments.pending')
+                    (p.status === 'Paid' ? 'payments.paid' : (p.status === 'Pending' ? 'payments.pending' : '')) | translate
                 }}</span
               >
             </td>
             <td class="text-end pe-4">
               <button
                 class="btn btn-sm btn-light border-0 me-1"
-                [title]="langService.translate('payments.viewReceipt')"
+                [title]="'payments.viewReceipt' | translate"
                 (click)="viewReceipt(p)"
               >
                 <i class="bi bi-file-earmark-text"></i>
@@ -126,7 +124,7 @@
                 class="btn btn-sm btn-light border-0 text-primary me-1"
                 *ngIf="p.status === 'Pending' && authService.hasRole(['PATIENT'])"
                 (click)="editPatientPayment(p)"
-                [title]="langService.translate('payments.edit')"
+                [title]="'payments.edit' | translate"
               >
                 <i class="bi bi-pencil-square"></i>
               </button>
@@ -134,7 +132,7 @@
                 class="btn btn-sm btn-light border-0 text-danger me-1"
                 *ngIf="p.status === 'Pending' && authService.hasRole(['PATIENT'])"
                 (click)="deletePayment(p.id)"
-                [title]="langService.translate('payments.delete')"
+                [title]="'payments.delete' | translate"
               >
                 <i class="bi bi-trash"></i>
               </button>
@@ -142,15 +140,15 @@
                 class="btn btn-sm btn-light border-0 text-success"
                 *ngIf="p.status === 'Pending' && !authService.hasRole(['PATIENT'])"
                 (click)="collectPayment(p.id)"
-                [title]="langService.translate('payments.collect')"
+                [title]="'payments.collect' | translate"
               >
-                <i class="bi bi-wallet2 me-1"></i> {{ langService.translate('payments.collect') }}
+                <i class="bi bi-wallet2 me-1"></i> {{ 'payments.collect' | translate }}
               </button>
             </td>
           </tr>
           <tr *ngIf="filteredPayments().length === 0">
             <td colspan="7" class="text-center py-4 text-muted">
-              {{ langService.translate('common.noResults') || 'No data found' }}
+              {{ 'common.noResults' | translate }}
             </td>
           </tr>
         </tbody>

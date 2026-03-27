@@ -24,13 +24,34 @@ const generarPasswordTemporal = () => {
 exports.register = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { username, email, password, firstName, lastName, role: bodyRole, roleName, patientData, businessName, accountType, licenseNumber, address } = req.body;
+    const { username, email, password, firstName, lastName, role: bodyRole, roleName, patientData, businessName, accountType, licenseNumber, address, inviteToken } = req.body;
+    
+    // Default to PATIENT for public registration
     let finalRoleName = bodyRole || roleName || 'PATIENT';
     const finalAccountType = accountType || 'PATIENT';
 
-    // Map account types to internal roles if necessary
-    if (finalAccountType === 'PROFESSIONAL') finalRoleName = 'DOCTOR';
-    if (finalAccountType === 'CLINIC' || finalAccountType === 'HOSPITAL') finalRoleName = 'ADMINISTRATIVE';
+    // ROLES THAT REQUIRE INVITATION
+    const restrictedRoles = ['SUPER_ADMIN', 'ADMIN', 'ADMINISTRATIVE', 'DOCTOR', 'NURSE'];
+    const isRestrictedRole = restrictedRoles.includes(finalRoleName);
+    
+    // Verify invite token for restricted roles
+    if (isRestrictedRole) {
+      const validInviteTokens = {
+        'super-admin-token': 'SUPER_ADMIN',
+        'admin-token': 'ADMIN',
+        'staff-token': 'ADMINISTRATIVE',
+      };
+      
+      if (!inviteToken || !validInviteTokens[inviteToken]) {
+        await t.rollback();
+        return res.status(403).json({ 
+          message: 'Registro no autorizado. Se requiere invitación para crear cuentas de personal.' 
+        });
+      }
+      
+      // Override role if valid token provided
+      finalRoleName = validInviteTokens[inviteToken];
+    }
 
     // Check if user already exists to give a cleaner error before database constraint
     const existingUser = await User.findOne({ where: { [Op.or]: [{ email }, { username }] } });
@@ -48,6 +69,25 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'El rol especificado no es válido.' });
     }
 
+    // Determine organization
+    let organizationId = null;
+    
+    // For non-restricted roles (PATIENT), look for organizationId in body or create default
+    if (!isRestrictedRole) {
+      // Patients can be assigned to an organization via invite or register to a specific one
+      if (patientData?.organizationId) {
+        const org = await Organization.findByPk(patientData.organizationId);
+        if (org) {
+          organizationId = org.id;
+        }
+      }
+    } else {
+      // Restricted roles: must be invited by existing organization
+      if (patientData?.organizationId) {
+        organizationId = patientData.organizationId;
+      }
+    }
+
     // Si se envía una contraseña, se usa. Si no, se genera una temporal.
     const finalPassword = password || generarPasswordTemporal();
     const isTemporary = !password;
@@ -61,6 +101,7 @@ exports.register = async (req, res) => {
       businessName,
       accountType: finalAccountType,
       roleId: role.id,
+      organizationId,
       gender: patientData?.gender || req.body.gender,
       mustChangePassword: isTemporary,
       temporaryPassword: isTemporary ? finalPassword : null
@@ -69,7 +110,7 @@ exports.register = async (req, res) => {
 
     // If registering as a patient, create patient record
     if (role.name === 'PATIENT' && patientData) {
-      // Check if documentId already exists
+      // Check if documentId already exists (global check - documentId should be unique)
       const existingPatient = await Patient.findOne({ where: { documentId: patientData.documentId } });
       if (existingPatient) {
         await t.rollback();
@@ -84,7 +125,8 @@ exports.register = async (req, res) => {
         gender: patientData.gender,
         address: patientData.address,
         bloodType: patientData.bloodType,
-        allergies: patientData.allergies
+        allergies: patientData.allergies,
+        organizationId
       }, { transaction: t });
     }
 
@@ -95,12 +137,13 @@ exports.register = async (req, res) => {
         userId: user.id,
         licenseNumber: licenseNumber || 'TEMP-' + Date.now(),
         address: address,
-        phone: req.body.phone
+        phone: req.body.phone,
+        organizationId
       }, { transaction: t });
     }
 
-    // Create Organization for business accounts
-    if (['PROFESSIONAL', 'CLINIC', 'HOSPITAL'].includes(finalAccountType)) {
+    // Create Organization for business accounts (only if not already assigned)
+    if (!organizationId && ['PROFESSIONAL', 'CLINIC', 'HOSPITAL'].includes(finalAccountType)) {
       const orgName = businessName || (finalAccountType === 'PROFESSIONAL' ? `${firstName} ${lastName}` : username);
       const newOrg = await Organization.create({
         name: orgName,
@@ -112,9 +155,7 @@ exports.register = async (req, res) => {
 
       // Link user to organization
       await user.update({ organizationId: newOrg.id }, { transaction: t });
-
-      // Update returned user object
-      user.organizationId = newOrg.id;
+      organizationId = newOrg.id;
     }
 
     await t.commit();

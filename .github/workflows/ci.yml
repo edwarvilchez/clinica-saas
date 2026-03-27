@@ -25,6 +25,11 @@ jobs:
           cd client
           npm ci --no-audit
 
+      - name: TypeScript Validation
+        run: |
+          cd client
+          npx tsc --noEmit
+
       - name: Build Validation
         run: |
           cd client
@@ -53,7 +58,7 @@ jobs:
           cd server
           npm run lint || echo "Lint script not found, skipping."
 
-      - name: Test (if exists)
+      - name: Run Tests
         run: |
           cd server
-          npm test || echo "Tests failed or not found, continuing."
+          npm run test:coverage || echo "Tests failed or not found, continuing."

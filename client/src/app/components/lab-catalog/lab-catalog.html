@@ -4,8 +4,8 @@
     class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4"
   >
     <div class="flex-grow-1">
-      <h2 class="fw-bold mb-1">{{ langService.translate('lab_catalog.title') }}</h2>
-      <p class="text-muted mb-0 small">{{ langService.translate('lab_catalog.subtitle') }}</p>
+      <h2 class="fw-bold mb-1">{{ 'lab_catalog.title' | translate }}</h2>
+      <p class="text-muted mb-0 small">{{ 'lab_catalog.subtitle' | translate }}</p>
     </div>
 
     <!-- Search Bar -->
@@ -17,7 +17,7 @@
         type="text"
         [formControl]="searchControl"
         class="form-control ps-5 rounded-pill border-0 shadow-sm glass-morphism py-2"
-        [placeholder]="langService.translate('common.search')"
+        [placeholder]="'common.search' | translate"
       />
     </div>
 
@@ -28,14 +28,14 @@
         class="btn btn-outline-primary shadow-sm rounded-pill px-3"
         (click)="importCsv()"
       >
-        <i class="bi bi-upload me-1"></i> {{ langService.translate('lab_catalog.bulkImport') }}
+        <i class="bi bi-upload me-1"></i> {{ 'lab_catalog.bulkImport' | translate }}
       </button>
       <button
         *ngIf="activeTab() === 'tests'"
         class="btn btn-primary-premium shadow-sm rounded-pill px-3"
         (click)="openTestModal()"
       >
-        <i class="bi bi-plus-circle me-1"></i> {{ langService.translate('lab_catalog.newTest') }}
+        <i class="bi bi-plus-circle me-1"></i> {{ 'lab_catalog.newTest' | translate }}
       </button>
       <button
         *ngIf="activeTab() === 'combos'"
@@ -43,7 +43,7 @@
         (click)="openComboModal()"
       >
         <i class="bi bi-collection-plus me-1"></i>
-        {{ langService.translate('lab_catalog.newCombo') }}
+        {{ 'lab_catalog.newCombo' | translate }}
       </button>
     </div>
   </div>
@@ -58,10 +58,10 @@
       </div>
       <div>
         <p class="mb-0 small fw-bold text-dark">
-          {{ langService.translate('lab_catalog.rateInfo') }}
+          {{ 'lab_catalog.rateInfo' | translate }}
         </p>
         <p class="mb-0 x-small text-muted">
-          {{ langService.translate('lab_catalog.rateDetail') }} {{ currencyService.rate() }} Bs.
+          {{ 'lab_catalog.rateDetail' | translate }} {{ currencyService.rate() }} Bs.
         </p>
       </div>
     </div>
@@ -70,9 +70,9 @@
         class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3 py-2 small fw-bold"
       >
         {{
-          currencyService.currency() === 'USD'
-            ? langService.translate('lab_catalog.showingInUsd')
-            : langService.translate('lab_catalog.showingInVes')
+          (currencyService.currency() === 'USD'
+            ? 'lab_catalog.showingInUsd'
+            : 'lab_catalog.showingInVes') | translate
         }}
       </span>
     </div>
@@ -87,7 +87,7 @@
         (click)="activeTab.set('tests')"
       >
         <i class="bi bi-clipboard2-pulse me-2"></i>
-        {{ langService.translate('lab_catalog.testsTab') }}
+        {{ 'lab_catalog.testsTab' | translate }}
       </button>
     </li>
     <li class="nav-item flex-grow-1 text-center" role="presentation">
@@ -96,7 +96,7 @@
         [class.active]="activeTab() === 'combos'"
         (click)="activeTab.set('combos')"
       >
-        <i class="bi bi-grid-36-gap me-2"></i> {{ langService.translate('lab_catalog.combosTab') }}
+        <i class="bi bi-grid-36-gap me-2"></i> {{ 'lab_catalog.combosTab' | translate }}
       </button>
     </li>
   </ul>
@@ -109,19 +109,19 @@
           <thead class="bg-light">
             <tr>
               <th class="ps-4 py-3 text-muted text-uppercase small fw-bold">
-                {{ langService.translate('lab_catalog.table.category') }}
+                {{ 'lab_catalog.table.category' | translate }}
               </th>
               <th class="py-3 text-muted text-uppercase small fw-bold">
-                {{ langService.translate('lab_catalog.table.price') }}
+                {{ 'lab_catalog.table.price' | translate }}
               </th>
               <th class="py-3 text-muted text-uppercase small fw-bold text-center">
-                {{ langService.translate('lab_catalog.table.status') }}
+                {{ 'lab_catalog.table.status' | translate }}
               </th>
               <th
                 class="pe-4 py-3 text-end text-muted text-uppercase small fw-bold"
                 *ngIf="canManage()"
               >
-                {{ langService.translate('lab_catalog.table.actions') }}
+                {{ 'lab_catalog.table.actions' | translate }}
               </th>
             </tr>
           </thead>
@@ -165,9 +165,9 @@
                   "
                 >
                   {{
-                    test.isActive
-                      ? langService.translate('lab_catalog.active')
-                      : langService.translate('lab_catalog.inactive')
+                    (test.isActive
+                      ? 'lab_catalog.active'
+                      : 'lab_catalog.inactive') | translate
                   }}
                 </span>
               </td>
@@ -185,9 +185,9 @@
             </tr>
             <tr *ngIf="filteredTests().length === 0">
               <td colspan="4" class="text-center py-5 text-muted">
-                {{ langService.translate('lab_catalog.noTests') }}
+                {{ 'lab_catalog.noTests' | translate }}
                 <div *ngIf="searchControl.value" class="mt-2 x-small">
-                  (Trate buscando por otro nombre o categoría)
+                  ({{ 'lab_catalog.searchHint' | translate }})
                 </div>
               </td>
             </tr>
@@ -205,19 +205,19 @@
           <thead class="bg-light">
             <tr>
               <th class="ps-4 py-3 text-muted text-uppercase small fw-bold">
-                {{ langService.translate('lab_catalog.modals.comboName') }}
+                {{ 'lab_catalog.modals.comboName' | translate }}
               </th>
               <th class="py-3 text-muted text-uppercase small fw-bold">
-                {{ langService.translate('lab_catalog.table.price') }}
+                {{ 'lab_catalog.table.price' | translate }}
               </th>
               <th class="py-3 text-muted text-uppercase small fw-bold">
-                {{ langService.translate('lab_catalog.modals.selectTests') }}
+                {{ 'lab_catalog.modals.selectTests' | translate }}
               </th>
               <th
                 class="pe-4 py-3 text-end text-muted text-uppercase small fw-bold"
                 *ngIf="canManage()"
               >
-                {{ langService.translate('lab_catalog.table.actions') }}
+                {{ 'lab_catalog.table.actions' | translate }}
               </th>
             </tr>
           </thead>
@@ -272,9 +272,9 @@
             </tr>
             <tr *ngIf="filteredCombos().length === 0">
               <td colspan="4" class="text-center py-5 text-muted">
-                {{ langService.translate('lab_catalog.noCombos') }}
+                {{ 'lab_catalog.noCombos' | translate }}
                 <div *ngIf="searchControl.value" class="mt-2 x-small">
-                  (Trate buscando por otro nombre de combo o examen incluido)
+                  ({{ 'lab_catalog.comboHint' | translate }})
                 </div>
               </td>
             </tr>

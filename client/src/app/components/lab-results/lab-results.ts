@@ -5,6 +5,7 @@ import { RouterModule } from '@angular/router';
 import Swal from 'sweetalert2';
 import { LabPdfService } from '../../services/lab-pdf.service';
 import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 import { LabReport, HEMATOLOGY_STRUCTURE, CHEMISTRY_STRUCTURE } from './lab-report.model';
 import { LabCatalogService, LabTest } from '../../services/lab-catalog.service';
 import { AuthService } from '../../services/auth.service';
@@ -15,7 +16,7 @@ import { API_URL } from '../../api-config';
 @Component({
   selector: 'app-lab-results',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslatePipe],
   templateUrl: './lab-results.html',
   styleUrls: []
 })
@@ -89,7 +90,10 @@ export class LabResults implements OnInit {
   }
 
   loadPatients() {
-    this.http.get<any[]>(`${API_URL}/patients`).subscribe(data => this.patients.set(data));
+    this.http.get<any>(`${API_URL}/patients`).subscribe(data => {
+      const list = Array.isArray(data) ? data : (data.patients || []);
+      this.patients.set(list);
+    });
   }
 
   loadLabResults() {

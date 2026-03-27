@@ -1,11 +1,11 @@
 <div class="animate-fade-in">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h2 class="mb-1">Equipo Médico</h2>
-      <p class="text-muted">Directorio de doctores y especialistas</p>
+      <h2 class="mb-1">{{ 'doctors.title' | translate }}</h2>
+      <p class="text-muted">{{ 'doctors.subtitle' | translate }}</p>
     </div>
     <button class="btn btn-primary-premium">
-      <i class="bi bi-person-plus-fill me-2"></i> Nuevo Doctor
+      <i class="bi bi-person-plus-fill me-2"></i> {{ 'doctors.new' | translate }}
     </button>
   </div>
 
@@ -19,7 +19,7 @@
           <input
             type="text"
             class="form-control bg-transparent border-0 py-2 shadow-none"
-            placeholder="Buscar por nombre o especialidad..."
+            [placeholder]="'doctors.searchPlaceholder' | translate"
             [(ngModel)]="searchTerm"
             [ngModelOptions]="{ standalone: true }"
           />
@@ -27,9 +27,8 @@
       </div>
       <div class="col-md-3">
         <select class="form-select glass-morphism border rounded-3 py-2">
-          <option>Todas las especialidades</option>
-          <option>Cardiología</option>
-          <option>Pediatría</option>
+          <option>{{ 'doctors.allSpecialties' | translate }}</option>
+          <option *ngFor="let s of specialties()">{{ s.name }}</option>
         </select>
       </div>
     </div>
@@ -59,12 +58,12 @@
         />
         <h5 class="fw-bold mb-1">Dr. {{ doctor.User.firstName }} {{ doctor.User.lastName }}</h5>
         <p class="text-primary small fw-bold mb-3">
-          {{ doctor.Specialty?.name || 'Especialista' }}
+          {{ doctor.Specialty?.name || ('doctors.specialist' | translate) }}
         </p>
 
         <div class="d-flex justify-content-center gap-2 mb-4">
           <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3"
-            >Disponible</span
+            >{{ 'doctors.available' | translate }}</span
           >
           <span class="badge bg-light text-muted rounded-pill px-3"
             >Lic: {{ doctor.licenseNumber }}</span
@@ -72,14 +71,14 @@
         </div>
 
         <div class="d-grid gap-2">
-          <button class="btn btn-light rounded-pill py-2 border-0">Ver Perfil</button>
-          <button class="btn btn-primary-premium rounded-pill py-2">Agendar</button>
+          <button class="btn btn-light rounded-pill py-2 border-0">{{ 'doctors.viewProfile' | translate }}</button>
+          <button class="btn btn-primary-premium rounded-pill py-2">{{ 'doctors.schedule' | translate }}</button>
         </div>
       </div>
     </div>
 
     <div class="col-12 text-center py-5" *ngIf="filteredDoctors().length === 0">
-      <p class="text-muted fs-5">No se encontraron doctores con esos criterios.</p>
+      <p class="text-muted fs-5">{{ 'doctors.noResults' | translate }}</p>
     </div>
   </div>
 </div>

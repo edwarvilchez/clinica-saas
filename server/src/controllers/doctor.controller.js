@@ -1,8 +1,23 @@
-const { Doctor, User, Specialty } = require('../models');
+const { Doctor, User, Specialty, Organization } = require('../models');
 
 exports.getDoctors = async (req, res) => {
   try {
-    const doctors = await Doctor.findAll({ include: [User, Specialty] });
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
+
+    const whereClause = {};
+    
+    if (!isSuperAdmin && organizationId) {
+      whereClause.organizationId = organizationId;
+    }
+
+    const doctors = await Doctor.findAll({ 
+      where: whereClause,
+      include: [
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'organizationId', 'isActive'] }, 
+        { model: Specialty }
+      ]
+    });
     res.json(doctors);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -11,11 +26,20 @@ exports.getDoctors = async (req, res) => {
 
 exports.toggleDoctorStatus = async (req, res) => {
   try {
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
     const { id } = req.params;
-    const doctor = await Doctor.findByPk(id, { include: [User] });
+    
+    const doctor = await Doctor.findByPk(id, { 
+      include: [{ model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'organizationId', 'isActive'] }] 
+    });
     
     if (!doctor || !doctor.User) {
       return res.status(404).json({ message: 'Doctor or associated user not found' });
+    }
+
+    if (!isSuperAdmin && doctor.User.organizationId !== organizationId) {
+      return res.status(403).json({ message: 'No tienes permisos sobre este doctor' });
     }
 
     const newStatus = !doctor.User.isActive;
@@ -32,10 +56,17 @@ exports.toggleDoctorStatus = async (req, res) => {
 
 exports.deleteDoctor = async (req, res) => {
   try {
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
     const { id } = req.params;
-    const doctor = await Doctor.findByPk(id);
-    if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
     
+    const doctor = await Doctor.findByPk(id, { include: [User] });
+    if (!doctor) return res.status(404).json({ message: 'Doctor not found' });
+
+    if (!isSuperAdmin && doctor.User.organizationId !== organizationId) {
+      return res.status(403).json({ message: 'No tienes permisos sobre este doctor' });
+    }
+
     await User.destroy({ where: { id: doctor.userId } });
     res.json({ message: 'Doctor deleted successfully' });
   } catch (error) {

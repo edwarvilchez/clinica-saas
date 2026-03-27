@@ -7,6 +7,14 @@ const Nurse = sequelize.define('Nurse', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'Organizations',
+      key: 'id'
+    }
+  },
   licenseNumber: {
     type: DataTypes.STRING,
     unique: true

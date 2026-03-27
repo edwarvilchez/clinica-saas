@@ -100,12 +100,8 @@
                     >
                       {{
                         payment.status === 'Paid'
-                          ? langService.lang() === 'es'
-                            ? 'Verificado'
-                            : 'Verified'
-                          : langService.lang() === 'es'
-                            ? 'Pendiente'
-                            : 'Pending'
+                          ? langService.translate('payments.paid')
+                          : langService.translate('payments.pending')
                       }}
                     </span>
                   </td>

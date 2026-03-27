@@ -147,17 +147,23 @@ const seedTestData = async () => {
       lastName: 'Cárdenas',
       role: 'DOCTOR',
       accountType: 'PROFESSIONAL',
+      businessName: 'Andrés Cárdenas Practice',
       gender: 'Male'
     });
     
-    // Create professional profile
-    await Doctor.findOrCreate({
-      where: { userId: expiredDoc.id },
-      defaults: { userId: expiredDoc.id, licenseNumber: 'MED-EXP-01', phone: '+58412-0000000' }
-    });
-
     const proOrg = await createOrg(expiredDoc, 'PROFESSIONAL', 'EXPIRED');
     console.log(`👨‍⚕️ Created EXPIRED Professional: ${proOrg.name}`);
+
+    // Create professional profile after org exists
+    await Doctor.findOrCreate({
+      where: { userId: expiredDoc.id },
+      defaults: { 
+        userId: expiredDoc.id, 
+        licenseNumber: 'MED-EXP-01', 
+        phone: '+58412-0000000',
+        organizationId: proOrg.id 
+      }
+    });
 
 
     // ── 7. Hospital Staff (Linked to ACTIVE Hospital) ──────────────────
@@ -197,18 +203,45 @@ const seedTestData = async () => {
     for (const data of hospitalStaff) {
       const user = await upsertUser(data);
       if (data.profile.type === 'DOCTOR') {
-         // Create dept/specialty if needed
          const [dept] = await Department.findOrCreate({ where: { name: data.profile.specialty }, defaults: { name: data.profile.specialty }});
          const [spec] = await Specialty.findOrCreate({ where: { name: data.profile.specialty }, defaults: { name: data.profile.specialty, departmentId: dept.id }});
-         await Doctor.findOrCreate({ 
+         
+         const [doctor] = await Doctor.findOrCreate({ 
            where: { userId: user.id }, 
-           defaults: { userId: user.id, licenseNumber: data.profile.license, specialtyId: spec.id }
+           defaults: { 
+             userId: user.id, 
+             licenseNumber: data.profile.license, 
+             specialtyId: spec.id,
+             organizationId: hospitalOrg.id 
+           }
          });
+         if (doctor) await doctor.update({ organizationId: hospitalOrg.id });
+      } else if (data.profile.type === 'NURSE') {
+        const [nurse] = await Nurse.findOrCreate({
+          where: { userId: user.id },
+          defaults: {
+            userId: user.id,
+            specialization: data.profile.specialization || 'General Nursing',
+            shift: data.profile.shift || 'Morning',
+            organizationId: hospitalOrg.id
+          }
+        });
+        if (nurse) await nurse.update({ organizationId: hospitalOrg.id });
+      } else if (data.profile.type === 'STAFF') {
+        const [staff] = await Staff.findOrCreate({
+          where: { userId: user.id },
+          defaults: {
+            userId: user.id,
+            employeeId: data.profile.employeeId,
+            position: data.profile.position,
+            organizationId: hospitalOrg.id
+          }
+        });
+        if (staff) await staff.update({ organizationId: hospitalOrg.id });
       }
-      // ... Add other profile creations as needed (Nurse, Staff) logic is same as before
     }
 
-    // ── 8. PATIENTS (No Org) ───────────────────────────────────────────
+    // ── 8. PATIENTS (Linked to Hospital Org) ─────────────────────────────
     const patients = [
       {
         username: 'pac.torres',
@@ -218,16 +251,23 @@ const seedTestData = async () => {
         role: 'PATIENT',
         accountType: 'PATIENT',
         gender: 'Male',
+        organizationId: hospitalOrg.id,
         profile: { documentId: 'V-12345678' }
       }
     ];
 
     for (const data of patients) {
       const user = await upsertUser(data);
-      await Patient.findOrCreate({
+      const [patient] = await Patient.findOrCreate({
         where: { userId: user.id },
-        defaults: { userId: user.id, documentId: data.profile.documentId, gender: 'Male' }
+        defaults: { 
+          userId: user.id, 
+          documentId: data.profile.documentId, 
+          gender: 'Male',
+          organizationId: data.organizationId || null
+        }
       });
+      if (patient) await patient.update({ organizationId: data.organizationId || null });
     }
 
     console.log(`\n✅ Database Seeded Successfully!`);

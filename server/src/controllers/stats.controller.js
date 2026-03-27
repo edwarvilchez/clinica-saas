@@ -1,9 +1,22 @@
-const { Appointment, Patient, Doctor, Payment, User, Specialty } = require('../models');
+const { Appointment, Patient, Doctor, Payment, User, Specialty, Organization } = require('../models');
 const { Op } = require('sequelize');
+const sequelize = require('../config/db.config');
+
+const getOrganizationFilter = (user) => {
+  const { organizationId, role } = user;
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
+  
+  if (isSuperAdmin || !organizationId) {
+    return {};
+  }
+  
+  return { organizationId };
+};
 
 exports.getStats = async (req, res) => {
-  const userRole = req.user.role ? req.user.role.toUpperCase() : 'GUEST';
-  const userId = req.user.id;
+  const { role, id: userId, organizationId } = req.user;
+  const userRole = role ? role.toUpperCase() : 'GUEST';
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
 
   const responseData = {
     appointmentsToday: 0,
@@ -40,13 +53,29 @@ exports.getStats = async (req, res) => {
 
     // --- BASIC FILTERS ---
     let patientId = null;
+    let doctorWhereClause = {};
+
+    // Get organization filter
+    const orgFilter = getOrganizationFilter(req.user);
+
     if (userRole === 'PATIENT') {
-      const patient = await Patient.findOne({ where: { userId } });
+      const patient = await Patient.findOne({ where: { userId, ...orgFilter } });
       if (patient) patientId = patient.id;
+    } else if (userRole === 'DOCTOR' && !isSuperAdmin) {
+      const doctor = await Doctor.findOne({ where: { userId, ...orgFilter } });
+      if (doctor) doctorWhereClause = { doctorId: doctor.id };
     }
 
     // 1. Basic Counts
-    const baseWhere = patientId ? { patientId } : {};
+    const baseWhere = patientId ? { patientId } : doctorWhereClause;
+    
+    // Filter appointments by organization for admin roles
+    if (!isSuperAdmin && organizationId) {
+      baseWhere.doctorId = {
+        [Op.in]: sequelize.literal(`(SELECT id FROM "Doctors" WHERE "userId" IN (SELECT id FROM "Users" WHERE "organizationId" = '${organizationId}'))`)
+      };
+    }
+
     responseData.appointmentsToday = await Appointment.count({ 
       where: { ...baseWhere, date: { [Op.between]: [todayStart, todayEnd] } } 
     });
@@ -54,18 +83,22 @@ exports.getStats = async (req, res) => {
       where: { ...baseWhere, status: 'Pending' } 
     });
 
-    if (['SUPERADMIN', 'ADMINISTRATIVE', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(userRole)) {
-      responseData.totalPatients = await Patient.count();
+    if (['SUPER_ADMIN', 'SUPERADMIN', 'ADMINISTRATIVE', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(userRole)) {
+      const patientWhere = isSuperAdmin ? {} : orgFilter;
+      responseData.totalPatients = await Patient.count({ include: [{ model: User, where: patientWhere, attributes: [] }] });
     }
 
-    // 2. Specialty Breakdown (Consultations Pending vs Completed)
+    // 2. Specialty Breakdown
+    const specialtyWhere = isSuperAdmin ? {} : orgFilter;
     const specialties = await Specialty.findAll({
+        where: specialtyWhere,
         include: [{
             model: Doctor,
             required: false,
+            where: isSuperAdmin ? {} : orgFilter,
             include: [{
                 model: Appointment,
-                where: patientId ? { patientId } : {},
+                where: patientId ? { patientId } : doctorWhereClause,
                 required: false
             }]
         }]
@@ -83,99 +116,107 @@ exports.getStats = async (req, res) => {
         return { name: s.name, pending, completed };
     });
 
-    // 3. Income Details (USD / Bs)
-    const adminRoles = ['SUPERADMIN', 'ADMINISTRATIVE', 'RECEPTIONIST'];
-    const isDoctor = userRole === 'DOCTOR';
-
-    if (adminRoles.includes(userRole) || isDoctor) {
-        let paymentWhere = { 
-            status: 'Paid',
-            createdAt: { [Op.gte]: monthStart }
-        };
-
-        let paymentInclude = [];
-        if (isDoctor) {
-            const doctor = await Doctor.findOne({ where: { userId } });
-            if (doctor) {
-                paymentWhere.appointmentId = { [Op.ne]: null }; 
-                paymentInclude.push({
-                    model: Appointment,
-                    where: { doctorId: doctor.id },
-                    required: true
-                });
-            } else {
-                paymentWhere.id = null; 
-            }
+    // 3. Appointments for upcoming list
+    const upcomingWhere = { 
+      ...baseWhere,
+      date: { [Op.gte]: now },
+      status: { [Op.in]: ['Pending', 'Confirmed'] }
+    };
+    
+    const upcomingAppointments = await Appointment.findAll({
+      where: upcomingWhere,
+      limit: 5,
+      order: [['date', 'ASC']],
+      include: [
+        { model: Patient, include: [User] },
+        { model: Doctor, include: [User, Specialty] }
+      ]
+    });
+    
+    responseData.upcomingAppointments = upcomingAppointments.map(apt => {
+      const a = apt.toJSON();
+      
+      return {
+        id: a.id,
+        date: a.date,
+        // Format time as HH:MM for the frontend's formatTime function
+        time: a.date ? 
+                 new Date(a.date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: false }) : 
+                 '00:00',
+        patient: {
+          name: a.Patient && a.Patient.User ? 
+                `${a.Patient.User.firstName} ${a.Patient.User.lastName}` : 
+                'Paciente'
+        },
+        doctor: {
+          name: a.Doctor && a.Doctor.User ? 
+                `${a.Doctor.User.firstName} ${a.Doctor.User.lastName}` : 
+                'Doctor',
+          specialty: a.Doctor && a.Doctor.Specialty ? 
+                     a.Doctor.Specialty.name : 
+                     'Medicina General'
         }
+      };
+    });
 
-        const payments = await Payment.findAll({
-            where: paymentWhere,
-            include: paymentInclude
-        });
+    // 4. Income Stats (only for authorized roles)
+    if (['SUPER_ADMIN', 'SUPERADMIN', 'ADMINISTRATIVE'].includes(userRole)) {
+      const paymentWhere = isSuperAdmin ? {} : { organizationId };
+      
+      const dayPayments = await Payment.findAll({ 
+        where: { ...paymentWhere, status: 'Paid', createdAt: { [Op.between]: [todayStart, todayEnd] } } 
+      });
+      const weekPayments = await Payment.findAll({ 
+        where: { ...paymentWhere, status: 'Paid', createdAt: { [Op.between]: [weekStart, now] } } 
+      });
+      const monthPayments = await Payment.findAll({ 
+        where: { ...paymentWhere, status: 'Paid', createdAt: { [Op.between]: [monthStart, now] } } 
+      });
 
-        payments.forEach(p => {
-            const amount = parseFloat(p.amount);
-            const date = new Date(p.createdAt);
-            const currency = p.currency === 'Bs' ? 'Bs' : 'USD';
+      const sumAmounts = (payments) => payments.reduce((acc, p) => {
+        acc.USD += parseFloat(p.amount) || 0;
+        acc.Bs += parseFloat(p.amountBs) || 0;
+        return acc;
+      }, { USD: 0, Bs: 0 });
 
-            // Month
-            responseData.incomeDetails.month[currency] += amount;
-
-            // Week
-            if (date >= weekStart) {
-                responseData.incomeDetails.week[currency] += amount;
-            }
-
-            // Day
-            if (date >= todayStart) {
-                responseData.incomeDetails.day[currency] += amount;
-            }
-        });
-        
-        responseData.monthlyIncome = responseData.incomeDetails.month.USD; // Backward compatibility
+      responseData.incomeDetails = {
+        day: sumAmounts(dayPayments),
+        week: sumAmounts(weekPayments),
+        month: sumAmounts(monthPayments)
+      };
+      responseData.monthlyIncome = responseData.incomeDetails.month.USD;
     }
 
-    // 4. Upcoming Appointments
-    const upcoming = await Appointment.findAll({
-        where: {
-            ...baseWhere,
-            date: { [Op.gte]: now },
-            status: { [Op.in]: ['Pending', 'Confirmed'] }
-        },
-        include: [
-            { model: Patient, include: [{ model: User, attributes: ['firstName', 'lastName'] }] },
-            { model: Doctor, include: [{ model: User, attributes: ['firstName', 'lastName'] }, { model: Specialty, attributes: ['name'] }] }
-        ],
-        order: [['date', 'ASC']],
-        limit: 5
-    });
+    // 5. Appointment Type Counts
+    if (['SUPER_ADMIN', 'SUPERADMIN', 'ADMINISTRATIVE', 'DOCTOR', 'NURSE', 'RECEPTIONIST'].includes(userRole)) {
+      const typeWhere = isSuperAdmin ? {} : { ...baseWhere };
+      responseData.inPersonCount = await Appointment.count({ where: { ...typeWhere, type: 'In-Person' } });
+      responseData.videoCount = await Appointment.count({ where: { ...typeWhere, type: 'Video' } });
+    }
 
-    responseData.upcomingAppointments = upcoming.map(apt => ({
-        id: apt.id,
-        date: apt.date,
-        status: apt.status,
-        patient: { name: `${apt.Patient?.User?.firstName} ${apt.Patient?.User?.lastName}` },
-        doctor: { name: `${apt.Doctor?.User?.firstName} ${apt.Doctor?.User?.lastName}`, specialty: apt.Doctor?.Specialty?.name }
-    }));
-
-    // 5. Activity data for chart
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(now.getDate() - 7);
-    const activity = await Appointment.findAll({
-        where: { ...baseWhere, date: { [Op.gte]: sevenDaysAgo } },
-        attributes: ['date', 'status'],
-        order: [['date', 'ASC']]
-    });
-    responseData.activityData = activity.map(apt => ({ date: apt.date, status: apt.status }));
-
-    // 6. Type Counts
-    responseData.inPersonCount = await Appointment.count({ where: { ...baseWhere, type: 'In-Person' } });
-    responseData.videoCount = await Appointment.count({ where: { ...baseWhere, type: 'Video' } });
+    // 6. Activity Data (last 7 days)
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayStart = new Date(d); dayStart.setHours(0,0,0,0);
+      const dayEnd = new Date(d); dayEnd.setHours(23,59,59,999);
+      
+      const actWhere = isSuperAdmin ? {} : { ...baseWhere };
+      const count = await Appointment.count({ 
+        where: { ...actWhere, date: { [Op.between]: [dayStart, dayEnd] } } 
+      });
+      
+      last7Days.push({ 
+        date: d.toISOString().split('T')[0], 
+        count 
+      });
+    }
+    responseData.activityData = last7Days;
 
     res.json(responseData);
-
   } catch (error) {
-    console.error('Fatal Stats error:', error);
+    console.error('Error fetching stats:', error);
     res.status(500).json({ error: error.message });
   }
 };

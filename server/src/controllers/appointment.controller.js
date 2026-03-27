@@ -1,10 +1,19 @@
 const { Appointment, Patient, Doctor, User } = require('../models');
 const { Op } = require('sequelize');
 const whatsapp = require('../utils/whatsapp.service');
+const { validateAppointment } = require('../utils/appointmentValidator');
 
 exports.createAppointment = async (req, res) => {
   try {
     const { patientId, doctorId, date, reason, notes } = req.body;
+    
+    const conflictCheck = await validateAppointment(doctorId, patientId, date);
+    if (!conflictCheck.valid) {
+      return res.status(409).json({
+        message: 'Conflicto de horario detectado',
+        errors: conflictCheck.errors
+      });
+    }
     
     const appointment = await Appointment.create({
       patientId,
@@ -56,13 +65,14 @@ exports.getAppointments = async (req, res) => {
     const offset = (page - 1) * limit;
 
     let whereClause = {};
-    const adminRoles = ['SUPERADMIN', 'ADMINISTRATIVE', 'NURSE', 'RECEPTIONIST'];
+    const adminRoles = ['SUPER_ADMIN', 'SUPERADMIN', 'ADMINISTRATIVE', 'NURSE', 'RECEPTIONIST'];
 
     // Dynamic Include for Doctor to filter by Organization
     let doctorUserInclude = { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'organizationId'] };
 
-    // If not SUPERADMIN and belongs to an Organization, filter Doctors by that Organization
-    if (organizationId && userRole !== 'SUPERADMIN') {
+    // If not SUPER_ADMIN and belongs to an Organization, filter Doctors by that Organization
+    const isSuperAdmin = userRole === 'SUPER_ADMIN' || userRole === 'SUPERADMIN';
+    if (organizationId && !isSuperAdmin) {
         doctorUserInclude.where = { organizationId };
     }
 

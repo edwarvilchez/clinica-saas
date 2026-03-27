@@ -1,30 +1,64 @@
 /**
- * Input sanitization for PostgreSQL/Sequelize
- * Prevents SQL injection and XSS attacks
- * NOTE: Only removes dangerous SQL characters, not dots (.) for emails
+ * Input sanitization middleware
+ * Prevents SQL injection and XSS attacks while preserving valid data formats
  */
+
+const xss = require('xss-clean');
+
+const FIELDS_TO_SKIP = [
+  'email',
+  'emailAddress',
+  'username',
+  'password',
+  'temporaryPassword',
+  'token',
+  'refreshToken',
+  'resetToken',
+  'licenseNumber',
+  'documentId',
+  'phone',
+  'mobile',
+  'address',
+  'avatar',
+  'image',
+  'file',
+  'pdf',
+  'html',
+  'description',
+  'notes',
+  'observations',
+  'medicalNotes',
+  'prescriptionNotes',
+];
 
 const sanitizeString = (str) => {
   if (typeof str !== 'string') return str;
   
-  // Remove potentially dangerous SQL patterns ONLY
-  // Note: We DON'T remove dots (.) because they're valid in emails and names
   const sqlPatterns = [
-    /'/g,      // Remove single quotes
-    /--/g,     // Remove SQL comments
-    /;/g,      // Remove semicolons
-    /\/\*/g,  // Remove block comments start
-    /\*\//g,  // Remove block comments end
-    /"/g,      // Remove double quotes
-    /\\/g,     // Remove backslashes
+    { pattern: /'/g, replacement: '' },
+    { pattern: /--/g, replacement: '' },
+    { pattern: /;/g, replacement: '' },
+    { pattern: /\/\*/g, replacement: '' },
+    { pattern: /\*\//g, replacement: '' },
+    { pattern: /"/g, replacement: '' },
+    { pattern: /\\/g, replacement: '' },
+    { pattern: /\x00/g, replacement: '' },
+    { pattern: /\r\n/g, replacement: '\n' },
   ];
   
   let sanitized = str;
-  sqlPatterns.forEach(pattern => {
-    sanitized = sanitized.replace(pattern, '');
+  sqlPatterns.forEach(({ pattern, replacement }) => {
+    sanitized = sanitized.replace(pattern, replacement);
   });
   
-  return sanitized;
+  return sanitized.trim();
+};
+
+const shouldSanitize = (key) => {
+  return !FIELDS_TO_SKIP.some(field => 
+    key.toLowerCase() === field.toLowerCase() ||
+    key.toLowerCase().includes(field.toLowerCase())
+  );
 };
 
 const sanitizeObject = (obj) => {
@@ -38,8 +72,10 @@ const sanitizeObject = (obj) => {
   
   const sanitized = {};
   for (const [key, value] of Object.entries(obj)) {
-    if (typeof value === 'string') {
-      sanitized[key] = sanitizeString(value);
+    if (value === null || value === undefined) {
+      sanitized[key] = value;
+    } else if (typeof value === 'string') {
+      sanitized[key] = shouldSanitize(key) ? sanitizeString(value) : value;
     } else if (typeof value === 'object') {
       sanitized[key] = sanitizeObject(value);
     } else {
@@ -50,31 +86,18 @@ const sanitizeObject = (obj) => {
   return sanitized;
 };
 
-/**
- * Express middleware to sanitize request body, params, and query
- */
 const sanitizeInput = (req, res, next) => {
   try {
-    // Log original email for debugging
-    if (req.body && req.body.email) {
-      console.log('[SANITIZE] Original email:', req.body.email);
-    }
-    
-    if (req.body) {
+    if (req.body && Object.keys(req.body).length > 0) {
       req.body = sanitizeObject(req.body);
     }
     
-    if (req.params) {
+    if (req.params && Object.keys(req.params).length > 0) {
       req.params = sanitizeObject(req.params);
     }
     
-    if (req.query) {
+    if (req.query && Object.keys(req.query).length > 0) {
       req.query = sanitizeObject(req.query);
-    }
-    
-    // Log sanitized email for debugging
-    if (req.body && req.body.email) {
-      console.log('[SANITIZE] Sanitized email:', req.body.email);
     }
     
     next();
@@ -86,5 +109,6 @@ const sanitizeInput = (req, res, next) => {
 module.exports = {
   sanitizeInput,
   sanitizeString,
-  sanitizeObject
+  sanitizeObject,
+  shouldSanitize
 };

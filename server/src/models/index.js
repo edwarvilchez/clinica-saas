@@ -35,14 +35,30 @@ Doctor.belongsTo(Specialty, { foreignKey: 'specialtyId' });
 User.hasOne(Doctor, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Doctor.belongsTo(User, { foreignKey: 'userId' });
 
+// Doctor belongs to Organization
+Organization.hasMany(Doctor, { foreignKey: 'organizationId' });
+Doctor.belongsTo(Organization, { foreignKey: 'organizationId' });
+
 User.hasOne(Nurse, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Nurse.belongsTo(User, { foreignKey: 'userId' });
+
+// Nurse belongs to Organization
+Organization.hasMany(Nurse, { foreignKey: 'organizationId' });
+Nurse.belongsTo(Organization, { foreignKey: 'organizationId' });
 
 User.hasOne(Staff, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Staff.belongsTo(User, { foreignKey: 'userId' });
 
+// Staff belongs to Organization
+Organization.hasMany(Staff, { foreignKey: 'organizationId' });
+Staff.belongsTo(Organization, { foreignKey: 'organizationId' });
+
 User.hasOne(Patient, { foreignKey: 'userId', onDelete: 'CASCADE' });
 Patient.belongsTo(User, { foreignKey: 'userId' });
+
+// Patient belongs to Organization (multi-tenant)
+Organization.hasMany(Patient, { foreignKey: 'organizationId' });
+Patient.belongsTo(Organization, { foreignKey: 'organizationId' });
 
 // Clinical Associations
 Patient.hasMany(MedicalRecord, { foreignKey: 'patientId' });

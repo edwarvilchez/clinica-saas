@@ -12,6 +12,14 @@ const Patient = sequelize.define('Patient', {
     unique: true,
     allowNull: false
   },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'Organizations',
+      key: 'id'
+    }
+  },
   birthDate: {
     type: DataTypes.DATEONLY
   },
@@ -53,6 +61,9 @@ const Patient = sequelize.define('Patient', {
     },
     {
       fields: ['gender']
+    },
+    {
+      fields: ['organizationId']
     }
   ]
 });

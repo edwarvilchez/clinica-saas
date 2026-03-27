@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { StatsService } from '../../services/stats.service';
 import { ExportService } from '../../services/export.service';
+import { CurrencyService } from '../../services/currency.service';
 import Swal from 'sweetalert2';
 import { BaseChartDirective } from 'ng2-charts';
 import { ChartConfiguration, ChartData, ChartType, Chart, registerables } from 'chart.js';
@@ -12,11 +13,12 @@ Chart.register(...registerables);
 
 import { AuthService } from '../../services/auth.service';
 import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, BaseChartDirective],
+  imports: [CommonModule, RouterModule, BaseChartDirective, TranslatePipe],
   templateUrl: './dashboard.html',
   styleUrl: './dashboard.css',
 })
@@ -115,6 +117,7 @@ export class Dashboard implements OnInit {
     private exportService: ExportService,
     public authService: AuthService,
     public langService: LanguageService,
+    public currencyService: CurrencyService,
     private router: Router
   ) {
     // Reaccionar cuando cambian los stats para actualizar los gráficos

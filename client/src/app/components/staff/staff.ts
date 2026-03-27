@@ -5,11 +5,13 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { API_URL } from '../../api-config';
+import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 
 @Component({
   selector: 'app-staff',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, TranslatePipe],
   templateUrl: './staff.html',
   styleUrl: './staff.css',
 })
@@ -36,7 +38,10 @@ export class Staff implements OnInit {
     });
   });
 
-  constructor(private http: HttpClient) {}
+  constructor(
+    private http: HttpClient,
+    public langService: LanguageService
+  ) {}
 
   ngOnInit() {
     this.loadStaff();
@@ -47,8 +52,11 @@ export class Staff implements OnInit {
   }
 
   loadStaff() {
-    this.http.get<any[]>(`${API_URL}/staff`, { headers: this.getHeaders() })
-      .subscribe(data => this.staffList.set(data));
+    this.http.get<any>(`${API_URL}/staff`, { headers: this.getHeaders() })
+      .subscribe(data => {
+        const list = Array.isArray(data) ? data : (data.staff || []);
+        this.staffList.set(list);
+      });
   }
 
   toggleAdvancedFilters() {

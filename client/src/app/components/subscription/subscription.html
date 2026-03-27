@@ -8,10 +8,10 @@
       <h2 class="fw-bold mb-0 text-primary fs-4">CLINICA SAAS</h2>
     </div>
     <a *ngIf="!authService.currentUser()" routerLink="/login" class="btn btn-outline-primary btn-sm rounded-pill px-4 fw-bold">
-      <i class="bi bi-box-arrow-in-right me-1"></i> Iniciar Sesión
+      <i class="bi bi-box-arrow-in-right me-1"></i> {{ 'auth.login' | translate }}
     </a>
     <a *ngIf="authService.currentUser()" routerLink="/dashboard" class="btn btn-outline-primary btn-sm rounded-pill px-4 fw-bold">
-      <i class="bi bi-grid-fill me-1"></i> Ir al Dashboard
+      <i class="bi bi-grid-fill me-1"></i> {{ 'sidebar.dashboard' | translate }}
     </a>
   </div>
 
@@ -25,10 +25,10 @@
           <div class="bg-white bg-opacity-25 p-2 rounded-2">
             <i class="bi bi-stars fs-4"></i>
           </div>
-          <h3 class="mb-0">{{ langService.translate('subscription.trialTitle') }}</h3>
+          <h3 class="mb-0">{{ 'subscription.trialTitle' | translate }}</h3>
         </div>
         <p class="mb-0 fs-5 text-white-50">
-          {{ langService.translate('subscription.trialDesc') }}
+          {{ 'subscription.trialDesc' | translate }}
         </p>
       </div>
       <!-- Only show register if not logged in, or upgrade text if logged in -->
@@ -37,7 +37,7 @@
         routerLink="/register"
         class="btn btn-light btn-lg fw-bold rounded-pill text-primary shadow px-4"
       >
-        {{ langService.translate('subscription.startTrial') }}
+        {{ 'subscription.startTrial' | translate }}
         <i class="bi bi-arrow-right ms-2"></i>
       </a>
       <span
@@ -45,7 +45,7 @@
         class="badge bg-white text-primary rounded-pill px-3 py-2 fs-6 shadow-sm"
       >
         <i class="bi bi-person-check-fill me-1"></i>
-        {{ langService.translate('subscription.activeSession') }}
+        {{ 'subscription.activeSession' | translate }}
       </span>
     </div>
 
@@ -54,15 +54,16 @@
       <div
         class="d-inline-flex align-items-center gap-2 bg-primary bg-opacity-10 text-primary px-3 py-1 rounded-pill fw-bold small mb-3"
       >
-        <i class="bi bi-award-fill"></i> {{ langService.translate('subscription.pricingTitle') }}
+        <i class="bi bi-award-fill"></i> {{ 'subscription.pricingTitle' | translate }}
       </div>
       <h1
         class="display-4 fw-bold mb-3"
-        [innerHTML]="langService.translate('subscription.choosePlan').replace(' ', '<br>')"
-      ></h1>
+      >
+        {{ 'subscription.choosePlan' | translate }}
+      </h1>
       <p class="text-muted fs-5">
-        {{ langService.translate('subscription.choosePlan') }}<br />
-        <strong class="text-primary">{{ langService.translate('subscription.scalePlan') }}</strong>
+        {{ 'subscription.choosePlan' | translate }}<br />
+        <strong class="text-primary">{{ 'subscription.scalePlan' | translate }}</strong>
       </p>
     </div>
 
@@ -84,7 +85,7 @@
       <div class="col-md-6 col-lg-3" *ngFor="let plan of plans">
         <div class="plan-card h-100 d-flex flex-column" [class.popular]="plan.popular">
           <div *ngIf="plan.popular" class="popular-badge">
-            {{ langService.translate('subscription.recommended') }}
+            {{ 'subscription.recommended' | translate }}
           </div>
 
           <div class="d-flex align-items-center gap-3 mb-4">
@@ -105,7 +106,7 @@
               >/
               {{
                 billingCycle() === 'Mensual'
-                  ? langService.translate('subscription.monthly')
+                  ? ('subscription.monthly' | translate)
                   : getCurrentCycleLabel().toLowerCase()
               }}</span
             >
@@ -126,13 +127,13 @@
             class="cta-btn"
             [ngClass]="plan.popular ? 'cta-btn-primary' : 'cta-btn-secondary'"
           >
-            {{ langService.translate('subscription.choosePlanBtn') }}
+            {{ 'subscription.choosePlanBtn' | translate }}
             <i class="bi bi-arrow-right"></i>
           </button>
 
           <div class="mt-2 text-center x-small text-muted" *ngIf="currentPlan() === plan.type">
             <span class="badge bg-success bg-opacity-25 text-success rounded-pill px-2">
-              {{ langService.translate('subscription.currentPlan') }}
+              {{ 'subscription.currentPlan' | translate }}
             </span>
           </div>
         </div>
@@ -145,10 +146,10 @@
         <div class="row align-items-center g-5">
           <div class="col-lg-6">
             <h3 class="fw-bold mb-3">
-              {{ langService.translate('subscription.customDeployment') }}
+              {{ 'subscription.customDeployment' | translate }}
             </h3>
             <p class="text-white-50 mb-4">
-              {{ langService.translate('subscription.customDeploymentDesc') }}
+              {{ 'subscription.customDeploymentDesc' | translate }}
             </p>
             <div class="d-flex align-items-center gap-3">
               <div class="bg-white bg-opacity-10 p-2 rounded-3">
@@ -156,7 +157,7 @@
               </div>
               <div>
                 <p class="x-small fw-bold text-info text-uppercase mb-0">
-                  {{ langService.translate('subscription.supportEmail') }}
+                  {{ 'subscription.supportEmail' | translate }}
                 </p>
                 <a
                   href="mailto:cgk888digital@gmail.com"

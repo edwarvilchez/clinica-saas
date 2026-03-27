@@ -7,20 +7,21 @@ import Swal from 'sweetalert2';
 import { LanguageService } from '../../services/language.service';
 import { AuthService } from '../../services/auth.service';
 import { API_URL } from '../../api-config';
+import { TranslatePipe } from '../../services/translate.pipe';
 
 @Component({
   selector: 'app-doctors',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, TranslatePipe],
   template: `
-    <div class="h-100">
+    <div class="h-100 animate-fade-in">
       <div class="d-flex justify-content-between align-items-center compact-header">
         <div>
-          <h4 class="mb-1">{{ langService.translate('doctors.title') }}</h4>
-          <p class="text-muted small mb-0">{{ langService.translate('doctors.subtitle') }}</p>
+          <h4 class="mb-1">{{ 'doctors.title' | translate }}</h4>
+          <p class="text-muted small mb-0">{{ 'doctors.subtitle' | translate }}</p>
         </div>
         <button class="btn btn-primary-premium btn-sm" (click)="createNewDoctor()">
-          <i class="bi bi-person-plus-fill me-2"></i> {{ langService.translate('doctors.new') }}
+          <i class="bi bi-person-plus-fill me-2"></i> {{ 'doctors.new' | translate }}
         </button>
       </div>
 
@@ -34,7 +35,7 @@ import { API_URL } from '../../api-config';
               <input 
                 type="text" 
                 class="form-control bg-transparent border-0 py-1 shadow-none" 
-                [placeholder]="langService.translate('doctors.searchPlaceholder')" 
+                [placeholder]="'doctors.searchPlaceholder' | translate" 
                 [(ngModel)]="searchTerm" 
                 [ngModelOptions]="{standalone: true}">
             </div>
@@ -44,7 +45,7 @@ import { API_URL } from '../../api-config';
               class="form-select glass-morphism border rounded-3 py-1"
               [(ngModel)]="specialtyFilter"
               [ngModelOptions]="{standalone: true}">
-              <option value="all">{{ langService.translate('doctors.allSpecialties') }}</option>
+              <option value="all">{{ 'doctors.allSpecialties' | translate }}</option>
               <option *ngFor="let specialty of specialties()" [value]="specialty.id">
                 {{ specialty.name }}
               </option>
@@ -68,7 +69,7 @@ import { API_URL } from '../../api-config';
               class="rounded-circle shadow-sm mb-2" 
               width="80">
             <h6 class="fw-bold mb-1">Dr. {{ doctor.User.firstName }} {{ doctor.User.lastName }}</h6>
-            <p class="text-primary small fw-bold mb-2">{{ doctor.Specialty?.name || 'Especialista' }}</p>
+            <p class="text-primary small fw-bold mb-2">{{ doctor.Specialty?.name || ('doctors.specialist' | translate) }}</p>
             
             <div class="d-flex justify-content-center gap-2 mb-2">
               <span 
@@ -76,7 +77,7 @@ import { API_URL } from '../../api-config';
                 [ngClass]="doctor.User.isActive ? 'bg-success bg-opacity-10 text-success' : 'bg-danger bg-opacity-10 text-danger'"
                 style="font-size: 0.75rem;"
                 (click)="toggleStatus(doctor)">
-                {{ doctor.User.isActive ? 'Activo' : 'Inactivo' }}
+                {{ doctor.User.isActive ? ('common.active' | translate) : ('common.inactive' | translate) }}
               </span>
               <span 
                 *ngIf="isAdmin()"
@@ -91,20 +92,20 @@ import { API_URL } from '../../api-config';
             </div>
 
             <div class="d-grid gap-1">
-              <button class="btn btn-light rounded-pill py-1 border-0 btn-sm" (click)="viewProfile(doctor)">{{ langService.translate('doctors.viewProfile') }}</button>
+              <button class="btn btn-light rounded-pill py-1 border-0 btn-sm" (click)="viewProfile(doctor)">{{ 'doctors.viewProfile' | translate }}</button>
               <button 
                 class="btn rounded-pill py-1 btn-sm" 
                 [ngClass]="doctor.User.isActive ? 'btn-primary-premium' : 'btn-secondary opacity-50'"
                 [disabled]="!doctor.User.isActive"
                 (click)="scheduleAppointment(doctor)">
-                {{ langService.translate('doctors.schedule') }}
+                {{ 'doctors.schedule' | translate }}
               </button>
             </div>
           </div>
         </div>
         
         <div class="col-12 text-center py-4" *ngIf="filteredDoctors().length === 0">
-          <p class="text-muted">{{ langService.translate('doctors.noResults') }}</p>
+          <p class="text-muted">{{ 'doctors.noResults' | translate }}</p>
         </div>
       </div>
     </div>
@@ -158,8 +159,11 @@ export class Doctors implements OnInit {
   }
 
   loadDoctors() {
-    this.http.get<any[]>(`${API_URL}/doctors`, { headers: this.getHeaders() })
-      .subscribe(data => this.doctors.set(data));
+    this.http.get<any>(`${API_URL}/doctors`, { headers: this.getHeaders() })
+      .subscribe(data => {
+        const list = Array.isArray(data) ? data : (data.doctors || []);
+        this.doctors.set(list);
+      });
   }
 
   loadSpecialties() {

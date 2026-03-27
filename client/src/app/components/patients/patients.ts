@@ -8,11 +8,12 @@ import { LanguageService } from '../../services/language.service';
 import { ExportService } from '../../services/export.service';
 import { AuthService } from '../../services/auth.service';
 import { API_URL } from '../../api-config';
+import { TranslatePipe } from '../../services/translate.pipe';
 
 @Component({
   selector: 'app-patients',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, TranslatePipe],
   templateUrl: './patients.html',
   styleUrl: './patients.css',
 })
@@ -55,8 +56,11 @@ export class Patients implements OnInit {
   }
 
   loadPatients() {
-    this.http.get<any[]>(`${API_URL}/patients`, { headers: this.getHeaders() })
-      .subscribe(data => this.patients.set(data));
+    this.http.get<any>(`${API_URL}/patients`, { headers: this.getHeaders() })
+      .subscribe(data => {
+        const list = Array.isArray(data) ? data : (data.patients || []);
+        this.patients.set(list);
+      });
   }
 
   viewHistory(id: string) {

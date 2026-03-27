@@ -123,42 +123,42 @@
                   </p>
                 </div>
                 <div class="text-end">
-                  <span
-                    class="badge rounded-pill mb-2 me-1"
-                    [ngClass]="getStatusClass(appt.status)"
-                    >{{ appt.status }}</span
-                  >
-                  <span
-                    class="badge rounded-pill mb-2"
-                    [ngClass]="
-                      appt.type === 'Video' ? 'bg-info' : 'bg-secondary bg-opacity-50 text-dark'
-                    "
-                  >
-                    <i
-                      class="bi"
-                      [ngClass]="appt.type === 'Video' ? 'bi-camera-video' : 'bi-person-workspace'"
-                    ></i>
-                    {{
-                      appt.type === 'Video'
-                        ? langService.translate('dashboard.stats.videoCalls')
-                        : langService.translate('dashboard.stats.inPerson')
-                    }}
-                  </span>
-                  <div class="text-success small fw-bold" *ngIf="appt.status === 'Confirmed'">
-                    <i class="bi bi-whatsapp"></i>
-                    {{ langService.translate('dashboard.reminderSent') }}
-                  </div>
+                    <span
+                      class="badge rounded-pill mb-2 me-1"
+                      [ngClass]="getStatusClass(appt.status)"
+                      >{{ appt.status === 'Confirmed' ? langService.translate('dashboard.confirmed') : appt.status === 'Pending' ? langService.translate('payments.pending') : appt.status }}</span
+                    >
+                    <span
+                      class="badge rounded-pill mb-2"
+                      [ngClass]="
+                        appt.type === 'Video' ? 'bg-info' : 'bg-secondary bg-opacity-50 text-dark'
+                      "
+                    >
+                      <i
+                        class="bi"
+                        [ngClass]="appt.type === 'Video' ? 'bi-camera-video' : 'bi-person-workspace'"
+                      ></i>
+                      {{
+                        appt.type === 'Video'
+                          ? langService.translate('dashboard.stats.videoCalls')
+                          : langService.translate('dashboard.stats.inPerson')
+                      }}
+                    </span>
+                    <div class="text-success small fw-bold" *ngIf="appt.status === 'Confirmed'">
+                      <i class="bi bi-whatsapp"></i>
+                      {{ langService.translate('dashboard.reminderSent') }}
+                    </div>
 
-                  <!-- Botón de Videollamada -->
-                  <button
-                    *ngIf="canStartVideoCall(appt)"
-                    class="btn btn-sm btn-primary mt-2 d-flex align-items-center gap-2"
-                    (click)="startVideoCall(appt)"
-                    title="Iniciar videoconsulta"
-                  >
-                    <i class="bi bi-camera-video-fill"></i>
-                    <span>{{ langService.translate('appointments_list.videoCall') }}</span>
-                  </button>
+                    <!-- Botón de Videollamada -->
+                    <button
+                      *ngIf="canStartVideoCall(appt)"
+                      class="btn btn-sm btn-primary mt-2 d-flex align-items-center gap-2"
+                      (click)="startVideoCall(appt)"
+                      [title]="langService.translate('appointments_list.videoCall')"
+                    >
+                      <i class="bi bi-camera-video-fill"></i>
+                      <span>{{ langService.translate('appointments_list.videoCall') }}</span>
+                    </button>
                 </div>
               </div>
             </div>

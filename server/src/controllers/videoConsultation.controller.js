@@ -1,13 +1,38 @@
 const { VideoConsultation, User, Appointment, Doctor, Patient } = require('../models');
 const { v4: uuidv4 } = require('uuid');
 
+const validateAppointmentAccess = async (appointmentId, organizationId, role) => {
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
+  if (isSuperAdmin) return true;
+
+  const appointment = await Appointment.findByPk(appointmentId, {
+    include: [
+      { model: Patient, include: [{ model: User, attributes: ['organizationId'] }] },
+      { model: Doctor, include: [{ model: User, attributes: ['organizationId'] }] }
+    ]
+  });
+
+  if (!appointment) return false;
+
+  const patientOrgId = appointment.Patient?.User?.organizationId;
+  const doctorOrgId = appointment.Doctor?.User?.organizationId;
+
+  return patientOrgId === organizationId || doctorOrgId === organizationId;
+};
+
 // Crear sala de videoconsulta
 exports.createVideoConsultation = async (req, res) => {
   try {
+    const { organizationId, role } = req.user;
     const { appointmentId } = req.body;
     
     if (!appointmentId) {
       return res.status(400).json({ message: 'appointmentId es requerido' });
+    }
+
+    const hasAccess = await validateAppointmentAccess(appointmentId, organizationId, role);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'No tienes acceso a esta cita' });
     }
 
     // Verificar que la cita existe

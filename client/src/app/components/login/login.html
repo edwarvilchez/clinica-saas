@@ -9,11 +9,11 @@
             <i class="bi bi-activity text-white fs-2"></i>
           </div>
           <h1 class="h2 fw-bold mb-2">
-            {{ langService.translate('landing.title') }}
-            <span class="gradient-text">{{ langService.translate('landing.subtitle') }}</span>
+            {{ 'landing.title' | translate }}
+            <span class="gradient-text">{{ 'landing.subtitle' | translate }}</span>
           </h1>
           <p class="fs-6 text-muted mb-3 lh-base">
-            {{ langService.translate('landing.description') }}
+            {{ 'landing.description' | translate }}
           </p>
         </div>
 
@@ -24,9 +24,9 @@
               routerLink="/subscription"
             >
               <i class="bi bi-tag-fill text-warning fs-4 mb-1 d-block"></i>
-              <h6 class="fw-bold mb-1">{{ langService.translate('landing.pricing') }}</h6>
+              <h6 class="fw-bold mb-1">{{ 'landing.pricing' | translate }}</h6>
               <p class="x-small text-muted mb-0">
-                {{ langService.translate('landing.pricingDesc') }}
+                {{ 'landing.pricingDesc' | translate }}
               </p>
             </div>
           </div>
@@ -36,9 +36,9 @@
               (click)="showSecurityLaws()"
             >
               <i class="bi bi-shield-check text-primary fs-4 mb-1 d-block"></i>
-              <h6 class="fw-bold mb-1">{{ langService.translate('landing.security') }}</h6>
+              <h6 class="fw-bold mb-1">{{ 'landing.security' | translate }}</h6>
               <p class="x-small text-muted mb-0">
-                {{ langService.translate('landing.securityDesc') }}
+                {{ 'landing.securityDesc' | translate }}
               </p>
             </div>
           </div>
@@ -48,9 +48,9 @@
               (click)="checkReminders()"
             >
               <i class="bi bi-whatsapp text-success fs-4 mb-1 d-block"></i>
-              <h6 class="fw-bold mb-1">{{ langService.translate('landing.reminders') }}</h6>
+              <h6 class="fw-bold mb-1">{{ 'landing.reminders' | translate }}</h6>
               <p class="x-small text-muted mb-0">
-                {{ langService.translate('landing.remindersDesc') }}
+                {{ 'landing.remindersDesc' | translate }}
               </p>
             </div>
           </div>
@@ -68,8 +68,8 @@
               </div>
               <h2 class="fw-bold mb-0 text-primary fs-4">CLINICA SAAS</h2>
             </div>
-            <h3 class="h6 fw-bold mb-1">{{ langService.translate('landing.loginTitle') }}</h3>
-            <p class="text-muted x-small mb-0">{{ langService.translate('landing.loginDesc') }}</p>
+            <h3 class="h6 fw-bold mb-1">{{ 'landing.loginTitle' | translate }}</h3>
+            <p class="text-muted x-small mb-0">{{ 'landing.loginDesc' | translate }}</p>
           </div>
 
           <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
@@ -82,7 +82,7 @@
 
             <div class="mb-3">
               <label class="form-label x-small fw-bold text-uppercase mb-1">{{
-                langService.translate('auth.email')
+                'auth.email' | translate
               }}</label>
               <div class="input-group input-group-sm glass-morphism rounded-2 border">
                 <span class="input-group-text bg-transparent border-0 py-2"
@@ -100,12 +100,12 @@
             <div class="mb-3">
               <div class="d-flex justify-content-between align-items-center mb-1">
                 <label class="form-label x-small fw-bold text-uppercase mb-0">{{
-                  langService.translate('auth.password')
+                  'auth.password' | translate
                 }}</label>
                 <a
                   routerLink="/forgot-password"
                   class="x-small text-primary text-decoration-none"
-                  >{{ langService.translate('landing.forgotPassword') }}</a
+                  >{{ 'landing.forgotPassword' | translate }}</a
                 >
               </div>
               <div class="input-group input-group-sm glass-morphism rounded-2 border">
@@ -131,25 +131,25 @@
               class="btn btn-primary-premium w-100 py-2 mb-3 fs-6 shadow"
               [disabled]="loginForm.invalid || loading()"
             >
-              <span *ngIf="!loading()">{{ langService.translate('landing.enterSystem') }}</span>
+              <span *ngIf="!loading()">{{ 'landing.enterSystem' | translate }}</span>
               <span *ngIf="loading()">
                 <span class="spinner-border spinner-border-sm me-1"></span>
-                {{ langService.translate('common.loading') }}
+                {{ 'common.loading' | translate }}
               </span>
             </button>
 
             <div class="text-center mb-0">
               <p class="x-small text-muted mb-2">
-                {{ langService.translate('landing.noAccount') }}
+                {{ 'landing.noAccount' | translate }}
                 <a routerLink="/register" class="text-primary fw-bold text-decoration-none">
-                  {{ langService.translate('landing.registerHere') }}
+                  {{ 'landing.registerHere' | translate }}
                 </a>
               </p>
 
               <div class="d-flex align-items-center justify-content-center gap-2 mb-2">
                 <hr class="flex-grow-1 text-muted opacity-25 my-1" />
                 <span class="x-small text-muted text-uppercase fw-bold opacity-50">{{
-                  langService.translate('common.warning')
+                  'common.warning' | translate
                 }}</span>
                 <hr class="flex-grow-1 text-muted opacity-25 my-1" />
               </div>
@@ -159,7 +159,7 @@
                 class="btn btn-outline-primary btn-sm rounded-pill w-100 py-2 border-2 fw-bold animate-bounce-subtle"
               >
                 <i class="bi bi-calendar-plus me-1"></i>
-                {{ langService.translate('landing.publicBooking') }}
+                {{ 'landing.publicBooking' | translate }}
               </a>
             </div>
           </form>

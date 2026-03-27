@@ -7,6 +7,14 @@ const Staff = sequelize.define('Staff', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true,
+    references: {
+      model: 'Organizations',
+      key: 'id'
+    }
+  },
   employeeId: {
     type: DataTypes.STRING,
     unique: true

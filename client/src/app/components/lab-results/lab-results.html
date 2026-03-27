@@ -2,11 +2,11 @@
   <!-- Header -->
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h2 class="fw-bold mb-1">{{ langService.translate('lab.title') }}</h2>
-      <p class="text-muted">{{ langService.translate('lab.subtitle') }}</p>
+      <h2 class="fw-bold mb-1">{{ 'lab.title' | translate }}</h2>
+      <p class="text-muted">{{ 'lab.subtitle' | translate }}</p>
     </div>
     <button *ngIf="canManage()" class="btn btn-primary-premium shadow-sm" (click)="uploadResult()">
-      <i class="bi bi-cloud-upload me-2"></i> {{ langService.translate('lab.new') }}
+      <i class="bi bi-cloud-upload me-2"></i> {{ 'lab.new' | translate }}
     </button>
   </div>
 
@@ -21,24 +21,24 @@
           <input
             type="text"
             class="form-control bg-transparent border-0 shadow-none"
-            [placeholder]="langService.translate('lab.searchPlaceholder')"
+            [placeholder]="'lab.searchPlaceholder' | translate"
             [formControl]="searchControl"
           />
         </div>
       </div>
       <div class="col-md-3">
         <select class="form-select glass-morphism border rounded-3 py-2 text-muted">
-          <option value="">{{ langService.translate('lab.examType') }}</option>
-          <option value="Sangre">Hematología</option>
-          <option value="Orina">Uroanálisis</option>
-          <option value="Imagen">Imagenología</option>
+          <option value="">{{ 'lab.examType' | translate }}</option>
+          <option value="Sangre">{{ 'lab.types.blood' | translate }}</option>
+          <option value="Orina">{{ 'lab.types.urine' | translate }}</option>
+          <option value="Imagen">{{ 'lab.types.imaging' | translate }}</option>
         </select>
       </div>
       <div class="col-md-3">
         <select class="form-select glass-morphism border rounded-3 py-2 text-muted">
-          <option value="">{{ langService.translate('common.status') }}</option>
-          <option value="Completado">Completado</option>
-          <option value="Pendiente">Pendiente</option>
+          <option value="">{{ 'common.status' | translate }}</option>
+          <option value="Completado">{{ 'lab.status.completed' | translate }}</option>
+          <option value="Pendiente">{{ 'lab.status.pending' | translate }}</option>
         </select>
       </div>
     </div>
@@ -53,22 +53,22 @@
             <thead class="bg-light">
               <tr>
                 <th class="ps-4 py-3 text-muted text-uppercase small fw-bold">
-                  {{ langService.translate('lab.table.patient') }}
+                  {{ 'lab.table.patient' | translate }}
                 </th>
                 <th class="py-3 text-muted text-uppercase small fw-bold">
-                  {{ langService.translate('lab.table.exam') }}
+                  {{ 'lab.table.exam' | translate }}
                 </th>
                 <th class="py-3 text-muted text-uppercase small fw-bold">
-                  {{ langService.translate('lab.table.date') }}
+                  {{ 'lab.table.date' | translate }}
                 </th>
                 <th class="py-3 text-muted text-uppercase small fw-bold">
-                  {{ langService.translate('common.status') }}
+                  {{ 'common.status' | translate }}
                 </th>
                 <th *ngIf="canViewPrices()" class="py-3 text-muted text-uppercase small fw-bold">
-                  Precio
+                  {{ 'lab_catalog.table.price' | translate }}
                 </th>
                 <th class="pe-4 py-3 text-end text-muted text-uppercase small fw-bold">
-                  {{ langService.translate('common.actions') }}
+                  {{ 'common.actions' | translate }}
                 </th>
               </tr>
             </thead>
@@ -112,7 +112,7 @@
                         'bi-x-circle-fill': result.status === 'Cancelado',
                       }"
                     ></i>
-                    {{ result.status }}
+                    {{ (result.status === 'Completado' ? 'lab.status.completed' : (result.status === 'Pendiente' ? 'lab.status.pending' : '')) | translate }}
                   </span>
                 </td>
                 <td *ngIf="canViewPrices()" class="py-3 fw-bold text-primary">
@@ -121,14 +121,14 @@
                 <td class="pe-4 py-3 text-end">
                   <button
                     class="btn btn-sm btn-light text-primary me-2 rounded-3"
-                    [title]="langService.translate('common.actions')"
+                    [title]="'common.actions' | translate"
                     (click)="viewResult(result)"
                   >
                     <i class="bi bi-eye"></i>
                   </button>
                   <button
                     class="btn btn-sm btn-light text-secondary rounded-3"
-                    [title]="langService.translate('common.printing')"
+                    [title]="'common.printing' | translate"
                     (click)="downloadResult(result)"
                   >
                     <i class="bi bi-download"></i>
@@ -143,9 +143,9 @@
                     <div class="bg-light rounded-circle p-4 mb-3">
                       <i class="bi bi-file-earmark-medical text-muted fs-1"></i>
                     </div>
-                    <h5 class="text-muted mb-1">{{ langService.translate('common.noResults') }}</h5>
+                    <h5 class="text-muted mb-1">{{ 'common.noResults' | translate }}</h5>
                     <p class="text-muted small mb-0">
-                      {{ langService.translate('common.noResults') }}
+                      {{ 'common.noResults' | translate }}
                     </p>
                   </div>
                 </td>

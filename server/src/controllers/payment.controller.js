@@ -17,6 +17,14 @@ exports.createPayment = async (req, res) => {
         req.body.receiptUrl = `/uploads/${req.file.filename}`;
     }
 
+    // Automatically set organizationId if not provided (for multi-tenancy visibility)
+    if (!req.body.organizationId && req.user.organizationId) {
+        req.body.organizationId = req.user.organizationId;
+    }
+
+    // Logger to debug potential registration issues
+    console.log('[DEBUG] Creating payment with body:', JSON.stringify(req.body, null, 2));
+
     const payment = await Payment.create(req.body);
     res.status(201).json(payment);
   } catch (error) {
@@ -73,22 +81,18 @@ exports.getPayments = async (req, res) => {
 
     let whereClause = {};
 
+    const isSuperAdmin = userRole === 'SUPER_ADMIN' || userRole === 'SUPERADMIN';
+
     if (userRole === 'PATIENT') {
        const patient = await Patient.findOne({ where: { userId } });
        
-       console.log(`[DEBUG] Found patient for user ${userId}:`, patient ? patient.id : 'NONE');
-
        if (!patient) {
          return res.json([]);
        }
        whereClause = { patientId: patient.id };
+    } else if (!isSuperAdmin && req.user.organizationId) {
+       whereClause.organizationId = req.user.organizationId;
     }
-
-    // Filter subscription payments for non-superadmins? 
-    // Maybe Org Owners should see their subscription payments?
-    // Current logic shows ALL payments to admins.
-    // We should probably filter by Organization if we implement multi-tenancy strictly.
-    // For now, leave as is.
 
     const payments = await Payment.findAll({ 
       where: whereClause,

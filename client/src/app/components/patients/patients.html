@@ -1,18 +1,18 @@
 <div class="animate-fade-in">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h2 class="mb-1">{{ langService.translate('patients_list.title') }}</h2>
-      <p class="text-muted">{{ langService.translate('patients_list.subtitle') }}</p>
+      <h2 class="mb-1">{{ 'patients_list.title' | translate }}</h2>
+      <p class="text-muted">{{ 'patients_list.subtitle' | translate }}</p>
     </div>
     <div class="d-flex gap-2">
       <button
         class="btn glass-morphism border-0 px-3 py-1 rounded-3 shadow-sm btn-sm"
         (click)="exportReport()"
       >
-        <i class="bi bi-download me-1"></i> {{ langService.translate('dashboard.report') }}
+        <i class="bi bi-download me-1"></i> {{ 'dashboard.report' | translate }}
       </button>
       <button class="btn btn-primary-premium" (click)="createNewPatient()">
-        <i class="bi bi-person-plus-fill me-2"></i> {{ langService.translate('patients_list.new') }}
+        <i class="bi bi-person-plus-fill me-2"></i> {{ 'patients_list.new' | translate }}
       </button>
     </div>
   </div>
@@ -27,7 +27,7 @@
           <input
             type="text"
             class="form-control bg-transparent border-0 py-2 shadow-none"
-            [placeholder]="langService.translate('patients_list.searchPlaceholder')"
+            [placeholder]="'patients_list.searchPlaceholder' | translate"
             [(ngModel)]="searchTerm"
             [ngModelOptions]="{ standalone: true }"
           />
@@ -39,15 +39,15 @@
           [(ngModel)]="genderFilter"
           [ngModelOptions]="{ standalone: true }"
         >
-          <option value="all">{{ langService.translate('patients_list.allGenders') }}</option>
-          <option value="Male">Masculino</option>
-          <option value="Female">Femenino</option>
-          <option value="Other">Otro</option>
+          <option value="all">{{ 'patients_list.allGenders' | translate }}</option>
+          <option value="Male">{{ 'common.male' | translate }}</option>
+          <option value="Female">{{ 'common.female' | translate }}</option>
+          <option value="Other">{{ 'common.other' | translate }}</option>
         </select>
       </div>
       <div class="col-md-2">
         <button class="btn btn-primary-premium w-100 py-2" (click)="toggleAdvancedFilters()">
-          <i class="bi bi-funnel me-1"></i> {{ langService.translate('common.dashboard') }}
+          <i class="bi bi-funnel me-1"></i> {{ 'common.filters' | translate }}
         </button>
       </div>
     </div>
@@ -55,16 +55,16 @@
     <!-- Advanced Filters Panel -->
     <div class="mt-3 p-3 bg-light rounded-3" *ngIf="showAdvancedFilters()">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="mb-0 fw-bold">{{ langService.translate('common.dashboard') }}</h6>
+        <h6 class="mb-0 fw-bold">{{ 'common.advancedFilters' | translate }}</h6>
         <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">
-          <i class="bi bi-x-circle me-1"></i> {{ langService.translate('common.cancel') }}
+          <i class="bi bi-x-circle me-1"></i> {{ 'common.clearFilters' | translate }}
         </button>
       </div>
       <div class="row g-2">
         <div class="col-md-12">
           <p class="text-muted small mb-0">
             <i class="bi bi-info-circle me-1"></i>
-            Mostrando {{ filteredPatients().length }} de {{ patients().length }} pacientes
+            {{ 'common.resultsOf' | translate:{ count: filteredPatients().length, total: patients().length } }}
           </p>
         </div>
       </div>
@@ -76,12 +76,12 @@
       <table class="table table-hover align-middle mb-0">
         <thead class="bg-light">
           <tr>
-            <th class="ps-4 py-3">{{ langService.translate('patients_list.table.patient') }}</th>
-            <th>{{ langService.translate('patients_list.table.document') }}</th>
-            <th>{{ langService.translate('patients_list.table.gender') }}</th>
-            <th>{{ langService.translate('patients_list.table.phone') }}</th>
-            <th>{{ langService.translate('common.status') }}</th>
-            <th class="text-end pe-4">{{ langService.translate('common.actions') }}</th>
+            <th class="ps-4 py-3">{{ 'patients_list.table.patient' | translate }}</th>
+            <th>{{ 'patients_list.table.document' | translate }}</th>
+            <th>{{ 'patients_list.table.gender' | translate }}</th>
+            <th>{{ 'patients_list.table.phone' | translate }}</th>
+            <th>{{ 'common.status' | translate }}</th>
+            <th class="text-end pe-4">{{ 'common.actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -102,31 +102,31 @@
               </div>
             </td>
             <td>{{ p.documentId }}</td>
-            <td>{{ p.gender }}</td>
+            <td>{{ p.gender === 'Male' ? ('common.male' | translate) : p.gender === 'Female' ? ('common.female' | translate) : p.gender }}</td>
             <td>{{ p.phone }}</td>
             <td>
               <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">{{
-                langService.translate('dashboard.active')
+                'dashboard.active' | translate
               }}</span>
             </td>
             <td class="text-end pe-4">
               <div class="action-buttons">
                 <button
                   class="btn btn-sm btn-light border-0 me-1"
-                  [title]="langService.translate('common.actions')"
+                  [title]="'common.view' | translate"
                   (click)="viewHistory(p.id)"
                 >
                   <i class="bi bi-eye"></i>
                 </button>
                 <button
                   class="btn btn-sm btn-light border-0 me-1"
-                  [title]="langService.translate('common.actions')"
+                  [title]="'common.edit' | translate"
                 >
                   <i class="bi bi-pencil"></i>
                 </button>
                 <button
                   class="btn btn-sm btn-light border-0 text-danger"
-                  [title]="langService.translate('common.actions')"
+                  [title]="'common.delete' | translate"
                   (click)="deletePatient(p.id)"
                 >
                   <i class="bi bi-trash"></i>
@@ -136,7 +136,7 @@
           </tr>
           <tr *ngIf="filteredPatients().length === 0">
             <td colspan="6" class="text-center py-4 text-muted">
-              {{ langService.translate('common.noResults') }}
+              {{ 'common.noResults' | translate }}
             </td>
           </tr>
         </tbody>

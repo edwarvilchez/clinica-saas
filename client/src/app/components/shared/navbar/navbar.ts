@@ -3,13 +3,14 @@ import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../services/auth.service';
 import { LanguageService } from '../../../services/language.service';
+import { TranslatePipe } from '../../../services/translate.pipe';
 import { CurrencyService } from '../../../services/currency.service';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [RouterModule, CommonModule],
+  imports: [RouterModule, CommonModule, TranslatePipe],
   templateUrl: './navbar.html',
   styleUrl: './navbar.css',
 })

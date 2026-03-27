@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl, FormsModule } from '@angular/forms';
@@ -8,14 +8,17 @@ import { API_URL } from '../../api-config';
 import Swal from 'sweetalert2';
 
 import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 import { ExportService } from '../../services/export.service';
 import { AuthService } from '../../services/auth.service';
 import { DrugService, Drug } from '../../services/drug.service';
+import { LabPdfService } from '../../services/lab-pdf.service';
+import { LabReport, HEMATOLOGY_STRUCTURE, CHEMISTRY_STRUCTURE } from '../lab-results/lab-report.model';
 
 @Component({
   selector: 'app-medical-history',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, FormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, FormsModule, TranslatePipe],
   templateUrl: './medical-history.html',
   styleUrl: './medical-history.css',
 })
@@ -36,6 +39,16 @@ export class MedicalHistory implements OnInit {
   recordForm: FormGroup;
 
   patients = signal<any[]>([]);
+  searchPatientTerm = signal('');
+
+  filteredPatients = computed(() => {
+    const term = this.searchPatientTerm().toLowerCase();
+    return this.patients().filter(p => 
+      (p.User?.firstName?.toLowerCase().includes(term) || false) ||
+      (p.User?.lastName?.toLowerCase().includes(term) || false) ||
+      (p.documentId?.toLowerCase().includes(term) || false)
+    );
+  });
 
   constructor(
     private medicalService: MedicalService,
@@ -45,7 +58,8 @@ export class MedicalHistory implements OnInit {
     public langService: LanguageService,
     private exportService: ExportService,
     public authService: AuthService,
-    private drugService: DrugService
+    private drugService: DrugService,
+    private labPdfService: LabPdfService
   ) {
     this.recordForm = this.fb.group({
       diagnosis: ['', Validators.required],
@@ -123,7 +137,10 @@ export class MedicalHistory implements OnInit {
   }
 
   loadPatients() {
-    this.http.get<any[]>(`${API_URL}/patients`).subscribe(data => this.patients.set(data));
+    this.http.get<any>(`${API_URL}/patients?limit=100`).subscribe(data => {
+      const list = Array.isArray(data) ? data : (data.patients || []);
+      this.patients.set(list);
+    });
   }
 
   selectPatient(id: string) {
@@ -137,6 +154,18 @@ export class MedicalHistory implements OnInit {
     window.history.pushState({}, '', url);
 
     this.loadHistory();
+  }
+
+  clearPatient() {
+    this.patientId.set('');
+    this.patient.set(null);
+    this.records.set([]);
+    this.labs.set([]);
+    
+    // Clear URL params
+    const url = new URL(window.location.href);
+    url.searchParams.delete('id');
+    window.history.pushState({}, '', url);
   }
 
   loadHistory() {
@@ -229,6 +258,42 @@ export class MedicalHistory implements OnInit {
             }
         });
     }
+  }
+
+  printConsultation(rec: any) {
+    this.printRecord(rec);
+  }
+
+  exportMedicalHistory() {
+    this.exportHistory();
+  }
+
+  viewLabReport(lab: any) {
+     const mockReport: LabReport = {
+      header: {
+        labOrder: lab.id.substring(0, 8).toUpperCase(),
+        patientName: `${this.patient()?.User?.firstName} ${this.patient()?.User?.lastName}`,
+        ci: this.patient()?.documentId,
+        sex: this.patient()?.gender || 'N/A',
+        age: 35,
+        entryDate: new Date(lab.createdAt).toLocaleDateString(),
+        entryTime: new Date(lab.createdAt).toLocaleTimeString(),
+        address: 'N/A',
+        phone: this.patient()?.User?.phone || 'N/A',
+        printDate: new Date().toLocaleString(),
+        agreement: 'Clinica SaaS Platform',
+      },
+      sections: [{
+        title: 'RESULTADOS DE LABORATORIO',
+        items: [{
+          description: lab.testName,
+          result: 'NORMAL',
+          units: 'N/A',
+          referenceValues: 'N/A'
+        }]
+      }]
+    };
+    this.labPdfService.viewPDF(mockReport);
   }
 
   printRecord(rec: any) {
@@ -404,5 +469,9 @@ export class MedicalHistory implements OnInit {
         this.exportService.exportToCsv(filename, headers, rows);
       }
     });
+  }
+
+  hasPrescriptions(record: any): boolean {
+    return record.prescriptions && record.prescriptions.length > 0;
   }
 }

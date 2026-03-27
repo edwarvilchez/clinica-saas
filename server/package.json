@@ -8,7 +8,7 @@
     "dev": "nodemon src/index.js",
     "subscription:watchdog": "node run_subscription_watchdog.js",
     "test:smtp": "node scripts/test-smtp.js",
-    "test": "echo 'Server testing disabled'",
+    "test": "jest --detectOpenHandles --forceExit",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "test:old": "node test/runTests.js",

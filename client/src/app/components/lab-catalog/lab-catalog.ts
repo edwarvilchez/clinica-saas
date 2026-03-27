@@ -5,13 +5,14 @@ import { RouterModule } from '@angular/router';
 import Swal from 'sweetalert2';
 import { LabCatalogService, LabTest, LabCombo } from '../../services/lab-catalog.service';
 import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 import { CurrencyService } from '../../services/currency.service';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-lab-catalog',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RouterModule],
+  imports: [CommonModule, ReactiveFormsModule, RouterModule, TranslatePipe],
   templateUrl: './lab-catalog.html',
   styleUrl: './lab-catalog.css'
 })

@@ -30,7 +30,7 @@ const createAppointmentSchema = Joi.object({
     .valid('Pending', 'Confirmed', 'Completed', 'Cancelled')
     .optional()
     .default('Pending'),
-  type: Joi.string().valid('InPerson', 'Virtual').optional().default('InPerson'),
+  type: Joi.string().valid('In-Person', 'Video').optional().default('In-Person'),
 });
 
 const updateAppointmentSchema = Joi.object({
@@ -43,7 +43,7 @@ const updateAppointmentSchema = Joi.object({
   status: Joi.string()
     .valid('Pending', 'Confirmed', 'Completed', 'Cancelled')
     .optional(),
-  type: Joi.string().valid('InPerson', 'Virtual').optional(),
+  type: Joi.string().valid('In-Person', 'Video').optional(),
 }).min(1); // Al menos un campo debe ser actualizado
 
 const appointmentIdSchema = Joi.object({

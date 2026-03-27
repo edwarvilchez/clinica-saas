@@ -1,20 +1,22 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { API_URL } from '../../api-config';
 import { AuthService } from '../../services/auth.service';
 import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-bulk-data',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './bulk-data.html',
   styleUrl: './bulk-data.css'
 })
 export class BulkData {
-  selectedFile: File | null = null;
+  selectedFile = signal<File | null>(null);
   importType = signal<'patients' | 'doctors'>('patients');
   isImporting = signal(false);
   importResults = signal<any>(null);
@@ -28,7 +30,8 @@ export class BulkData {
   onFileSelected(event: any) {
     const file = event.target.files[0];
     if (file) {
-      this.selectedFile = file;
+      this.selectedFile.set(file);
+      console.log('File selected:', file.name);
     }
   }
 
@@ -38,14 +41,15 @@ export class BulkData {
   }
 
   async startImport() {
-    if (!this.selectedFile) {
-      Swal.fire('Error', 'Por favor seleccione un archivo CSV', 'error');
+    const file = this.selectedFile();
+    if (!file) {
+      Swal.fire('Error', this.langService.translate('bulk_import.selectFileError'), 'error');
       return;
     }
 
     this.isImporting.set(true);
     const formData = new FormData();
-    formData.append('file', this.selectedFile);
+    formData.append('file', file);
 
     const token = localStorage.getItem('token');
     const headers = { 'Authorization': `Bearer ${token}` };
@@ -55,11 +59,12 @@ export class BulkData {
         next: (res: any) => {
           this.isImporting.set(false);
           this.importResults.set(res);
-          Swal.fire('Importación Finalizada', res.message, 'success');
+          Swal.fire(this.langService.translate('bulk_import.finished'), res.message || 'Ok', 'success');
         },
-        error: (err) => {
+        error: (err: any) => {
           this.isImporting.set(false);
-          Swal.fire('Error', err.error?.error || 'Error al importar datos', 'error');
+          const errorMsg = err.error?.error || this.langService.translate('bulk_import.importError');
+          Swal.fire('Error', errorMsg, 'error');
         }
       });
   }
@@ -76,14 +81,22 @@ export class BulkData {
                    'Maria,Gomez,maria@ejemplo.com,mgomez,ClinicaSaaS123!,MPPS-9999,04247654321,Valencia,Cardiologia,Female';
     }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `plantilla_${type}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const baseFilename = this.langService.translate('bulk_import.template_filename');
+      link.setAttribute('download', `${baseFilename}_${type}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+      }, 100);
+    } catch (e) {
+      console.error('Download failed', e);
+      Swal.fire('Error', 'No se pudo generar la descarga', 'error');
+    }
   }
 }

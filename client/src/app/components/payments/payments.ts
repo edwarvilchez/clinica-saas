@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 import { CurrencyService } from '../../services/currency.service';
 import { AuthService } from '../../services/auth.service';
 import { ExportService } from '../../services/export.service';
@@ -13,7 +14,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-payments',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, TranslatePipe],
   templateUrl: './payments.html',
   styleUrl: './payments.css',
 })
@@ -91,14 +92,17 @@ export class Payments implements OnInit {
   }
 
   createPatientPayment() {
-    this.http.get<any[]>(`${API_URL}/appointments`, { headers: this.getHeaders() })
-      .subscribe(appointments => {
+    this.http.get<any>(`${API_URL}/appointments`, { headers: this.getHeaders() })
+      .subscribe(response => {
+        // Handle both direct array and paginated object
+        const appointments = Array.isArray(response) ? response : (response.appointments || []);
+        
         // Filtrar citas pendientes o confirmadas que no estén canceladas/completadas
-        const validAppointments = appointments.filter(a => a.status !== 'Cancelled' && a.status !== 'Completed');
+        const validAppointments = appointments.filter((a: any) => a.status !== 'Cancelled' && a.status !== 'Completed');
         
         let appointmentOptions = `<option value="">${this.langService.translate('payments.select')}</option>`;
         if (validAppointments.length > 0) {
-            appointmentOptions += validAppointments.map(a => 
+            appointmentOptions += validAppointments.map((a: any) => 
                 `<option value="${a.id}">${new Date(a.date).toLocaleDateString()} - Dr. ${a.Doctor?.User?.lastName || 'Medico'} (${a.reason})</option>`
             ).join('');
         } else {
@@ -303,10 +307,11 @@ export class Payments implements OnInit {
   }
 
   editPatientPayment(payment: any) {
-    this.http.get<any[]>(`${API_URL}/appointments`, { headers: this.getHeaders() })
-      .subscribe(appointments => {
-        const validAppointments = appointments.filter(a => a.status !== 'Cancelled' && a.status !== 'Completed');
-        const appointmentOptions = validAppointments.map(a => 
+    this.http.get<any>(`${API_URL}/appointments`, { headers: this.getHeaders() })
+      .subscribe(response => {
+        const appointments = Array.isArray(response) ? response : (response.appointments || []);
+        const validAppointments = appointments.filter((a: any) => a.status !== 'Cancelled' && a.status !== 'Completed');
+        const appointmentOptions = validAppointments.map((a: any) => 
             `<option value="${a.id}" ${a.id === payment.appointmentId ? 'selected' : ''}>${new Date(a.date).toLocaleDateString()} - Dr. ${a.Doctor?.User?.lastName || 'Medico'} (${a.reason})</option>`
         ).join('');
 
@@ -413,9 +418,10 @@ export class Payments implements OnInit {
   }
 
   createAdminPayment() {
-    this.http.get<any[]>(`${API_URL}/patients`, { headers: this.getHeaders() })
-      .subscribe(patients => {
-        const patientOptions = patients.map(p => 
+    this.http.get<any>(`${API_URL}/patients`, { headers: this.getHeaders() })
+      .subscribe(response => {
+        const patients = Array.isArray(response) ? response : (response.patients || []);
+        const patientOptions = patients.map((p: any) => 
           `<option value="${p.id}">${p.User.firstName} ${p.User.lastName} (${p.documentId || 'N/A'})</option>`
         ).join('');
 

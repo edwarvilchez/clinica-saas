@@ -8,11 +8,12 @@ import { LanguageService } from '../../services/language.service';
 import { APP_VERSION } from '../../api-config';
 import Swal from 'sweetalert2';
 import { Subscription } from 'rxjs';
+import { TranslatePipe } from '../../services/translate.pipe';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, TranslatePipe],
   templateUrl: './login.html',
   styleUrl: './login.css',
 })

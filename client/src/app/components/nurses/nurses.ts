@@ -6,11 +6,12 @@ import { FormsModule } from '@angular/forms';
 import Swal from 'sweetalert2';
 import { LanguageService } from '../../services/language.service';
 import { API_URL } from '../../api-config';
+import { TranslatePipe } from '../../services/translate.pipe';
 
 @Component({
   selector: 'app-nurses',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, TranslatePipe],
   templateUrl: './nurses.html',
   styleUrl: './nurses.css',
 })
@@ -50,8 +51,11 @@ export class Nurses implements OnInit {
   }
 
   loadNurses() {
-    this.http.get<any[]>(`${API_URL}/nurses`, { headers: this.getHeaders() })
-      .subscribe(data => this.nurses.set(data));
+    this.http.get<any>(`${API_URL}/nurses`, { headers: this.getHeaders() })
+      .subscribe(data => {
+        const list = Array.isArray(data) ? data : (data.nurses || []);
+        this.nurses.set(list);
+      });
   }
 
   toggleAdvancedFilters() {

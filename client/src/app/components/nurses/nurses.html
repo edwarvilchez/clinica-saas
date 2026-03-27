@@ -1,13 +1,13 @@
 <div class="animate-fade-in">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h2 class="mb-1">{{ langService.translate('nurses.title') }}</h2>
+      <h2 class="mb-1">{{ 'nurses.title' | translate }}</h2>
       <p class="text-muted">
-        {{ langService.translate('nurses.subtitle') }}
+        {{ 'nurses.subtitle' | translate }}
       </p>
     </div>
     <button class="btn btn-primary-premium" (click)="createNewNurse()">
-      <i class="bi bi-person-plus-fill me-2"></i> {{ langService.translate('nurses.new') }}
+      <i class="bi bi-person-plus-fill me-2"></i> {{ 'nurses.new' | translate }}
     </button>
   </div>
 
@@ -21,7 +21,7 @@
           <input
             type="text"
             class="form-control bg-transparent border-0 py-2 shadow-none"
-            [placeholder]="langService.translate('nurses.searchPlaceholder')"
+            [placeholder]="'nurses.searchPlaceholder' | translate"
             [(ngModel)]="searchTerm"
             [ngModelOptions]="{ standalone: true }"
           />
@@ -33,16 +33,16 @@
           [(ngModel)]="shiftFilter"
           [ngModelOptions]="{ standalone: true }"
         >
-          <option value="all">{{ langService.translate('nurses.allShifts') }}</option>
-          <option value="Mañana">{{ langService.translate('nurses.shifts.morning') }}</option>
-          <option value="Tarde">{{ langService.translate('nurses.shifts.afternoon') }}</option>
-          <option value="Noche">{{ langService.translate('nurses.shifts.night') }}</option>
-          <option value="Rotativo">{{ langService.translate('nurses.shifts.rotating') }}</option>
+          <option value="all">{{ 'nurses.allShifts' | translate }}</option>
+          <option value="Mañana">{{ 'nurses.shifts.morning' | translate }}</option>
+          <option value="Tarde">{{ 'nurses.shifts.afternoon' | translate }}</option>
+          <option value="Noche">{{ 'nurses.shifts.night' | translate }}</option>
+          <option value="Rotativo">{{ 'nurses.shifts.rotating' | translate }}</option>
         </select>
       </div>
       <div class="col-md-2">
         <button class="btn btn-primary-premium w-100 py-2" (click)="toggleAdvancedFilters()">
-          <i class="bi bi-funnel me-1"></i> {{ langService.translate('nurses.filters') }}
+          <i class="bi bi-funnel me-1"></i> {{ 'nurses.filters' | translate }}
         </button>
       </div>
     </div>
@@ -50,18 +50,18 @@
     <!-- Advanced Filters Panel -->
     <div class="mt-3 p-3 bg-light rounded-3" *ngIf="showAdvancedFilters()">
       <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="mb-0 fw-bold">{{ langService.translate('nurses.filters') }}</h6>
+        <h6 class="mb-0 fw-bold">{{ 'nurses.filters' | translate }}</h6>
         <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">
-          <i class="bi bi-x-circle me-1"></i> {{ langService.translate('common.cancel') }}
+          <i class="bi bi-x-circle me-1"></i> {{ 'common.cancel' | translate }}
         </button>
       </div>
       <div class="row g-2">
         <div class="col-md-12">
           <p class="text-muted small mb-0">
             <i class="bi bi-info-circle me-1"></i>
-            {{ langService.translate('nurses.showing') }} {{ filteredNurses().length }}
-            {{ langService.translate('nurses.of') }} {{ nurses().length }}
-            {{ langService.translate('sidebar.nurses') | lowercase }}
+            {{ 'nurses.showing' | translate }} {{ filteredNurses().length }}
+            {{ 'nurses.of' | translate }} {{ nurses().length }}
+            {{ ('sidebar.nurses' | translate) | lowercase }}
           </p>
         </div>
       </div>
@@ -73,11 +73,11 @@
       <table class="table table-hover align-middle mb-0">
         <thead class="bg-light">
           <tr>
-            <th class="ps-4 py-3">{{ langService.translate('nurses.table.nurse') }}</th>
-            <th>{{ langService.translate('nurses.table.specialty') }}</th>
-            <th>{{ langService.translate('nurses.table.shift') }}</th>
-            <th>{{ langService.translate('nurses.table.license') }}</th>
-            <th class="text-end pe-4">{{ langService.translate('common.actions') }}</th>
+            <th class="ps-4 py-3">{{ 'nurses.table.nurse' | translate }}</th>
+            <th>{{ 'nurses.table.specialty' | translate }}</th>
+            <th>{{ 'nurses.table.shift' | translate }}</th>
+            <th>{{ 'nurses.table.license' | translate }}</th>
+            <th class="text-end pe-4">{{ 'common.actions' | translate }}</th>
           </tr>
         </thead>
         <tbody>
@@ -121,7 +121,7 @@
           </tr>
           <tr *ngIf="filteredNurses().length === 0">
             <td colspan="5" class="text-center py-4 text-muted">
-              {{ langService.translate('nurses.noResults') }}
+              {{ 'nurses.noResults' | translate }}
             </td>
           </tr>
         </tbody>

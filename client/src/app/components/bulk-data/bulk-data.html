@@ -1,8 +1,8 @@
-<div class="animate-fade-in">
+<div class="animate-fade-in" *ngIf="langService.lang() as currentLang">
   <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
-      <h2 class="fw-bold text-dark mb-1">Carga Masiva de Datos</h2>
-      <p class="text-muted small mb-0">Importación de registros mediante archivos CSV</p>
+      <h2 class="fw-bold text-dark mb-1">{{ 'bulk_import.title' | translate }}</h2>
+      <p class="text-muted small mb-0">{{ 'bulk_import.subtitle' | translate }} ({{ currentLang }})</p>
     </div>
   </div>
 
@@ -10,14 +10,15 @@
     <!-- Panel de Selección -->
     <div class="col-md-5">
       <div class="card-premium border-0 p-4 h-100">
-        <h5 class="fw-bold mb-3">Configuración de Carga</h5>
+        <h5 class="fw-bold mb-3">{{ 'bulk_import.config' | translate }}</h5>
 
         <div class="mb-4">
           <label class="form-label small fw-bold text-muted text-uppercase"
-            >1. Seleccione Tipo de Dato</label
+            >{{ 'bulk_import.step1' | translate }}</label
           >
           <div class="d-flex gap-2">
             <button
+              type="button"
               (click)="setImportType('patients')"
               class="btn flex-fill py-3 border-2"
               [ngClass]="
@@ -27,39 +28,44 @@
               "
             >
               <i class="bi bi-people-fill d-block fs-4 mb-1"></i>
-              Pacientes
+              {{ 'bulk_import.patients' | translate }}
             </button>
             <button
+              type="button"
               (click)="setImportType('doctors')"
               class="btn flex-fill py-3 border-2"
               [ngClass]="
-                importType() === 'doctors' ? 'btn-primary-premium shadow-sm' : 'btn-outline-primary'
+                importType() === 'doctors'
+                  ? 'btn-primary-premium shadow-sm'
+                  : 'btn-outline-primary'
               "
             >
               <i class="bi bi-person-badge-fill d-block fs-4 mb-1"></i>
-              Doctores
+              {{ 'bulk_import.doctors' | translate }}
             </button>
           </div>
         </div>
 
         <div class="mb-4">
           <label class="form-label small fw-bold text-muted text-uppercase"
-            >2. Descargar Plantilla</label
+            >{{ 'bulk_import.step2' | translate }}</label
           >
-          <p class="text-muted x-small">
-            Utilice nuestra plantilla CSV estructurada para evitar errores de formato.
+          <p class="text-muted x-small mb-3">
+            {{ 'bulk_import.templateDesc' | translate }}
           </p>
           <button
+            type="button"
             (click)="downloadTemplate()"
             class="btn btn-sm btn-light w-100 border text-primary fw-bold"
           >
-            <i class="bi bi-download me-2"></i> Descargar Plantilla (.csv)
+            <i class="bi bi-download me-2"></i>
+            {{ 'bulk_import.downloadTemplate' | translate }}
           </button>
         </div>
 
         <div class="mb-4">
           <label class="form-label small fw-bold text-muted text-uppercase"
-            >3. Cargar Archivo</label
+            >{{ 'bulk_import.step3' | translate }}</label
           >
           <div class="input-group">
             <input
@@ -69,60 +75,55 @@
               accept=".csv"
             />
           </div>
-          <div class="mt-2 x-small text-muted" *ngIf="selectedFile">
-            <i class="bi bi-file-earmark-check text-success me-1"></i> Archivo listo:
-            {{ selectedFile.name }}
+          <div class="mt-2 x-small text-muted" *ngIf="selectedFile()">
+            <i class="bi bi-file-earmark-check text-success me-1"></i> {{ 'bulk_import.fileReady' | translate }}:
+            {{ selectedFile()?.name }}
           </div>
         </div>
 
         <button
           (click)="startImport()"
-          [disabled]="isImporting() || !selectedFile"
+          [disabled]="isImporting() || !selectedFile()"
           class="btn btn-primary-premium w-100 py-3 mt-2 fw-bold"
         >
           <span *ngIf="!isImporting()">
-            <i class="bi bi-cloud-upload me-2"></i> Iniciar Importación
+            <i class="bi bi-cloud-upload-fill me-2"></i>
+            {{ 'bulk_import.startImport' | translate }}
           </span>
-          <span *ngIf="isImporting()" class="spinner-border spinner-border-sm" role="status"></span>
-          <span *ngIf="isImporting()" class="ms-2">Procesando registros...</span>
+          <span *ngIf="isImporting()">
+            <span
+              class="spinner-border spinner-border-sm me-2"
+              role="status"
+            ></span>
+            {{ 'bulk_import.processing' | translate }}
+          </span>
         </button>
       </div>
     </div>
 
     <!-- Panel de Resultados -->
     <div class="col-md-7">
-      <div class="card-premium border-0 p-4 h-100 min-vh-50">
-        <h5 class="fw-bold mb-3">Estado de la Operación</h5>
+      <div class="card-premium border-0 p-4 h-100 bg-light-soft">
+        <h5 class="fw-bold mb-4">{{ 'bulk_import.status' | translate }}</h5>
 
         <div
+          class="text-center py-5 opacity-50"
           *ngIf="!importResults() && !isImporting()"
-          class="d-flex flex-column align-items-center justify-content-center h-75 text-muted opacity-50"
         >
-          <i class="bi bi-upload fs-1 mb-3"></i>
-          <p>Los resultados de la importación aparecerán aquí</p>
+          <i class="bi bi-cloud-arrow-up fs-1 mb-3 d-block"></i>
+          <p class="mb-0">{{ 'bulk_import.emptyLabel' | translate }}</p>
         </div>
 
-        <div *ngIf="isImporting()" class="text-center py-5">
-          <div
-            class="loading-pulse mb-4 mx-auto"
-            style="
-              width: 80px;
-              height: 80px;
-              background: rgba(14, 165, 233, 0.1);
-              border-radius: 20px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-            "
-          >
-            <i class="bi bi-database-fill-gear text-primary fs-1 animate-pulse"></i>
-          </div>
-          <h5 class="fw-bold">Analizando archivo...</h5>
+        <!-- Cargando -->
+        <div class="text-center py-5" *ngIf="isImporting()">
+          <div class="spinner-grow text-primary mb-3" role="status"></div>
+          <h6 class="fw-bold">{{ 'bulk_import.analyzing' | translate }}</h6>
           <p class="text-muted small">
-            Esto puede tardar unos segundos dependiendo del tamaño del archivo.
+            {{ 'bulk_import.analyzingDesc' | translate }}
           </p>
         </div>
 
+        <!-- Resultados -->
         <div *ngIf="importResults()" class="animate-fade-in">
           <div
             class="alert bg-opacity-10 mb-4"
@@ -142,8 +143,10 @@
                 "
               ></i>
               <div>
-                <h6 class="fw-bold mb-1">{{ importResults().message }}</h6>
-                <p class="small mb-0 opacity-75">Resumen de transacciones procesadas.</p>
+                <h6 class="fw-bold mb-1">
+                  {{ 'bulk_import.importSummary' | translate:{ success: importResults().successCount, errors: importResults().errorCount } }}
+                </h6>
+                <p class="small mb-0 opacity-75">{{ 'bulk_import.summary' | translate }}</p>
               </div>
             </div>
           </div>
@@ -151,20 +154,21 @@
           <div class="row g-3 mb-4">
             <div class="col-sm-6">
               <div class="p-3 bg-light rounded-3 border text-center">
-                <p class="text-muted x-small text-uppercase fw-bold mb-1">Exitosos</p>
+                <p class="text-muted x-small text-uppercase fw-bold mb-1">{{ 'bulk_import.success' | translate }}</p>
                 <h4 class="fw-bold text-success mb-0">{{ importResults().successCount }}</h4>
               </div>
             </div>
             <div class="col-sm-6">
               <div class="p-3 bg-light rounded-3 border text-center">
-                <p class="text-muted x-small text-uppercase fw-bold mb-1">Fallidos</p>
+                <p class="text-muted x-small text-uppercase fw-bold mb-1">{{ 'bulk_import.failed' | translate }}</p>
                 <h4 class="fw-bold text-danger mb-0">{{ importResults().errorCount }}</h4>
               </div>
             </div>
           </div>
 
+          <!-- Errores -->
           <div *ngIf="importResults().errors.length > 0" class="mt-4">
-            <h6 class="fw-bold small text-muted text-uppercase mb-3">Detalle de Errores</h6>
+            <h6 class="fw-bold small text-muted text-uppercase mb-3">{{ 'bulk_import.errorDetail' | translate }}</h6>
             <div
               class="error-log bg-dark bg-opacity-5 rounded-3 p-3 overflow-auto"
               style="max-height: 250px"
@@ -174,7 +178,7 @@
                 class="border-bottom border-light pb-2 mb-2 small last-child-no-border"
               >
                 <div class="d-flex justify-content-between">
-                  <span class="fw-bold text-danger">Registro Fallido:</span>
+                  <span class="fw-bold text-danger">{{ 'bulk_import.failedRecord' | translate }}:</span>
                   <span class="x-small text-muted">{{
                     err.record.email || err.record.username
                   }}</span>

@@ -5,6 +5,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { CurrencyService } from '../../services/currency.service';
 import { LanguageService } from '../../services/language.service';
+import { TranslatePipe } from '../../services/translate.pipe';
 import { API_URL, BASE_URL } from '../../api-config';
 import Swal from 'sweetalert2';
 
@@ -23,7 +24,7 @@ interface PricingPlan {
 @Component({
   selector: 'app-subscription',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, TranslatePipe],
   templateUrl: './subscription.html',
   styleUrl: './subscription.css'
 })

@@ -1,23 +1,37 @@
 const { MedicalRecord, Patient, Doctor, User, Prescription, Drug } = require('../models');
 
+const validatePatientAccess = async (patientId, organizationId, role) => {
+  const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
+  if (isSuperAdmin) return true;
+
+  const patient = await Patient.findByPk(patientId, { include: [User] });
+  if (!patient) return false;
+  
+  return patient.User.organizationId === organizationId;
+};
+
 exports.createRecord = async (req, res) => {
   try {
-    // 1. Resolve Doctor ID from logged-in user
+    const { organizationId, role } = req.user;
+    const { patientId } = req.body;
+
+    const hasAccess = await validatePatientAccess(patientId, organizationId, role);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'No tienes acceso a este paciente' });
+    }
+
     const doctor = await Doctor.findOne({ where: { userId: req.user.id } });
     
-    // If user is a Doctor, use their profile ID
     if (doctor) {
         req.body.doctorId = doctor.id;
     } 
     
-    // If not a doctor (e.g. Admin), ensure doctorId is provided in body
     if (!req.body.doctorId) {
         return res.status(400).json({ error: 'Doctor identifier is missing. User must be a Doctor.' });
     }
 
     const record = await MedicalRecord.create(req.body);
 
-    // Save associated prescriptions if present
     if (req.body.prescriptions && Array.isArray(req.body.prescriptions)) {
       const prescriptionsData = req.body.prescriptions.map(p => ({
         ...p,
@@ -35,8 +49,14 @@ exports.createRecord = async (req, res) => {
 
 exports.getPatientHistory = async (req, res) => {
   try {
+    const { organizationId, role } = req.user;
     const { patientId } = req.params;
-    
+
+    const hasAccess = await validatePatientAccess(patientId, organizationId, role);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'No tienes acceso a este paciente' });
+    }
+
     const records = await MedicalRecord.findAll({
       where: { patientId },
       include: [
