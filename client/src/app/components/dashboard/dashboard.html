@@ -107,7 +107,14 @@
             <p class="text-muted x-small fw-medium mb-0">
               {{ 'dashboard.stats.income' | translate }}
             </p>
-            <h5 class="mb-0">{{ currencyService.formatAmount(stats().monthlyIncome) }}</h5>
+            <div class="d-flex flex-column lh-1">
+              <span class="fw-bold text-dark h5 mb-0 d-block">
+                {{ formatCombined('month', 'USD') }}
+              </span>
+              <span class="text-success x-small fw-bold mt-1">
+                {{ formatCombined('month', 'VES') }}
+              </span>
+            </div>
           </div>
           <div class="bg-warning bg-opacity-10 text-warning p-2 rounded-3">
             <i class="bi bi-currency-dollar fs-6"></i>
@@ -262,14 +269,12 @@
                 'dashboard.stats.daily' | translate
               }}</span>
               <div class="d-flex justify-content-between x-small mt-1 px-1">
-                <span>USD</span
-                ><span class="fw-bold">{{ stats().incomeDetails.day.USD | number: '1.0-0' }}</span>
+                <span>Total USD</span
+                ><span class="fw-bold">{{ getCombinedTotal('day', 'USD') | number: '1.2-2' }}</span>
               </div>
               <div class="d-flex justify-content-between x-small px-1">
-                <span>Bs.</span
-                ><span class="fw-bold text-success">{{
-                  stats().incomeDetails.day.Bs | number: '1.0-0'
-                }}</span>
+                <span>Total Bs.</span
+                ><span class="fw-bold text-success">{{ getCombinedTotal('day', 'VES') | number: '1.2-2' }}</span>
               </div>
             </div>
           </div>
@@ -280,14 +285,12 @@
                 'dashboard.stats.weekly' | translate
               }}</span>
               <div class="d-flex justify-content-between x-small mt-1 px-1">
-                <span>USD</span
-                ><span class="fw-bold">{{ stats().incomeDetails.week.USD | number: '1.0-0' }}</span>
+                <span>Total USD</span
+                ><span class="fw-bold">{{ getCombinedTotal('week', 'USD') | number: '1.2-2' }}</span>
               </div>
               <div class="d-flex justify-content-between x-small px-1">
-                <span>Bs.</span
-                ><span class="fw-bold text-success">{{
-                  stats().incomeDetails.week.Bs | number: '1.0-0'
-                }}</span>
+                <span>Total Bs.</span
+                ><span class="fw-bold text-success">{{ getCombinedTotal('week', 'VES') | number: '1.2-2' }}</span>
               </div>
             </div>
           </div>
@@ -300,16 +303,12 @@
                 'dashboard.stats.monthly' | translate
               }}</span>
               <div class="d-flex justify-content-between x-small mt-1 px-1">
-                <span>USD</span
-                ><span class="fw-bold">{{
-                  stats().incomeDetails.month.USD | number: '1.0-0'
-                }}</span>
+                <span>Total USD</span
+                ><span class="fw-bold">{{ getCombinedTotal('month', 'USD') | number: '1.2-2' }}</span>
               </div>
               <div class="d-flex justify-content-between x-small px-1">
-                <span>Bs.</span
-                ><span class="fw-bold text-success">{{
-                  stats().incomeDetails.month.Bs | number: '1.0-0'
-                }}</span>
+                <span>Total Bs.</span
+                ><span class="fw-bold text-success">{{ getCombinedTotal('month', 'VES') | number: '1.2-2' }}</span>
               </div>
             </div>
           </div>

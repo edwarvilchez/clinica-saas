@@ -33,7 +33,7 @@ const swaggerOptions = {
     openapi: '3.0.0',
     info: {
       title: 'CLINICA SAAS API',
-      version: '1.8.0',
+      version: '2.1.0',
       description: 'Sistema integral de gestión clínica y hospitalaria',
       contact: {
         name: 'CGK888Digital',

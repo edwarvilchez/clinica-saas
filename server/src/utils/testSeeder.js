@@ -121,7 +121,10 @@ const seedTestData = async () => {
     
     // Hospital is ACTIVE (Paid/Stable)
     const hospitalOrg = await createOrg(admin, 'HOSPITAL', 'ACTIVE');
-    console.log(`🏥 Created ACTIVE Hospital: ${hospitalOrg.name}`);
+    
+    // Link other admins to the same hospital
+    await admin2.update({ organizationId: hospitalOrg.id });
+    console.log(`🏥 Created ACTIVE Hospital: ${hospitalOrg.name} and linked all admins`);
 
     // ── 5. Scenario: CLINIC (Trial Active) ──────────────────────────────
     // To test the "7 days left" banner

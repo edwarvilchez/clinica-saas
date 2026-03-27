@@ -251,6 +251,26 @@ export class Dashboard implements OnInit {
     }).format(amount);
   }
 
+  getCombinedTotal(period: 'day' | 'week' | 'month', target: 'USD' | 'VES'): number {
+    const details = this.stats().incomeDetails[period];
+    if (!details) return 0;
+    
+    if (target === 'USD') {
+      return details.USD + this.currencyService.convert(details.Bs, 'VES', 'USD');
+    } else {
+      return this.currencyService.convert(details.USD, 'USD', 'VES') + details.Bs;
+    }
+  }
+
+  formatCombined(period: 'day' | 'week' | 'month', target: 'USD' | 'VES'): string {
+    const amount = this.getCombinedTotal(period, target);
+    return new Intl.NumberFormat(target === 'USD' ? 'en-US' : 'es-VE', {
+      style: 'currency',
+      currency: target,
+      minimumFractionDigits: 2
+    }).format(amount);
+  }
+
   formatTime(time: string): string {
     if (!time) return '';
     const [hours, minutes] = time.split(':');
