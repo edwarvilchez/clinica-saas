@@ -219,9 +219,9 @@ export class Subscription implements OnInit {
             </div>
             <hr class="my-2">
             <div class="d-flex justify-content-between fs-5">
-              <span>${isEs ? 'Total a Pagar' : 'Total to Pay'}:</span> <strong class="text-primary">$${amount} USD</strong>
+              <span>${isEs ? 'Total a Pagar' : 'Total to Pay'}:</span> <strong class="text-primary">${this.currencyService.formatAmount(amount)}</strong>
             </div>
-            <div class="small text-muted mt-1">≈ Bs. ${(amount * this.currencyService.rate()).toFixed(2)}</div>
+            <div class="small text-muted mt-1">≈ ${this.currencyService.formatAmount(amount, this.currencyService.currency() === 'USD' ? 'VES' : 'USD')}</div>
           </div>
 
           <div class="mb-3">

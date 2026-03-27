@@ -47,12 +47,10 @@ export class LabCatalog implements OnInit {
     private catalogService: LabCatalogService,
     public langService: LanguageService,
     public currencyService: CurrencyService,
-    private authService: AuthService,
+    public authService: AuthService,
     private fb: FormBuilder
   ) {
-    this.currentUser.set(this.authService.currentUser());
-    const role = this.currentUser()?.Role?.name;
-    this.canManage.set(['SUPERADMIN', 'DOCTOR', 'ADMINISTRATIVE'].includes(role));
+    this.canManage.set(this.authService.hasRole(['SUPERADMIN', 'DOCTOR', 'ADMINISTRATIVE', 'ADMIN']));
   }
 
   ngOnInit() {
@@ -135,6 +133,89 @@ export class LabCatalog implements OnInit {
           Swal.fire(this.langService.translate('payments.deleted'), '', 'success');
           this.loadData();
         });
+      }
+    });
+  }
+
+  openPresetsModal() {
+    if (!this.canManage()) return;
+
+    const presets = [
+      { name: 'Hematología Completa', category: 'Hematología', price: 8.00, desc: 'Hemoglobina, Hematocrito, Contaje Blanco y Diferencial, Plaquetas.' },
+      { name: 'Glicemia', category: 'Química', price: 5.00, desc: 'Nivel de glucosa en sangre en ayunas.' },
+      { name: 'Urea', category: 'Química', price: 5.00, desc: 'Evaluación de la función renal.' },
+      { name: 'Creatinina', category: 'Química', price: 5.00, desc: 'Evaluación precisa de la función renal.' },
+      { name: 'Colesterol Total', category: 'Química', price: 5.00, desc: 'Perfil lipídico básico.' },
+      { name: 'Triglicéridos', category: 'Química', price: 5.00, desc: 'Perfil lipídico básico.' },
+      { name: 'Ácido Úrico', category: 'Química', price: 5.00, desc: 'Detección de hiperuricemia.' },
+      { name: 'Examen General de Orina', category: 'Urianálisis', price: 5.00, desc: 'Análisis físico, químico y microscópico.' },
+      { name: 'Examen de Heces', category: 'Coprología', price: 5.00, desc: 'Detección de parásitos y sangre oculta.' },
+      { name: 'VDRL', category: 'Serología', price: 6.00, desc: 'Prueba de detección de sífilis.' },
+      { name: 'HIV (1ra y 2da Gen)', category: 'Serología', price: 15.00, desc: 'Prueba de detección de anticuerpos HIV.' },
+      { name: 'Perfil Hepático', category: 'Química', price: 20.00, desc: 'TGO, TGP, Bilirrubinas, Fosfatasa Alcalina.' },
+      { name: 'PT / PTT', category: 'Especiales', price: 12.00, desc: 'Pruebas de coagulación sanguínea.' },
+      { name: 'Proteína C Reactiva (PCR)', category: 'Serología', price: 10.00, desc: 'Marcador de inflamación aguda.' },
+      { name: 'Factor Reumatoide (RA)', category: 'Serología', price: 10.00, desc: 'Detección de artritis reumatoide.' },
+      { name: 'Perfil Tiroideo (TSH, T3, T4)', category: 'Especiales', price: 30.00, desc: 'Evaluación de la función tiroidea.' },
+      { name: 'Beta HCG (Embarazo)', category: 'Serología', price: 12.00, desc: 'Prueba cuantitativa de embarazo.' }
+    ];
+
+    Swal.fire({
+      title: this.langService.translate('lab_catalog.commonTests'),
+      width: '700px',
+      html: `
+        <div class="text-start">
+          <p class="text-muted small mb-3">Seleccione los exámenes que desea agregar rápidamente a su catálogo con precios base sugeridos ($).</p>
+          <div class="row g-2 border rounded-3 p-3 bg-light" style="max-height: 400px; overflow-y: auto;">
+            ${presets.map((p, i) => `
+              <div class="col-md-6 mb-2">
+                <div class="form-check p-2 border rounded-3 bg-white hover-shadow transition h-100">
+                  <input class="form-check-input swal-preset-check ms-0 me-2" type="checkbox" value="${i}" id="preset-${i}">
+                  <label class="form-check-label d-block" for="preset-${i}">
+                    <div class="fw-bold small">${p.name}</div>
+                    <div class="d-flex justify-content-between align-items-center mt-1">
+                      <span class="badge bg-secondary opacity-75 x-small">${p.category}</span>
+                      <span class="fw-bold text-primary small">$${p.price.toFixed(2)}</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: this.langService.translate('lab_catalog.addCommon'),
+      cancelButtonText: this.langService.translate('common.cancel'),
+      confirmButtonColor: '#10b981',
+      showLoaderOnConfirm: true,
+      preConfirm: () => {
+        const checks = document.querySelectorAll('.swal-preset-check:checked');
+        const selectedIndices = Array.from(checks).map((c: any) => parseInt(c.value));
+        
+        if (selectedIndices.length === 0) {
+          Swal.showValidationMessage('Debe seleccionar al menos un examen');
+          return false;
+        }
+
+        const selectedTests = selectedIndices.map(idx => presets[idx]);
+        // Sequential creation for simplicity/stability in small batches
+        const promises = selectedTests.map(t => 
+            this.catalogService.createTest({
+                name: t.name,
+                category: t.category,
+                price: t.price,
+                description: t.desc,
+                isActive: true
+            }).toPromise()
+        );
+
+        return Promise.all(promises);
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire('¡Éxito!', `${result.value.length} exámenes agregados correctamente.`, 'success');
+        this.loadData();
       }
     });
   }

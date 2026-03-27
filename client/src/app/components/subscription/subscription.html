@@ -101,7 +101,7 @@
           </div>
 
           <div class="d-flex align-items-baseline gap-1 mb-4">
-            <span class="price-tag">${{ getPrice(plan.price) | number }}</span>
+            <span class="price-tag">{{ currencyService.formatAmount(getPrice(plan.price)) }}</span>
             <span class="period-tag"
               >/
               {{

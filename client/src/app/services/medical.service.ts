@@ -30,6 +30,10 @@ export class MedicalService {
     return this.http.get<any[]>(`${this.labsUrl}/patient/${patientId}`, { headers: this.getHeaders() });
   }
 
+  getAllLabs(): Observable<any[]> {
+    return this.http.get<any[]>(this.labsUrl, { headers: this.getHeaders() });
+  }
+
   createLabResult(lab: any): Observable<any> {
     return this.http.post<any>(this.labsUrl, lab, { headers: this.getHeaders() });
   }

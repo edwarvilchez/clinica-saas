@@ -20,16 +20,16 @@ async function fixPatientPassword() {
         lastName: 'Gonzalez',
         username: 'juang',
         email: 'pac.gonzalez@email.com',
-        password: process.env.TEST_PASSWORD || 'ClinicaSaaS123', // El hook beforeCreate lo hasheará
+        password: process.env.TEST_PASSWORD || 'DevPassword123', // Warning: dev fallback
         roleId: patientRole.id
       });
-      console.log(`✅ Usuario creado exitosamente con password: ${process.env.TEST_PASSWORD || 'ClinicaSaaS123'}`);
+      console.log(`✅ Usuario creado exitosamente.`);
     } else {
       console.log(`✅ Usuario encontrado (ID: ${user.id}, Rol: ${user.Role.name})`);
-      console.log(`🔄 Restableciendo contraseña a "${process.env.TEST_PASSWORD || 'ClinicaSaaS123'}"...`);
+      console.log(`🔄 Restableciendo contraseña...`);
       
       // Forzar actualización de password
-      user.password = process.env.TEST_PASSWORD || 'ClinicaSaaS123';
+      user.password = process.env.TEST_PASSWORD || 'DevPassword123';
       await user.save(); // Esto disparará el hook de hasheo
       
       console.log('✅ Contraseña actualizada correctamente.');

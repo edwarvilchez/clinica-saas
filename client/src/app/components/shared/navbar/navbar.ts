@@ -5,6 +5,7 @@ import { AuthService } from '../../../services/auth.service';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../services/translate.pipe';
 import { CurrencyService } from '../../../services/currency.service';
+import { OrganizationService } from '../../../services/organization.service';
 import Swal from 'sweetalert2';
 
 @Component({
@@ -31,7 +32,8 @@ export class Navbar {
   constructor(
     public authService: AuthService,
     public langService: LanguageService,
-    public currencyService: CurrencyService
+    public currencyService: CurrencyService,
+    public orgService: OrganizationService
   ) { }
 
   toggleUserMenu() {
@@ -201,12 +203,32 @@ export class Navbar {
     return ['SUPERADMIN', 'DOCTOR', 'ADMINISTRATIVE'].includes(role);
   }
 
+  async refreshBcvRate() {
+    if (!this.canManageRate()) return;
+
+    Swal.fire({
+      title: 'Actualizar Tasa BCV',
+      text: 'Obteniendo tasa oficial del BCV...',
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    try {
+      const rate = await this.currencyService.refreshRate();
+      Swal.fire('¡Éxito!', `Tasa BCV actualizada: ${rate} Bs.`, 'success');
+    } catch (error) {
+      Swal.fire('Error', 'No se pudo obtener la tasa del BCV', 'error');
+    }
+  }
+
   openExchangeRateModal() {
     if (!this.canManageRate()) return;
     
     Swal.fire({
       title: 'Actualizar Tasa BCV',
-      text: `Tasa actual: ${this.currencyService.rate()} Bs.`,
+      text: `Tasa actual: ${this.currencyService.rate} Bs.`,
       input: 'number',
       inputAttributes: {
         step: '0.01',

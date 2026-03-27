@@ -25,6 +25,13 @@
     <div *ngIf="canManage()" class="d-flex gap-2">
       <button
         *ngIf="activeTab() === 'tests'"
+        class="btn btn-outline-success shadow-sm rounded-pill px-3"
+        (click)="openPresetsModal()"
+      >
+        <i class="bi bi-list-check me-1"></i> {{ 'lab_catalog.commonTests' | translate }}
+      </button>
+      <button
+        *ngIf="activeTab() === 'tests'"
         class="btn btn-outline-primary shadow-sm rounded-pill px-3"
         (click)="importCsv()"
       >
@@ -61,7 +68,7 @@
           {{ 'lab_catalog.rateInfo' | translate }}
         </p>
         <p class="mb-0 x-small text-muted">
-          {{ 'lab_catalog.rateDetail' | translate }} {{ currencyService.rate() }} Bs.
+          {{ 'lab_catalog.rateDetail' | translate }} {{ currencyService.rate }} Bs.
         </p>
       </div>
     </div>

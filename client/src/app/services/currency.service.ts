@@ -1,6 +1,7 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { API_URL } from '../api-config';
 
 export type Currency = 'USD' | 'VES';
 
@@ -13,7 +14,7 @@ export class CurrencyService {
   private rateSource = signal<'manual' | 'bcv' | 'default'>('default');
   private lastUpdated = signal<Date | null>(null);
 
-  private readonly API_URL = '/api/exchange/bcv-rate';
+  private readonly API_RATE_URL = `${API_URL}/exchange/bcv-rate`;
 
   constructor(private http: HttpClient) {
     const savedCurrency = localStorage.getItem('currency') as Currency;
@@ -38,7 +39,8 @@ export class CurrencyService {
   }
 
   get rate() {
-    return this.exchangeRate.asReadonly();
+    const r = this.exchangeRate();
+    return r > 0 ? r : 30.00;
   }
 
   get source() {
@@ -51,7 +53,7 @@ export class CurrencyService {
 
   async fetchBcvRate(): Promise<number> {
     try {
-      const response: any = await firstValueFrom(this.http.get(this.API_URL));
+      const response: any = await firstValueFrom(this.http.get(this.API_RATE_URL));
       
       if (response && response.rate) {
         this.exchangeRate.set(response.rate);
@@ -71,11 +73,20 @@ export class CurrencyService {
 
   async initializeRate(): Promise<void> {
     // Try BCV first, fallback to manual
-    try {
-      await this.fetchBcvRate();
-    } catch {
-      // Keep existing rate
+    const savedRate = localStorage.getItem('exchangeRate');
+    if (!savedRate) {
+      // Only fetch if no manual rate is saved
+      try {
+        await this.fetchBcvRate();
+      } catch {
+        // Keep existing rate (30.00 default)
+      }
     }
+  }
+
+  async refreshRate(): Promise<number> {
+    // Force refresh from BCV API
+    return await this.fetchBcvRate();
   }
 
   setRate(rate: number) {

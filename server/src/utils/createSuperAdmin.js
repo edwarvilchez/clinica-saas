@@ -12,7 +12,11 @@ async function createSuperAdmin() {
 
     if (superAdmin) {
       console.log('ℹ️  SUPERADMIN ya existe. Actualizando password...');
-      superAdmin.password = process.env.SUPERADMIN_PASSWORD || 'admin123';
+      superAdmin.password = process.env.SUPERADMIN_PASSWORD;
+      if (!superAdmin.password) {
+        console.warn('⚠️  SUPERADMIN_PASSWORD no definida en .env. Usando password por defecto para desarrollo (admin123).');
+        superAdmin.password = 'admin123';
+      }
       await superAdmin.save();
       console.log('✅ Password actualizado.');
     } else {
@@ -29,7 +33,7 @@ async function createSuperAdmin() {
         superAdmin = await User.create({
           username: 'superadmin',
           email: 'admin@clinicasaas.com',
-          password: process.env.SUPERADMIN_PASSWORD || 'admin123',
+          password: process.env.SUPERADMIN_PASSWORD || 'admin123', // Warning: default for dev only
           firstName: 'Administrador',
           lastName: 'Sistema',
           phone: '+58412-0000000',

@@ -39,26 +39,45 @@ router.get('/bcv-rate', async (req, res) => {
     
     // Buscar en múltiples formatos de la página
     const selectors = [
+      '#dolar .valor',
+      '#dolar strong',
       '.paridad-box .valor',
+      '[id*="dolar"] .valor',
       '.valorIndicador',
       'table.currency-table td:nth-child(2)',
-      '[id*="dolar"]',
       '.divWrapper td'
     ];
 
     for (const selector of selectors) {
       const elements = $(selector);
       if (elements.length > 0) {
-        const text = elements.first().text();
+        const text = elements.first().text().trim();
+        // Extract number like "36,89450000" or similar
         const match = text.match(/[\d]+[.,][\d]+/);
         if (match) {
           const rate = parseFloat(match[0].replace(',', '.'));
           if (rate > 20 && rate < 1000) {
             usdRate = rate;
+            logger.info({ selector, matchedText: text, parsedRate: rate }, 'BCV rate found via selector');
             break;
           }
         }
       }
+    }
+
+    // Método 1.1: Búsqueda por texto si los selectores fallan
+    if (!usdRate) {
+      $('strong, span, div, td').each((i, el) => {
+        const text = $(el).text().trim();
+        if (text.includes('USD') || text.includes('Dólar')) {
+          const nextText = $(el).parent().text().trim();
+          const match = nextText.match(/[\d]{2,}[.,][\d]{2,}/);
+          if (match) {
+            usdRate = parseFloat(match[0].replace(',', '.'));
+            if (usdRate > 20) return false; // stop each
+          }
+        }
+      });
     }
   } catch (e) {
     errorMsg += ' BCV error: ' + e.message;

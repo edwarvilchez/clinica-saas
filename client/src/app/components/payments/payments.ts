@@ -219,7 +219,7 @@ export class Payments implements OnInit {
                 }
 
                 // Convert to base currency (USD) for storage consistency
-                const finalAmount = selectedCurr === 'VES' ? (rawAmount / this.currencyService.rate()) : rawAmount;
+                const finalAmount = selectedCurr === 'VES' ? (rawAmount / this.currencyService.rate) : rawAmount;
 
                 formData.append('bank', bank);
                 formData.append('reference', reference);
@@ -399,7 +399,7 @@ export class Payments implements OnInit {
             formData.append('instrument', method);
             formData.append('currency', selectedCurr);
             
-            const finalAmount = selectedCurr === 'VES' ? (rawAmount / this.currencyService.rate()) : rawAmount;
+            const finalAmount = selectedCurr === 'VES' ? (rawAmount / this.currencyService.rate) : rawAmount;
             formData.append('bank', bank);
             formData.append('reference', reference);
             formData.append('amount', finalAmount.toString());
@@ -506,7 +506,7 @@ export class Payments implements OnInit {
 
             let finalAmount = parseFloat(amount);
             if (currency === 'VES') {
-                finalAmount = finalAmount / this.currencyService.rate();
+                finalAmount = finalAmount / this.currencyService.rate;
             }
 
             return { 

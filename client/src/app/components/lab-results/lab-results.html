@@ -27,7 +27,7 @@
         </div>
       </div>
       <div class="col-md-3">
-        <select class="form-select glass-morphism border rounded-3 py-2 text-muted">
+        <select class="form-select glass-morphism border rounded-3 py-2 text-muted" [formControl]="typeFilter">
           <option value="">{{ 'lab.examType' | translate }}</option>
           <option value="Sangre">{{ 'lab.types.blood' | translate }}</option>
           <option value="Orina">{{ 'lab.types.urine' | translate }}</option>
@@ -35,7 +35,7 @@
         </select>
       </div>
       <div class="col-md-3">
-        <select class="form-select glass-morphism border rounded-3 py-2 text-muted">
+        <select class="form-select glass-morphism border rounded-3 py-2 text-muted" [formControl]="statusFilter">
           <option value="">{{ 'common.status' | translate }}</option>
           <option value="Completado">{{ 'lab.status.completed' | translate }}</option>
           <option value="Pendiente">{{ 'lab.status.pending' | translate }}</option>
@@ -112,11 +112,11 @@
                         'bi-x-circle-fill': result.status === 'Cancelado',
                       }"
                     ></i>
-                    {{ (result.status === 'Completado' ? 'lab.status.completed' : (result.status === 'Pendiente' ? 'lab.status.pending' : '')) | translate }}
+                    {{ (result.status?.toLowerCase() === 'completado' || result.status?.toLowerCase() === 'completed' || result.status?.toLowerCase() === 'ready' ? 'lab.status.completed' : (result.status?.toLowerCase() === 'pendiente' || result.status?.toLowerCase() === 'pending' ? 'lab.status.pending' : '')) | translate }}
                   </span>
                 </td>
                 <td *ngIf="canViewPrices()" class="py-3 fw-bold text-primary">
-                  {{ result.price | currency: 'USD' }}
+                  {{ currencyService.formatAmount(result.price) }}
                 </td>
                 <td class="pe-4 py-3 text-end">
                   <button

@@ -14,6 +14,7 @@ import { AuthService } from '../../services/auth.service';
 import { DrugService, Drug } from '../../services/drug.service';
 import { LabPdfService } from '../../services/lab-pdf.service';
 import { LabReport, HEMATOLOGY_STRUCTURE, CHEMISTRY_STRUCTURE } from '../lab-results/lab-report.model';
+import { OrganizationService } from '../../services/organization.service';
 
 @Component({
   selector: 'app-medical-history',
@@ -59,7 +60,8 @@ export class MedicalHistory implements OnInit {
     private exportService: ExportService,
     public authService: AuthService,
     private drugService: DrugService,
-    private labPdfService: LabPdfService
+    private labPdfService: LabPdfService,
+    private orgService: OrganizationService
   ) {
     this.recordForm = this.fb.group({
       diagnosis: ['', Validators.required],
@@ -345,7 +347,9 @@ export class MedicalHistory implements OnInit {
         </head>
         <body>
           <div class="header">
-            <div class="logo">Clinica SaaS</div>
+            <div class="logo">
+              ${this.orgService.settings().logoUrl ? `<img src="${this.orgService.settings().logoUrl}" style="max-height: 60px;">` : this.orgService.settings().name || 'Clinica SaaS'}
+            </div>
             <div>Informe Médico Clínico</div>
           </div>
           
@@ -412,7 +416,7 @@ export class MedicalHistory implements OnInit {
           ${leaveHtml}
 
           <div class="footer">
-            <p>Generado electrónicamente por Clinica SaaS Platform</p>
+            <p>Generado electrónicamente por ${this.orgService.settings().name || 'Clinica SaaS Platform'}</p>
             <p>${new Date().toLocaleString()}</p>
           </div>
         </body>

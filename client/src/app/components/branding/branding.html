@@ -1,0 +1,144 @@
+<!-- branding.html -->
+<div class="animate-fade-in p-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-1 fw-bold text-dark">Imagen Corporativa & Branding</h2>
+      <p class="text-muted small">Personalice la aplicación y los reportes médicos con su identidad institucional.</p>
+    </div>
+    <div class="d-flex gap-2">
+      <button 
+        class="btn btn-primary-premium rounded-pill px-5 shadow transition" 
+        [disabled]="isSaving()" 
+        (click)="saveSettings()"
+        [style.background-color]="primaryColor()"
+        [style.border-color]="primaryColor()"
+      >
+        <span *ngIf="!isSaving()"><i class="bi bi-check-circle-fill me-2"></i> Guardar Cambios</span>
+        <span *ngIf="isSaving()"><i class="bi bi-hourglass-split me-2"></i> Guardando...</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="row g-4">
+    <!-- Columna Izquierda: Configuración -->
+    <div class="col-lg-5">
+      <div class="card-premium p-4 border-0 mb-4 bg-white shadow-sm overflow-hidden position-relative">
+        <h5 class="fw-bold mb-4 d-flex align-items-center gap-2">
+          <i class="bi bi-gear-fill text-primary"></i> Ajustes Generales
+        </h5>
+
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted text-uppercase mb-2">Nombre de la Institución</label>
+          <div class="input-group glass-morphism border rounded-3 overflow-hidden">
+            <span class="input-group-text bg-transparent border-0 ps-3">
+              <i class="bi bi-building text-muted"></i>
+            </span>
+            <input 
+              type="text" 
+              class="form-control border-0 bg-transparent py-2 shadow-none" 
+              [(ngModel)]="orgName"
+              placeholder="Ej: Centro Clínico Los Olivos"
+            >
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted text-uppercase mb-2">Logo de la Clínica (URL)</label>
+          <div class="input-group glass-morphism border rounded-3 overflow-hidden">
+            <span class="input-group-text bg-transparent border-0 ps-3">
+              <i class="bi bi-image text-muted"></i>
+            </span>
+            <input 
+              type="text" 
+              class="form-control border-0 bg-transparent py-2 shadow-none" 
+              [(ngModel)]="logoUrl"
+              placeholder="URL de la imagen (PNG transparente recomendado)"
+            >
+          </div>
+          <p class="x-small text-muted mt-2">Recomendamos usar un logo con fondo transparente y dimensiones de aprox. 200x60px.</p>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label small fw-bold text-muted text-uppercase mb-2">Color Primario de la Aplicación</label>
+          <div class="d-flex align-items-center gap-3">
+            <div 
+              class="color-preview rounded-3 shadow-sm" 
+              [style.background-color]="primaryColor()"
+              style="width: 50px; height: 50px; border: 4px solid #fff;"
+            ></div>
+            <input 
+              type="color" 
+              class="form-control form-control-color border-0 rounded-circle shadow-xs" 
+              [(ngModel)]="primaryColor"
+              style="width: 44px; height: 44px; padding: 0;"
+            >
+            <span class="fw-bold fs-5 text-dark font-monospace text-uppercase">{{ primaryColor() }}</span>
+          </div>
+          <p class="x-small text-muted mt-2">Este color se aplicará globalmente a botones, encabezados y reportes.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Columna Derecha: Previsualización de Reporte -->
+    <div class="col-lg-7">
+      <div class="card-premium p-4 border-0 mb-4 bg-white shadow-sm">
+         <h5 class="fw-bold mb-4 d-flex align-items-center gap-2">
+            <i class="bi bi-file-pdf-fill text-danger"></i> Previsualización de Informe Médico
+         </h5>
+         
+         <!-- Report Preview Box -->
+         <div class="report-preview-box border rounded-4 p-5 animate-pulse-slow shadow-lg bg-white" style="min-height: 500px;">
+            <div class="d-flex justify-content-between align-items-start border-bottom pb-4 mb-5" [style.border-color]="primaryColor()">
+               <div class="logo-preview">
+                  <img *ngIf="logoUrl()" [src]="logoUrl()" style="max-height: 50px;">
+                  <span *ngIf="!logoUrl()" class="fs-3 fw-bold" [style.color]="primaryColor()">{{ orgName() || 'Logotipo Institucional' }}</span>
+               </div>
+               <div class="text-end small">
+                  <p class="mb-0 fw-bold">Fecha: 27/03/2026</p>
+                  <p class="mb-0 text-muted">Folio: ##001-A</p>
+               </div>
+            </div>
+
+            <div class="mb-4">
+               <h6 class="text-uppercase x-small fw-bold mb-3 d-inline-block border-bottom border-2 pb-1" [style.border-color]="primaryColor()" [style.color]="primaryColor()">Datos del Paciente</h6>
+               <div class="row g-2">
+                  <div class="col-8 h-20 bg-light rounded-pill mb-2 opacity-50 pulse"></div>
+                  <div class="col-6 h-20 bg-light rounded-pill opacity-50 pulse"></div>
+               </div>
+            </div>
+
+            <div class="mb-5">
+               <h6 class="text-uppercase x-small fw-bold mb-3 d-inline-block border-bottom border-2 pb-1" [style.border-color]="primaryColor()" [style.color]="primaryColor()">Diagnóstico Médico</h6>
+               <div class="p-3 bg-light bg-opacity-30 rounded-3 border border-dashed">
+                  <p class="mb-0 italic small text-muted">Aquí aparecerá el diagnóstico y los hallazgos clínicos del médico tratante.</p>
+                  <div class="w-100 h-10 h-100 bg-light rounded my-2 pulse"></div>
+                  <div class="w-75 h-10 bg-light rounded pulse"></div>
+               </div>
+            </div>
+
+            <div class="mt-auto pt-5 text-center small text-muted border-top border-light">
+               <p class="mb-0">Este informe ha sido generado electrónicamente por <strong>{{ orgName() || 'Clinica SaaS' }}</strong></p>
+            </div>
+         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .h-20 { height: 20px; }
+  .h-10 { height: 10px; }
+  .pulse { background: #f1f5f9; animation: pulse 2s infinite ease-in-out; }
+  @keyframes pulse {
+    0% { opacity: 0.3; }
+    50% { opacity: 0.8; }
+    100% { opacity: 0.3; }
+  }
+  .report-preview-box {
+    transform: scale(0.95);
+    transition: all 0.5s ease;
+  }
+  .report-preview-box:hover {
+    transform: scale(1);
+  }
+</style>

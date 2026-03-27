@@ -175,6 +175,7 @@ sequelize.authenticate()
 // Routes
 app.use('/api/public', require('./routes/public.routes')); // Public routes (no auth)
 app.use('/api/auth', require('./routes/auth.routes'));
+app.use('/api/organization', require('./routes/organization.routes'));
 
 // Protected Routes with Subscription Check
 app.use('/api/appointments', authMiddleware, checkSubscription, require('./routes/appointment.routes'));

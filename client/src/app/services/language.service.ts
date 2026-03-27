@@ -147,7 +147,8 @@ const ES_DICT = {
     myTeam: 'Gestión de Equipo',
     billing: 'Mi Suscripción',
     dashboard: 'Panel Principal',
-    labCatalog: 'Catálogo Lab'
+    labCatalog: 'Catálogo Lab',
+    branding: 'Imagen Corporativa'
   },
   navbar: {
     updateInfo: 'Actualizar Información',
@@ -175,7 +176,65 @@ const ES_DICT = {
     search: 'Buscar',
     allCategories: 'Todas las categorías',
     noResults: 'No se encontraron medicamentos',
-    noResultsHint: 'Intente con otro término o agregue uno nuevo a la base de datos.'
+    noResultsHint: 'Intente con otro término o agregue uno nuevo a la base de datos.',
+    results: 'resultados',
+    validation: 'Por favor complete los campos obligatorios',
+    savedOk: 'Medicamento guardado exitosamente',
+    confirmDelete: 'Eliminar Medicamento',
+    confirmDeleteText: '¿Está seguro de eliminar {{name}}? Esta acción no se puede deshacer.',
+    yes: 'Sí, eliminar',
+    no: 'Cancelar',
+    deletedOk: 'Medicamento eliminado exitosamente',
+    noCategory: 'Sin categoría',
+    table: {
+      commercial: 'Nombre Comercial',
+      generic: 'Nombre Genérico',
+      components: 'Componentes',
+      presentation: 'Presentación',
+      category: 'Categoría',
+      actions: 'Acciones'
+    },
+    detail: {
+      edit: 'Editar',
+      close: 'Cerrar',
+      presentation: 'Presentación',
+      category: 'Categoría',
+      components: 'Componentes Activos',
+      indications: 'Indicaciones',
+      posology: 'Posología',
+      contraindications: 'Contraindicaciones',
+      adverseReactions: 'Reacciones Adversas',
+      precautions: 'Precauciones',
+      noSpecified: 'No especificado'
+    },
+    form: {
+      create: 'Nuevo Medicamento',
+      edit: 'Editar Medicamento',
+      commercial: 'Nombre Comercial',
+      commercialPlaceholder: 'Ej: Panadol',
+      generic: 'Nombre Genérico',
+      genericPlaceholder: 'Ej: Paracetamol',
+      components: 'Componentes Activos',
+      componentsPlaceholder: 'Ej: Acetaminofén 500mg',
+      componentsHint: 'Principios activos separados por coma',
+      presentation: 'Presentación',
+      presentationPlaceholder: 'Ej: Tabletas 500mg',
+      category: 'Categoría',
+      categoryPlaceholder: 'Seleccione o escriba una categoría',
+      indications: 'Indicaciones',
+      indicationsPlaceholder: 'Para qué sirve este medicamento...',
+      posology: 'Posología',
+      posologyPlaceholder: 'Dosis recomendada y frecuencia...',
+      contraindications: 'Contraindicaciones',
+      contraindicationsPlaceholder: 'Cuándo no debe usarse...',
+      adverseReactions: 'Reacciones Adversas',
+      adverseReactionsPlaceholder: 'Efectos secundarios conocidos...',
+      precautions: 'Precauciones',
+      precautionsPlaceholder: 'Advertencias y precauciones...',
+      cancel: 'Cancelar',
+      save: 'Guardar',
+      create_btn: 'Crear'
+    }
   },
   dashboard: {
     controlPanel: 'Panel de Control',
@@ -204,7 +263,9 @@ const ES_DICT = {
       upgradePlan: 'Actualizar Plan Ahora'
     },
     confirmed: 'Confirmada',
-    reminderSent: 'Recordatorio Enviado'
+    reminderSent: 'Recordatorio Enviado',
+    active: 'Activo',
+    inactive: 'Inactivo'
   },
   appointments_list: {
     title: 'Agendamiento de Citas',
@@ -313,8 +374,14 @@ const ES_DICT = {
     },
     status: {
       pending: 'En Proceso',
+      completed: 'Completado',
       ready: 'Listo / Validado',
       delivered: 'Entregado'
+    },
+    types: {
+      blood: 'Sangre',
+      urine: 'Orina',
+      imaging: 'Imagen / RX'
     },
     examType: 'Tipo de Examen'
   },
@@ -323,6 +390,9 @@ const ES_DICT = {
     subtitle: 'Configuración de pruebas, perfiles y lista de precios',
     newTest: 'Nuevo Examen',
     newCombo: 'Nuevo Combo/Perfil',
+    commonTests: 'Exámenes Comunes (Venezuela)',
+    addCommon: 'Agregar Seleccionados',
+    bulkImport: 'Carga Masiva',
     tabs: {
       tests: 'Exámenes Individuales',
       combos: 'Combos y Perfiles'
@@ -341,7 +411,9 @@ const ES_DICT = {
     active: 'Activo',
     inactive: 'Inactivo',
     noTests: 'No hay exámenes registrados.',
+    searchHint: 'Intente con otro término o agregue uno nuevo.',
     noCombos: 'No hay combos o perfiles registrados.',
+    comboHint: 'Busque por nombre o exámenes incluidos.',
     includes: 'Incluye:',
     comboPrice: 'Precio Combo',
     modals: {
@@ -618,7 +690,8 @@ const EN_DICT = {
     myTeam: 'Team Management',
     billing: 'My Subscription',
     dashboard: 'Main Dashboard',
-    labCatalog: 'Lab Catalog'
+    labCatalog: 'Lab Catalog',
+    branding: 'Corporate Brand'
   },
   navbar: {
     updateInfo: 'Update Information',
@@ -646,7 +719,65 @@ const EN_DICT = {
     search: 'Search',
     allCategories: 'All categories',
     noResults: 'No medications found',
-    noResultsHint: 'Try another term or add a new one to the database.'
+    noResultsHint: 'Try another term or add a new one to the database.',
+    results: 'results',
+    validation: 'Please fill in all required fields',
+    savedOk: 'Drug saved successfully',
+    confirmDelete: 'Delete Medication',
+    confirmDeleteText: 'Are you sure you want to delete {{name}}? This action cannot be undone.',
+    yes: 'Yes, delete',
+    no: 'Cancel',
+    deletedOk: 'Drug deleted successfully',
+    noCategory: 'No category',
+    table: {
+      commercial: 'Commercial Name',
+      generic: 'Generic Name',
+      components: 'Components',
+      presentation: 'Presentation',
+      category: 'Category',
+      actions: 'Actions'
+    },
+    detail: {
+      edit: 'Edit',
+      close: 'Close',
+      presentation: 'Presentation',
+      category: 'Category',
+      components: 'Active Components',
+      indications: 'Indications',
+      posology: 'Dosage',
+      contraindications: 'Contraindications',
+      adverseReactions: 'Adverse Reactions',
+      precautions: 'Precautions',
+      noSpecified: 'Not specified'
+    },
+    form: {
+      create: 'New Medication',
+      edit: 'Edit Medication',
+      commercial: 'Commercial Name',
+      commercialPlaceholder: 'e.g: Panadol',
+      generic: 'Generic Name',
+      genericPlaceholder: 'e.g: Paracetamol',
+      components: 'Active Components',
+      componentsPlaceholder: 'e.g: Acetaminophen 500mg',
+      componentsHint: 'Active ingredients separated by comma',
+      presentation: 'Presentation',
+      presentationPlaceholder: 'e.g: Tablets 500mg',
+      category: 'Category',
+      categoryPlaceholder: 'Select or type a category',
+      indications: 'Indications',
+      indicationsPlaceholder: 'What this medication is used for...',
+      posology: 'Dosage',
+      posologyPlaceholder: 'Recommended dose and frequency...',
+      contraindications: 'Contraindications',
+      contraindicationsPlaceholder: 'When it should not be used...',
+      adverseReactions: 'Adverse Reactions',
+      adverseReactionsPlaceholder: 'Known side effects...',
+      precautions: 'Precautions',
+      precautionsPlaceholder: 'Warnings and precautions...',
+      cancel: 'Cancel',
+      save: 'Save',
+      create_btn: 'Create'
+    }
   },
   dashboard: {
     controlPanel: 'Control Panel',
@@ -675,7 +806,9 @@ const EN_DICT = {
       upgradePlan: 'Upgrade Plan Now'
     },
     confirmed: 'Confirmed',
-    reminderSent: 'Reminder Sent'
+    reminderSent: 'Reminder Sent',
+    active: 'Active',
+    inactive: 'Inactive'
   },
   appointments_list: {
     title: 'Appointment Scheduling',
@@ -784,8 +917,14 @@ const EN_DICT = {
     },
     status: {
       pending: 'In Process',
+      completed: 'Completed',
       ready: 'Ready / Validated',
       delivered: 'Delivered'
+    },
+    types: {
+      blood: 'Blood',
+      urine: 'Urine',
+      imaging: 'Imaging / RX'
     },
     examType: 'Test Type'
   },
@@ -794,6 +933,9 @@ const EN_DICT = {
     subtitle: 'Setup trials, profiles and price list',
     newTest: 'New Test',
     newCombo: 'New Combo/Profile',
+    commonTests: 'Common Tests (Venezuela)',
+    addCommon: 'Add Selected',
+    bulkImport: 'Bulk Import',
     tabs: {
       tests: 'Individual Tests',
       combos: 'Combos and Profiles'
@@ -812,7 +954,9 @@ const EN_DICT = {
     active: 'Active',
     inactive: 'Inactive',
     noTests: 'No tests registered.',
+    searchHint: 'Try another term or add a new one.',
     noCombos: 'No combos or profiles registered.',
+    comboHint: 'Search by name or included tests.',
     includes: 'Includes:',
     comboPrice: 'Combo Price',
     modals: {

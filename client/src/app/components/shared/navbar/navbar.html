@@ -1,13 +1,13 @@
 <nav class="navbar navbar-expand-lg glass-morphism sticky-top py-2">
   <div class="container-fluid px-4">
     <a class="navbar-brand d-flex align-items-center" routerLink="/">
-      <div
-        class="bg-primary rounded-circle p-2 me-2 d-flex align-items-center justify-content-center shadow-sm"
-        style="width: 40px; height: 40px"
-      >
+      <div 
+        *ngIf="!orgService.settings().logoUrl"
+        class="bg-primary rounded-circle p-2 me-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px">
         <i class="bi bi-activity text-white fs-5"></i>
       </div>
-      <span class="fw-bold fs-4 gradient-text">CLINICA SAAS</span>
+      <img *ngIf="orgService.settings().logoUrl" [src]="orgService.settings().logoUrl" class="me-2" style="max-height: 40px;">
+      <span class="fw-bold fs-4 gradient-text text-uppercase">{{ orgService.settings().name || 'CLINICA SAAS' }}</span>
     </a>
 
     <button
@@ -67,11 +67,11 @@
             <button
               *ngIf="canManageRate(); else viewOnlyRate"
               class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 x-small-compact hover-shadow transition"
-              (click)="openExchangeRateModal()"
+              (click)="refreshBcvRate()"
               [title]="'navbar.updateRate' | translate"
               style="font-size: 10px; font-weight: bold; border-style: dashed"
             >
-              BCV: {{ currencyService.rate() }}
+              BCV: {{ currencyService.rate }} <i class="bi bi-arrow-clockwise ms-1"></i>
             </button>
             <ng-template #viewOnlyRate>
               <div
@@ -79,7 +79,7 @@
                 style="font-size: 10px; font-weight: bold"
                 [title]="'navbar.rateHint' | translate"
               >
-                BCV: {{ currencyService.rate() }}
+                BCV: {{ currencyService.rate }}
               </div>
             </ng-template>
           </div>

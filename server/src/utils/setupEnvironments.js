@@ -12,8 +12,15 @@ const createSchemas = async () => {
   });
 
   const envs = ['ClinicaSaaS_dev', 'ClinicaSaaS_qa', 'ClinicaSaaS_prod'];
-  const appUser = process.env.APP_DB_USER || 'clinicasaas.app_admin';
-  const appPassword = process.env.APP_DB_PASSWORD || 'clinicasaas.app_pass';
+  const appUser = process.env.APP_DB_USER || 'clinicasaas_admin';
+  const appPassword = process.env.APP_DB_PASSWORD;
+
+  if (!appPassword && process.env.NODE_ENV === 'production') {
+    console.error('❌ Error: APP_DB_PASSWORD debe estar definido en producción.');
+    process.exit(1);
+  }
+  
+  const finalAppPassword = appPassword || 'dev_password_only';
 
   try {
     await client.connect();
@@ -28,7 +35,7 @@ const createSchemas = async () => {
 
     if (userExists.rowCount === 0) {
       await client.query(
-        `CREATE USER ${appUser} WITH PASSWORD '${appPassword}'`
+        `CREATE USER ${appUser} WITH PASSWORD '${finalAppPassword}'`
       );
       console.log(`✅ Usuario '${appUser}' creado exitosamente.\n`);
     } else {

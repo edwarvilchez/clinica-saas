@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormControl } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -12,6 +12,7 @@ import { AuthService } from '../../services/auth.service';
 import { MedicalService } from '../../services/medical.service';
 import { HttpClient } from '@angular/common/http';
 import { API_URL } from '../../api-config';
+import { CurrencyService } from '../../services/currency.service';
 
 @Component({
   selector: 'app-lab-results',
@@ -22,40 +23,25 @@ import { API_URL } from '../../api-config';
 })
 export class LabResults implements OnInit {
   searchControl = new FormControl('');
+  typeFilter = new FormControl('');
+  statusFilter = new FormControl('');
   
-  // Datos mockeados para demostración inmediata
-  labResults = signal<any[]>([
-    {
-      id: 1,
-      patientName: 'Juan González',
-      patientInitials: 'JG',
-      patientId: 'V-11111111',
-      testType: 'Hematología Completa',
-      date: new Date(),
-      status: 'Completado',
-      labOrder: 'M0018-P25134'
-    },
-    {
-      id: 2,
-      patientName: 'Elena Pérez',
-      patientInitials: 'EP',
-      patientId: 'V-22222222',
-      testType: 'Perfil Lipídico',
-      date: new Date(new Date().setDate(new Date().getDate() - 1)),
-      status: 'Completado',
-      labOrder: 'M0018-P25135'
-    },
-    {
-      id: 3,
-      patientName: 'Luis Díaz',
-      patientInitials: 'LD',
-      patientId: 'V-33333333',
-      testType: 'Uroanálisis',
-      date: new Date(new Date().setDate(new Date().getDate() - 2)),
-      status: 'Completado',
-      labOrder: 'M0018-P25136'
-    }
-  ]);
+  private allResults = signal<any[]>([]);
+
+  labResults = computed(() => {
+    const term = this.searchControl.value?.toLowerCase() || '';
+    const type = this.typeFilter.value;
+    const status = this.statusFilter.value;
+
+    return this.allResults().filter(r => {
+      const matchSearch = r.patientName.toLowerCase().includes(term) || 
+                          r.patientId.toLowerCase().includes(term) ||
+                          r.testType.toLowerCase().includes(term);
+      const matchType = !type || r.category === type;
+      const matchStatus = !status || r.status === status;
+      return matchSearch && matchType && matchStatus;
+    });
+  });
 
   currentUser = signal<any>(null);
   canManage = signal(false);
@@ -70,6 +56,7 @@ export class LabResults implements OnInit {
     private authService: AuthService,
     private medicalService: MedicalService,
     private catalogService: LabCatalogService,
+    public currencyService: CurrencyService,
     private http: HttpClient
   ) {
     this.currentUser.set(this.authService.currentUser());
@@ -105,28 +92,30 @@ export class LabResults implements OnInit {
         });
       }
     } else {
-      // In a real app, we'd have a getall labs endpoint
-      // For now, let's try to get all patients and then their labs or keep mocks if no endpoint
-      this.http.get<any[]>(`${API_URL}/patients`).subscribe(patients => {
-        // This is a simplified approach for the demo/v1.8
-        // Ideally the backend should have GET /api/lab-results
+      this.medicalService.getAllLabs().subscribe(data => {
+        this.formatResults(data);
       });
     }
   }
 
   private formatResults(data: any[]) {
-    const formatted = data.map(lab => ({
-      id: lab.id,
-      patientName: lab.Patient ? `${lab.Patient.User.firstName} ${lab.Patient.User.lastName}` : 'N/A',
-      patientInitials: lab.Patient ? (lab.Patient.User.firstName[0] + lab.Patient.User.lastName[0]) : '??',
-      patientId: lab.Patient ? lab.Patient.documentId : 'N/A',
-      testType: lab.testName,
-      date: lab.createdAt,
-      status: lab.status === 'Completed' ? 'Completado' : 'Pendiente',
-      labOrder: lab.id.substring(0, 8).toUpperCase(),
-      price: lab.price
-    }));
-    this.labResults.set(formatted);
+    const formatted = data.map(lab => {
+      const patient = lab.Patient;
+      const user = patient?.User;
+      return {
+        id: lab.id,
+        patientName: user ? `${user.firstName} ${user.lastName}` : 'Paciente Externo',
+        patientInitials: user ? (user.firstName[0] + user.lastName[0]) : 'PE',
+        patientId: patient ? patient.documentId : 'N/A',
+        testType: lab.testName,
+        category: lab.category || 'Sangre',
+        date: lab.createdAt,
+        status: lab.status === 'Completed' || lab.status === 'Completado' ? 'Completado' : 'Pendiente',
+        labOrder: lab.id.toString().substring(0, 8).toUpperCase(),
+        price: lab.price
+      };
+    });
+    this.allResults.set(formatted);
   }
 
   viewResult(result: any) {
@@ -233,7 +222,7 @@ export class LabResults implements OnInit {
           <label class="form-label small fw-bold">2. Tipo de Examen</label>
           <select id="swal-test-type" class="form-select mb-3">
             <option value="">Seleccione...</option>
-            ${this.catalogTests().map(t => `<option value="${t.name}">${t.name} ($${t.price})</option>`).join('')}
+            ${this.catalogTests().map(t => `<option value="${t.name}">${t.name} (${this.currencyService.formatAmount(t.price)})</option>`).join('')}
           </select>
 
           <label class="form-label small fw-bold">3. Cargar Archivo (PDF/Imágenes)</label>
@@ -245,21 +234,32 @@ export class LabResults implements OnInit {
       cancelButtonText: 'Cancelar',
       confirmButtonColor: '#10b981',
       preConfirm: () => {
+        const patientId = (document.getElementById('swal-patient-id') as HTMLSelectElement).value;
+        const testName = (document.getElementById('swal-test-type') as HTMLSelectElement).value;
+        const file = (document.getElementById('swal-lab-file') as HTMLInputElement).files?.[0];
+
+        if (!patientId || !testName) {
+          Swal.showValidationMessage('Complete los campos obligatorios');
+          return false;
+        }
+
+        const selectedTest = this.catalogTests().find(t => t.name === testName);
+        
+        return {
+          patientId,
+          testName,
+          category: selectedTest?.category || 'Sangre',
+          price: selectedTest?.price || 0,
+          status: 'Completed',
+          notes: 'Resultado cargado manualmente'
+        };
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        Swal.fire('¡Éxito!', 'El resultado se ha subido correctamente.', 'success');
-        const current = this.labResults();
-        this.labResults.set([{
-          id: Math.random(),
-          patientName: 'Juan González',
-          patientInitials: 'JG',
-          patientId: 'V-11111111',
-          testType: 'Hematología (Nuevo)',
-          date: new Date(),
-          status: 'Pendiente',
-          labOrder: 'M0018-T' + Math.floor(Math.random() * 1000)
-        }, ...current]);
+        this.medicalService.createLabResult(result.value).subscribe(() => {
+          Swal.fire('¡Éxito!', 'El resultado se ha subido correctamente.', 'success');
+          this.loadLabResults();
+        });
       }
     });
   }

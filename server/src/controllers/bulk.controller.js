@@ -79,7 +79,8 @@ async function importPatient(data, transaction, organizationId) {
         phone: data.phone,
         address: data.address,
         bloodType: data.bloodType,
-        allergies: data.allergies
+        allergies: data.allergies,
+        organizationId
     }, { transaction });
 }
 

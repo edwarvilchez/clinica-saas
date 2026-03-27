@@ -1,6 +1,6 @@
 const { User, Role, Patient, Doctor, Nurse, Staff, Specialty, Department, Organization, Appointment, Payment, MedicalRecord, Prescription, LabResult, LabTest, sequelize } = require('../models');
 
-const SEED_PASSWORD = 'ClinicaSaaS!2026';
+const SEED_PASSWORD = process.env.TEST_PASSWORD || 'ClinicaSaaS123'; // Dev fallback only
 
 async function seedPresentation() {
   console.log('🎯 Poblando datos para presentación...\n');

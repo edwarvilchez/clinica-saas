@@ -6,10 +6,10 @@ const { Role, User, Patient, Doctor, Nurse, Staff, Specialty, Department, Organi
  *
  * Password convention:
  *   - All seed accounts use a single shared password:
- *     process.env.TEST_PASSWORD || 'Med1cus!2026'
+ *     process.env.TEST_PASSWORD
  */
 
-const SEED_PASSWORD = process.env.TEST_PASSWORD || 'ClinicaSaaS!2026';
+const SEED_PASSWORD = process.env.TEST_PASSWORD || 'ClinicaSaaS123'; // Dev fallback only
 
 const seedTestData = async () => {
   try {

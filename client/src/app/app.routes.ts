@@ -163,6 +163,14 @@ export const routes: Routes = [
     canActivate: [authGuard, firstLoginGuard],
     title: 'Clinica SaaS - Mi Suscripción'
   },
+  {
+    path: 'branding',
+    loadComponent: () => import('./components/branding/branding').then(m => m.Branding),
+    canActivate: [authGuard, roleGuard, firstLoginGuard],
+    data: { roles: ['SUPERADMIN', 'ADMINISTRATIVE', 'DOCTOR'] },
+    title: 'Clinica SaaS - Imagen Corporativa'
+  },
+
 
   // Catch all - redirect to dashboard
   { path: '**', redirectTo: 'dashboard' }

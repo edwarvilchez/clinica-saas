@@ -46,3 +46,27 @@ exports.getPatientLabs = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.getAllLabs = async (req, res) => {
+  try {
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPER_ADMIN' || role === 'SUPERADMIN';
+
+    const options = {
+      order: [['createdAt', 'DESC']],
+      include: [{
+        model: Patient,
+        as: 'Patient',
+        include: [{
+          model: User,
+          where: isSuperAdmin ? {} : { organizationId }
+        }]
+      }]
+    };
+
+    const labs = await LabResult.findAll(options);
+    res.json(labs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
