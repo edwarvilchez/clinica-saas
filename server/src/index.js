@@ -3,6 +3,7 @@ const http = require('http');
 const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const sequelize = require('./config/db.config');
@@ -23,7 +24,7 @@ const { initializeDatabase } = require('./utils/migrationManager');
 validateEnv();
 
 const app = express();
-// Enable Trust Proxy for Easypanel/Nginx/Cloudflare
+// Enable Trust Proxy for Easypanel/Nginx/Cloudflare/Supabase
 app.set('trust proxy', 1); 
 const server = http.createServer(app);
 
@@ -32,22 +33,18 @@ const swaggerOptions = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'CLINICA SAAS API',
+      title: 'MEDICALCARE 888 API',
       version: '2.1.0',
-      description: 'Sistema integral de gestión clínica y hospitalaria',
+      description: 'Sistema integral de gestión clínica y hospitalaria profesional',
       contact: {
-        name: 'CGK888Digital',
-        email: 'cgk888digital@gmail.com',
-      },
-      license: {
-        name: 'MIT',
-        url: 'https://opensource.org/licenses/MIT',
+        name: 'CGK 888 Digital Ecosystem',
+        email: 'ecosystem@cgk888.com',
       },
     },
     servers: [
       {
         url: process.env.API_URL || 'http://localhost:5000',
-        description: 'Development server',
+        description: 'Production/Development API',
       },
     ],
     components: {
@@ -70,26 +67,23 @@ const swaggerOptions = {
 
 const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
-// 1. CORS - DEBE IR PRIMERO QUE TODO
+// 1. CORS - Improved with medicalcare-888.com
 const corsOptions = {
   origin: (origin, callback) => {
-    // Lista de orígenes permitidos explícitamente
     const allowedOrigins = [
       process.env.CLIENT_URL,
       /^https?:\/\/localhost(:\d+)?$/,
       /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
-      /easypanel\.host$/, // Permite cualquier subdominio de easypanel.host
-      /nominusve\.com$/  // Permite cualquier subdominio de nominusve.com
+      /medicalcare-888\.com$/, // NEW: Support for production domain
+      /easypanel\.host$/,
+      /nominusve\.com$/
     ];
 
-    // Permitir si no hay origen (apps móviles, curl, postman)
     if (!origin) return callback(null, true);
 
-    // Verificar si el origen coincide con alguno de los permitidos
     const isAllowed = allowedOrigins.some(allowed => {
       if (!allowed) return false;
       if (allowed instanceof RegExp) return allowed.test(origin);
-      // Comprobación flexible (sin barras finales, todo a minúsculas)
       const sanitizedOrigin = origin.toLowerCase().trim().replace(/\/$/, '');
       const sanitizedAllowed = allowed.toString().toLowerCase().trim().replace(/\/$/, '');
       return sanitizedAllowed === sanitizedOrigin;
@@ -98,186 +92,142 @@ const corsOptions = {
     if (isAllowed) {
       callback(null, true);
     } else {
-      // Log detallado en producción para identificar qué origen está siendo bloqueado
-      logger.warn({
-        blockedOrigin: origin,
-        allowedOrigins: allowedOrigins.map(o => o.toString()),
-        clientUrlSet: !!process.env.CLIENT_URL,
-        nodeEnv: process.env.NODE_ENV
-      }, 'CORS Blocked - Origin not allowed');
-      
-      // En desarrollo, podemos ser más permisivos
-      if (process.env.NODE_ENV !== 'production') {
-        return callback(null, true);
-      }
-      
-      callback(new Error(`CORS Error: Origin ${origin} is not allowed by Clinica SaaS API Security Policy`));
+      logger.warn({ blockedOrigin: origin }, 'CORS Blocked');
+      if (process.env.NODE_ENV !== 'production') return callback(null, true);
+      callback(new Error(`CORS Error: Origin ${origin} not allowed`));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-auth-token'],
-  optionsSuccessStatus: 200
 };
+
 app.use(cors(corsOptions));
 
-// 2. Security Middlewares
+// 2. Performance & Security Middlewares
+app.use(compression()); // Gzip compression
 app.use(helmet({
   contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-// Rate Limiting for Auth endpoints
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 50, // Aumentado para debug
-  message: 'Demasiados intentos de autenticación, por favor intente nuevamente en 15 minutos',
+  windowMs: 15 * 60 * 1000,
+  max: 100, // Slightly more permissive for medical workflows
+  message: 'Demasiados intentos, intente en 15 minutos',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// General API rate limiter
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // 100 requests por ventana
-  message: 'Demasiadas solicitudes desde esta IP, por favor intente nuevamente más tarde',
+  windowMs: 15 * 60 * 1000,
+  max: 300, 
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Apply rate limiting
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
-app.use('/api/auth/forgot-password', authLimiter);
 app.use('/api/', apiLimiter);
 
-// Other Middlewares
-app.use(morgan('dev'));
-app.use(express.json({ limit: '10kb' })); // Limit body size
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+// 3. Parser & Sanitization
+app.use(express.json({ limit: '50kb' })); // Increased limit for detailed medical records
+app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 app.use(sanitizeInput);
 app.use('/uploads', express.static('uploads'));
 
-// Swagger Documentation (only in development)
+// Swagger UI
 if (process.env.NODE_ENV !== 'production') {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
-    customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'CLINICA SAAS API Docs',
+    customSiteTitle: 'MedicalCare 888 API Docs',
   }));
 }
 
-// Test DB Connection
-sequelize.authenticate()
-  .then(() => logger.info('Database connected successfully'))
-  .catch(err => logger.error({ err }, 'Database connection error'));
-
-// Routes
-app.use('/api/public', require('./routes/public.routes')); // Public routes (no auth)
+// Routes registration
+app.use('/api/public', require('./routes/public.routes'));
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/organization', require('./routes/organization.routes'));
 
-// Protected Routes with Subscription Check
-app.use('/api/appointments', authMiddleware, checkSubscription, require('./routes/appointment.routes'));
-app.use('/api/patients', authMiddleware, checkSubscription, require('./routes/patient.routes'));
-app.use('/api/doctors', authMiddleware, checkSubscription, require('./routes/doctor.routes'));
-app.use('/api/nurses', authMiddleware, checkSubscription, require('./routes/nurse.routes'));
-app.use('/api/staff', authMiddleware, checkSubscription, require('./routes/staff.routes'));
-app.use('/api/medical-records', authMiddleware, checkSubscription, require('./routes/medicalRecord.routes'));
-app.use('/api/lab-results', authMiddleware, checkSubscription, require('./routes/labResult.routes'));
-app.use('/api/payments', require('./routes/payment.routes')); // Payments should be accessible even if expired? Yes, to pay!
-app.use('/api/stats', authMiddleware, checkSubscription, require('./routes/stats.routes'));
-app.use('/api/specialties', authMiddleware, checkSubscription, require('./routes/specialty.routes'));
-app.use('/api/video-consultations', authMiddleware, checkSubscription, require('./routes/videoConsultation.routes'));
-app.use('/api/bulk', authMiddleware, checkSubscription, require('./routes/bulk.routes'));
-app.use('/api/team', authMiddleware, checkSubscription, require('./routes/team.routes'));
-app.use('/api/drugs', require('./routes/drug.routes'));
-app.use('/api/prescriptions', require('./routes/prescription.routes'));
-app.use('/api/lab-catalog', require('./routes/labCatalog.routes'));
-app.use('/api/exchange', require('./routes/exchange.routes'));
+// Protected Routes
+const routes = [
+  'appointment', 'patient', 'doctor', 'nurse', 'staff', 
+  'medicalRecord', 'labResult', 'stats', 'specialty', 
+  'videoConsultation', 'bulk', 'team', 'drug', 
+  'prescription', 'labCatalog', 'exchange'
+];
 
-// Health Check Endpoint
-app.get('/health', async (req, res) => {
-  const healthcheck = {
-    uptime: process.uptime(),
-    message: 'OK',
-    timestamp: new Date().toISOString(),
-    version: '1.8.0',
-    environment: process.env.NODE_ENV || 'development'
-  };
-  
-  try {
-    // Check database connection
-    await sequelize.authenticate();
-    healthcheck.database = 'connected';
-    res.status(200).json(healthcheck);
-  } catch (error) {
-    healthcheck.database = 'disconnected';
-    healthcheck.message = 'ERROR';
-    logger.error({ error }, 'Health check failed');
-    res.status(503).json(healthcheck);
+routes.forEach(route => {
+  const routePath = `./routes/${route}.routes`;
+  const isProtected = !['payment', 'public', 'auth'].includes(route);
+  if (isProtected) {
+    app.use(`/api/${route.replace(/([A-Z])/g, '-$1').toLowerCase()}`, authMiddleware, checkSubscription, require(routePath));
   }
 });
 
-// Basic route
-app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to Clinica SaaS API' });
+// Explicitly handle payments (no subscription check needed for payments)
+app.use('/api/payments', authMiddleware, require('./routes/payment.routes'));
+
+// Health Check
+app.get('/health', async (req, res) => {
+  try {
+    await sequelize.authenticate();
+    res.status(200).json({ uptime: process.uptime(), database: 'connected', version: '2.1.0' });
+  } catch (error) {
+    res.status(503).json({ message: 'Database disconnected' });
+  }
 });
 
-// Global Error Handler
+app.get('/', (req, res) => res.json({ message: 'Welcome to MedicalCare 888 API' }));
+
+// 4. Global Error Handler
 app.use((err, req, res, next) => {
-  const isDevelopment = process.env.NODE_ENV !== 'production';
-
-  // Log error internally
-  logger.error({
-    err,
-    path: req.path,
-    method: req.method,
-    ip: req.ip,
-  }, 'Global error handler caught error');
-
-  // Send response (hide details in production)
+  logger.error({ err, path: req.path }, 'Global Error Handler');
   res.status(err.status || 500).json({
     message: err.message || 'Internal Server Error',
-    ...(isDevelopment && {
-      error: err.message,
-      stack: err.stack,
-    }),
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
   });
 });
 
-// Port
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000');
 
-// Initialize Database and Start Server
+// Server Start Logic
 const startServer = async () => {
   try {
     await initializeDatabase();
-    
     await seedRoles();
-    if (process.env.NODE_ENV !== 'production') {
-      await seedTestData();
-    }
-
+    if (process.env.NODE_ENV !== 'production') await seedTestData();
+    
     initializeSocket(server);
-
     require('./utils/scheduler')();
 
-    server.listen(PORT, () => {
-      logger.info(`🚀 Server is running on port ${PORT}`);
-      logger.info('🎥 WebSocket server ready for video consultations');
-      logger.info(`📚 Environment: ${process.env.NODE_ENV || 'development'}`);
-      logger.info(`🔐 Security features enabled: Helmet, CORS, Rate Limiting, RBAC`);
+    server.listen(PORT, '0.0.0.0', () => {
+      logger.info(`🚀 Server live on port ${PORT} [${process.env.NODE_ENV || 'dev'}]`);
     });
   } catch (error) {
-    logger.error({ error }, 'Failed to start server');
+    logger.fatal({ error }, 'Startup failed');
     process.exit(1);
   }
 };
 
-if (process.env.NODE_ENV !== 'test') {
-  startServer();
-}
+// 5. Graceful Shutdown
+const shutdown = async (signal) => {
+  logger.info(`${signal} received. Closing resources...`);
+  server.close(async () => {
+    try {
+      await sequelize.close();
+      logger.info('Database connections closed.');
+      process.exit(0);
+    } catch (err) {
+      logger.error({ err }, 'Error during shutdown');
+      process.exit(1);
+    }
+  });
+};
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+if (process.env.NODE_ENV !== 'test') startServer();
 
 module.exports = { app, server };
 

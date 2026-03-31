@@ -21,12 +21,19 @@ export class OrganizationService {
   }
 
   private getHeaders() {
+    const token = localStorage.getItem('token');
     return new HttpHeaders({
-      'Authorization': `Bearer ${localStorage.getItem('token')}`
+      'Authorization': `Bearer ${token}`
     });
   }
 
   loadSettings() {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('OrganizationService: No token found, skipping loadSettings.');
+      return;
+    }
+
     this.http.get<any>(`${this.apiUrl}/settings`, { headers: this.getHeaders() }).subscribe({
       next: (org) => {
         if (org && org.settings) {
@@ -35,6 +42,11 @@ export class OrganizationService {
             name: org.name
           });
           this.applyTheme(org.settings.primaryColor);
+        }
+      },
+      error: (err) => {
+        if (err.status !== 401) {
+          console.error('Error loading organization settings:', err);
         }
       }
     });
@@ -57,7 +69,6 @@ export class OrganizationService {
   private applyTheme(color: string) {
     if (!color) return;
     document.documentElement.style.setProperty('--primary', color);
-    // Generate darker version for hover (simplified)
     document.documentElement.style.setProperty('--primary-dark', this.adjustColor(color, -20));
   }
 
@@ -67,13 +78,24 @@ export class OrganizationService {
       col = col.slice(1);
       usePound = true;
     }
+
+    // Handle 3-digit hex
+    if (col.length === 3) {
+      col = col[0] + col[0] + col[1] + col[1] + col[2] + col[2];
+    }
+
     const num = parseInt(col, 16);
     let r = (num >> 16) + amt;
     if (r > 255) r = 255; else if (r < 0) r = 0;
+    
     let b = ((num >> 8) & 0x00FF) + amt;
     if (b > 255) b = 255; else if (b < 0) b = 0;
+    
     let g = (num & 0x0000FF) + amt;
     if (g > 255) g = 255; else if (g < 0) g = 0;
-    return (usePound ? '#' : '') + (g | (b << 8) | (r << 16)).toString(16);
+
+    // Pad with zeros to ensure 6-digit hex
+    return (usePound ? '#' : '') + 
+      ((r << 16) | (b << 8) | g).toString(16).padStart(6, '0');
   }
 }
