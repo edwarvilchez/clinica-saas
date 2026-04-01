@@ -11,7 +11,7 @@ import Swal from 'sweetalert2';
 @Component({
   selector: 'app-branding',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, TranslatePipe],
   templateUrl: './branding.html',
   styles: [`
     .card-premium { border-radius: 1.5rem !important; }
@@ -32,7 +32,7 @@ export class Branding implements OnInit {
 
   constructor(
     private orgService: OrganizationService,
-    private langService: LanguageService,
+    public langService: LanguageService,
     private authService: AuthService
   ) {}
 
@@ -44,7 +44,6 @@ export class Branding implements OnInit {
   }
 
   saveSettings() {
-    const userData = JSON.parse(localStorage.getItem('user') || '{}');
     this.isSaving.set(true);
 
     const payload = {
@@ -56,27 +55,25 @@ export class Branding implements OnInit {
     };
 
     this.orgService.updateSettings(payload).subscribe({
-      next: (res) => {
+      next: () => {
         this.isSaving.set(false);
         Swal.fire({
-          title: 'Configuración Guardada',
-          text: 'La imagen corporativa ha sido actualizada exitosamente.',
+          title: this.langService.translate('branding.success'),
           icon: 'success',
           confirmButtonColor: this.primaryColor()
         });
         
-        // Reload settings globally
         this.orgService.loadSettings();
 
-        // Update local user data if needed for display
+        const userData = JSON.parse(localStorage.getItem('user') || '{}');
         if (userData.Organization) {
            userData.Organization.name = this.orgName();
            localStorage.setItem('user', JSON.stringify(userData));
         }
       },
-      error: (err) => {
+      error: () => {
         this.isSaving.set(false);
-        Swal.fire('Error', 'No se pudo guardar la configuración.', 'error');
+        Swal.fire('Error', this.langService.translate('branding.error'), 'error');
       }
     });
   }

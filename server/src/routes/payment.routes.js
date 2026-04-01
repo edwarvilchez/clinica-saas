@@ -10,6 +10,7 @@ const upload = createUpload({ dest: 'uploads/', maxSize: 5 * 1024 * 1024, allowe
 
 // Specific route for subscription payments (no receipt required initially or handled inside)
 router.post('/subscription', authMiddleware, upload.single('receipt'), paymentController.createSubscriptionPayment);
+router.post('/subscription/guest', upload.single('receipt'), paymentController.createSubscriptionPayment);
 
 router.post('/', authMiddleware, upload.single('receipt'), paymentController.createPayment);
 router.get('/', authMiddleware, paymentController.getPayments);

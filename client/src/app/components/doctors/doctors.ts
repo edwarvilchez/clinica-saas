@@ -85,10 +85,10 @@ import { TranslatePipe } from '../../services/translate.pipe';
                 [ngClass]="doctor.User.subscriptionBypass ? 'bg-warning bg-opacity-20 text-warning' : 'bg-light text-muted'"
                 style="font-size: 0.75rem;"
                 (click)="toggleBypass(doctor)"
-                title="Bypass de suscripción (VIP)">
+                [title]="'doctors.messages.toggleBypassTooltip' | translate">
                 <i class="bi" [ngClass]="doctor.User.subscriptionBypass ? 'bi-star-fill' : 'bi-star'"></i>
               </span>
-              <span class="badge bg-light text-muted rounded-pill px-2 py-1" style="font-size: 0.75rem;">Lic: {{ doctor.licenseNumber }}</span>
+              <span class="badge bg-light text-muted rounded-pill px-2 py-1" style="font-size: 0.75rem;">{{ 'doctors.fields.license' | translate }}: {{ doctor.licenseNumber }}</span>
             </div>
 
             <div class="d-grid gap-1">
@@ -172,8 +172,9 @@ export class Doctors implements OnInit {
   }
 
   viewProfile(doctor: any) {
-    const specialtyName = doctor.Specialty?.name || 'Especialista';
-    const statusBadge = `<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1">Disponible</span>`;
+    const t = (k: string) => this.langService.translate(k);
+    const specialtyName = doctor.Specialty?.name || t('doctors.specialist');
+    const statusBadge = `<span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1">${t('doctors.available')}</span>`;
     
     Swal.fire({
       title: `<span class="fs-4 fw-bold">Dr. ${doctor.User.firstName} ${doctor.User.lastName}</span>`,
@@ -186,15 +187,15 @@ export class Doctors implements OnInit {
           
           <div class="text-start bg-light p-3 rounded-3 small">
             <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
-              <span class="text-muted"><i class="bi bi-envelope me-2"></i>Email</span>
+              <span class="text-muted"><i class="bi bi-envelope me-2"></i>${t('doctors.fields.email')}</span>
               <span class="fw-bold text-dark">${doctor.email || doctor.User.email}</span>
             </div>
             <div class="d-flex justify-content-between mb-2 border-bottom pb-2">
-              <span class="text-muted"><i class="bi bi-telephone me-2"></i>Teléfono</span>
+              <span class="text-muted"><i class="bi bi-telephone me-2"></i>${t('doctors.fields.phone')}</span>
               <span class="fw-bold text-dark">${doctor.phone || 'No registrado'}</span>
             </div>
             <div class="d-flex justify-content-between mb-0">
-              <span class="text-muted"><i class="bi bi-card-heading me-2"></i>Licencia</span>
+              <span class="text-muted"><i class="bi bi-card-heading me-2"></i>${t('doctors.fields.license')}</span>
               <span class="fw-bold text-dark">${doctor.licenseNumber}</span>
             </div>
           </div>
@@ -202,7 +203,7 @@ export class Doctors implements OnInit {
       `,
       showCloseButton: true,
       showConfirmButton: true,
-      confirmButtonText: 'Agendar Cita',
+      confirmButtonText: t('doctors.schedule'),
       confirmButtonColor: '#10b981',
       customClass: {
         popup: 'rounded-4 border-0 shadow-lg'
@@ -219,11 +220,10 @@ export class Doctors implements OnInit {
   }
 
   createNewDoctor() {
-    // Ensure specialties are loaded
+    confirmButtonColor: '#10b981'
     if (this.specialties().length === 0) {
       Swal.fire({
-        title: 'Cargando...',
-        text: 'Obteniendo especialidades médicas',
+        title: this.langService.translate('common.loading'),
         allowOutsideClick: false,
         didOpen: () => {
           Swal.showLoading();
@@ -232,7 +232,6 @@ export class Doctors implements OnInit {
       
       this.loadSpecialties();
       
-      // Wait for specialties to load
       setTimeout(() => {
         Swal.close();
         this.showDoctorModal();
@@ -243,52 +242,53 @@ export class Doctors implements OnInit {
   }
 
   showDoctorModal() {
+    const t = (k: string) => this.langService.translate(k);
     const specialtiesOptions = this.specialties().length > 0 
       ? this.specialties().map(s => `<option value="${s.id}">${s.name}</option>`).join('')
-      : '<option value="">No hay especialidades disponibles</option>';
+      : `<option value="">${this.langService.lang() === 'es' ? 'No hay especialidades' : 'No specialties'}</option>`;
 
     Swal.fire({
-      title: 'Nuevo Doctor',
+      title: t('doctors.new'),
       html: `
         <div class="text-start">
           <div class="row g-2">
             <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Nombre</label>
+              <label class="form-label small fw-bold mb-1">${t('doctors.fields.firstName')}</label>
               <input id="firstName" class="form-control form-control-sm" placeholder="Juan">
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Apellido</label>
+              <label class="form-label small fw-bold mb-1">${t('doctors.fields.lastName')}</label>
               <input id="lastName" class="form-control form-control-sm" placeholder="Pérez">
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Email</label>
+              <label class="form-label small fw-bold mb-1">${t('doctors.fields.email')}</label>
               <input id="email" type="email" class="form-control form-control-sm" placeholder="doctor@clinicasaas.com">
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Teléfono</label>
+              <label class="form-label small fw-bold mb-1">${t('doctors.fields.phone')}</label>
               <input id="phone" class="form-control form-control-sm" placeholder="+58412-1234567">
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Licencia Médica</label>
+              <label class="form-label small fw-bold mb-1">${t('doctors.fields.license')}</label>
               <input id="licenseNumber" class="form-control form-control-sm" placeholder="12345">
             </div>
             <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Especialidad</label>
+              <label class="form-label small fw-bold mb-1">${t('doctors.fields.specialty')}</label>
               <select id="specialtyId" class="form-select form-select-sm">
-                <option value="">Seleccionar...</option>
+                <option value="">${this.langService.lang() === 'es' ? 'Seleccionar...' : 'Select...'}</option>
                 ${specialtiesOptions}
               </select>
             </div>
             <div class="col-12">
-              <label class="form-label small fw-bold mb-1">Contraseña</label>
-              <input id="password" type="password" class="form-control form-control-sm" placeholder="Mínimo 6 caracteres">
+              <label class="form-label small fw-bold mb-1">${t('doctors.fields.password')}</label>
+              <input id="password" type="password" class="form-control form-control-sm" placeholder="${t('doctors.fields.passwordPlaceholder')}">
             </div>
           </div>
         </div>
       `,
       showCancelButton: true,
-      confirmButtonText: 'Crear Doctor',
-      cancelButtonText: 'Cancelar',
+      confirmButtonText: t('doctors.new'),
+      cancelButtonText: t('common.cancel'),
       confirmButtonColor: '#10b981',
       cancelButtonColor: '#64748b',
       width: '600px',
@@ -305,10 +305,9 @@ export class Doctors implements OnInit {
         const password = (document.getElementById('password') as HTMLInputElement).value;
 
         if (!firstName || !lastName || !email || !phone || !licenseNumber || !specialtyId || !password) {
-          Swal.showValidationMessage('Por favor completa todos los campos');
+          Swal.showValidationMessage(t('doctors.messages.completeRequired'));
           return false;
         }
-
         return { firstName, lastName, email, phone, licenseNumber, specialtyId, password };
       }
     }).then((result) => {
@@ -329,16 +328,16 @@ export class Doctors implements OnInit {
             next: () => {
               this.loadDoctors();
               Swal.fire({
-                title: '¡Doctor Creado!',
-                text: 'El doctor ha sido registrado exitosamente en el sistema.',
+                title: t('doctors.messages.created'),
+                text: t('doctors.messages.createdMsg'),
                 icon: 'success',
                 confirmButtonColor: '#10b981'
               });
             },
             error: (err) => {
               Swal.fire({
-                title: 'Error',
-                text: err.error?.message || 'No se pudo crear el doctor. Verifica los datos.',
+                title: t('common.error'),
+                text: err.error?.message || (this.langService.lang() === 'es' ? 'No se pudo crear el doctor.' : 'Could not create doctor.'),
                 icon: 'error',
                 confirmButtonColor: '#ef4444'
               });
@@ -349,40 +348,45 @@ export class Doctors implements OnInit {
   }
 
   deleteDoctor(id: string) {
+    const t = (k: string) => this.langService.translate(k);
     Swal.fire({
-      title: '¿Eliminar Doctor?',
-      text: "El doctor dejará de tener acceso al sistema.",
+      title: t('doctors.messages.confirmDelete'),
+      text: t('doctors.messages.confirmDeleteMsg'),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#ef4444',
       cancelButtonColor: '#64748b',
-      confirmButtonText: 'Eliminar',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: t('doctors.messages.deleteConfirmBtn'),
+      cancelButtonText: t('common.cancel')
     }).then((result) => {
       if (result.isConfirmed) {
         this.http.delete(`${API_URL}/doctors/${id}`, { headers: this.getHeaders() })
           .subscribe({
             next: () => {
               this.loadDoctors();
-              Swal.fire('Eliminado', 'El doctor ha sido retirado del sistema.', 'success');
+              Swal.fire(t('doctors.messages.deleted'), t('doctors.messages.deletedMsg'), 'success');
             },
-            error: () => Swal.fire('Error', 'No se pudo completar la acción', 'error')
+            error: () => Swal.fire(t('common.error'), t('common.error'), 'error')
           });
       }
     });
   }
+  
   toggleStatus(doctor: any) {
-    const action = doctor.User.isActive ? 'desactivar' : 'activar';
+    const t = (k: string) => this.langService.translate(k);
+    const actionKey = doctor.User.isActive ? 'common.deactivate' : 'common.activate';
+    const action = t(actionKey);
+    const status = doctor.User.isActive ? t('doctors.inactive') : t('doctors.active');
     
     Swal.fire({
-      title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} Doctor?`,
-      text: `El doctor ${doctor.User.firstName} ${doctor.User.lastName} quedará ${doctor.User.isActive ? 'inactivo' : 'activo'} en el sistema.`,
+      title: t('doctors.messages.toggleStatus').replace('{action}', action),
+      text: t('doctors.messages.toggleStatusMsg').replace('{name}', `${doctor.User.firstName} ${doctor.User.lastName}`).replace('{status}', status.toLowerCase()),
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: doctor.User.isActive ? '#ef4444' : '#28a745',
       cancelButtonColor: '#64748b',
       confirmButtonText: `Sí, ${action}`,
-      cancelButtonText: 'Cancelar'
+      cancelButtonText: t('common.cancel')
     }).then((result) => {
       if (result.isConfirmed) {
         this.http.patch(`${API_URL}/doctors/${doctor.id}/toggle-status`, {}, { headers: this.getHeaders() })
@@ -390,7 +394,7 @@ export class Doctors implements OnInit {
             next: (response: any) => {
               this.loadDoctors();
               Swal.fire({
-                title: 'Éxito',
+                title: t('common.success'),
                 text: response.message,
                 icon: 'success',
                 timer: 2000,
@@ -398,24 +402,30 @@ export class Doctors implements OnInit {
               });
             },
             error: (err) => {
-              Swal.fire('Error', err.error?.message || 'No se pudo cambiar el estado', 'error');
+              Swal.fire(t('common.error'), err.error?.message || t('common.error'), 'error');
             }
           });
       }
     });
   }
+  
   toggleBypass(doctor: any) {
-    const action = doctor.User.subscriptionBypass ? 'desactivar' : 'activar';
-    
+    const t = (k: string) => this.langService.translate(k);
+    const actionKey = doctor.User.subscriptionBypass ? 'common.deactivate' : 'common.activate';
+    const action = t(actionKey);
+    const action2 = doctor.User.subscriptionBypass 
+      ? (this.langService.lang() === 'es' ? 'dejará de saltar' : 'will no longer bypass')
+      : (this.langService.lang() === 'es' ? 'saltará' : 'will bypass');
+
     Swal.fire({
-      title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} Bypass?`,
-      text: `El doctor ${doctor.User.firstName} ${doctor.User.lastName} ${doctor.User.subscriptionBypass ? 'dejará de saltar' : 'saltará'} los límites de suscripción.`,
+      title: t('doctors.messages.toggleBypass').replace('{action}', action),
+      text: t('doctors.messages.toggleBypassMsg').replace('{name}', `${doctor.User.firstName} ${doctor.User.lastName}`).replace('{action2}', action2),
       icon: 'warning',
       showCancelButton: true,
       confirmButtonColor: '#f59e0b',
       cancelButtonColor: '#64748b',
       confirmButtonText: `Sí, ${action}`,
-      cancelButtonText: 'Cancelar'
+      cancelButtonText: t('common.cancel')
     }).then((result) => {
       if (result.isConfirmed) {
         this.http.patch(`${API_URL}/doctors/${doctor.id}/toggle-bypass`, {}, { headers: this.getHeaders() })
@@ -423,7 +433,7 @@ export class Doctors implements OnInit {
             next: (response: any) => {
               this.loadDoctors();
               Swal.fire({
-                title: 'VIP Actualizado',
+                title: 'VIP',
                 text: response.message,
                 icon: 'success',
                 timer: 2000,
@@ -431,10 +441,11 @@ export class Doctors implements OnInit {
               });
             },
             error: (err) => {
-              Swal.fire('Error', err.error?.message || 'No se pudo cambiar el bypass', 'error');
+              Swal.fire(t('common.error'), err.error?.message || t('common.error'), 'error');
             }
           });
       }
     });
   }
+
 }

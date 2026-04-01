@@ -22,9 +22,14 @@ function isXlsxFile(filePath) {
 
 function validateRecord(type, record) {
   const errors = [];
-  if (!record.username || !record.email) errors.push('Missing username or email');
-  if (type === 'doctors' && !record.licenseNumber) errors.push('Missing licenseNumber for doctor');
-  if (record.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(record.email)) errors.push('Invalid email');
+  if (type === 'patients' || type === 'doctors') {
+    if (!record.username || !record.email) errors.push('Missing username or email');
+    if (type === 'doctors' && !record.licenseNumber) errors.push('Missing licenseNumber for doctor');
+    if (record.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(record.email)) errors.push('Invalid email');
+  } else if (type === 'lab_catalog') {
+    if (!record.name) errors.push('Missing name for lab test');
+    if (!record.price) errors.push('Missing price for lab test');
+  }
   return errors;
 }
 

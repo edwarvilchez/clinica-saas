@@ -1,6 +1,6 @@
 import { Component, signal, computed, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { LanguageService } from '../../services/language.service';
@@ -48,10 +48,13 @@ export class Register implements OnInit, OnDestroy {
   isProvider = computed(() => !this.isPatient());
   needsBusinessName = computed(() => this.accountType() === 'CLINIC' || this.accountType() === 'HOSPITAL');
 
+  queryParams: any = {};
+
   constructor(
     private fb: FormBuilder,
     private http: HttpClient,
     private router: Router,
+    private route: ActivatedRoute, // Add ActivatedRoute
     public langService: LanguageService
   ) {
     this.registerForm = this.fb.group({
@@ -77,12 +80,20 @@ export class Register implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    // Check for query params (Onboarding flow)
+    this.route.queryParams.subscribe((params: any) => {
+      this.queryParams = params;
+      if (params['plan']) {
+         this.selectAccountType(params['plan'] as AccountType);
+      }
+    });
+
     const savedDraft = localStorage.getItem(this.STORAGE_KEY);
     if (savedDraft) {
       try {
         const draft = JSON.parse(savedDraft);
         this.registerForm.patchValue(draft);
-        if (draft.accountType) {
+        if (draft.accountType && !this.queryParams?.plan) {
           this.accountType.set(draft.accountType);
         }
       } catch (_) { }
@@ -158,6 +169,7 @@ export class Register implements OnInit, OnDestroy {
         licenseNumber: f.licenseNumber,
         address: f.address,
         phone: f.phone,
+        paymentId: this.queryParams?.paymentId
       };
 
       if (f.accountType === 'PATIENT') {

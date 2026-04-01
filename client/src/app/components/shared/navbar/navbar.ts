@@ -51,14 +51,14 @@ export class Navbar {
 
   logout() {
     Swal.fire({
-      title: '¿Cerrar Sesión?',
-      text: "Tendrás que ingresar tus credenciales de nuevo.",
+      title: this.langService.translate('auth.logoutConfirm'),
+      text: this.langService.translate('auth.logoutText'),
       icon: 'question',
       showCancelButton: true,
       confirmButtonColor: '#64748b',
       cancelButtonColor: '#d33',
-      confirmButtonText: 'Sí, salir',
-      cancelButtonText: 'Cancelar'
+      confirmButtonText: this.langService.translate('auth.logoutYes'),
+      cancelButtonText: this.langService.translate('auth.logoutCancel')
     }).then((result) => {
       if (result.isConfirmed) {
         this.authService.logout();

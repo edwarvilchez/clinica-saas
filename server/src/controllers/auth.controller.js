@@ -24,7 +24,7 @@ const generarPasswordTemporal = () => {
 exports.register = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { username, email, password, firstName, lastName, role: bodyRole, roleName, patientData, businessName, accountType, licenseNumber, address, inviteToken } = req.body;
+    const { username, email, password, firstName, lastName, role: bodyRole, roleName, patientData, businessName, accountType, licenseNumber, address, inviteToken, paymentId } = req.body;
     
     // Default to PATIENT for public registration
     let finalRoleName = bodyRole || roleName || 'PATIENT';
@@ -149,13 +149,19 @@ exports.register = async (req, res) => {
         name: orgName,
         type: finalAccountType,
         ownerId: user.id,
-        subscriptionStatus: 'TRIAL',
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days trial
+        subscriptionStatus: paymentId ? 'ACTIVE' : 'TRIAL',
+        trialEndsAt: new Date(Date.now() + (paymentId ? 30 : 7) * 24 * 60 * 60 * 1000) 
       }, { transaction: t });
 
       // Link user to organization
       await user.update({ organizationId: newOrg.id }, { transaction: t });
       organizationId = newOrg.id;
+
+      // Link existing payment if any
+      if (paymentId) {
+        const { Payment } = require('../models');
+        await Payment.update({ organizationId: newOrg.id }, { where: { id: paymentId }, transaction: t });
+      }
     }
 
     await t.commit();

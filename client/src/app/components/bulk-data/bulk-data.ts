@@ -17,7 +17,7 @@ import Swal from 'sweetalert2';
 })
 export class BulkData {
   selectedFile = signal<File | null>(null);
-  importType = signal<'patients' | 'doctors'>('patients');
+  importType = signal<'patients' | 'doctors' | 'lab_catalog'>('patients');
   isImporting = signal(false);
   importResults = signal<any>(null);
 
@@ -35,7 +35,7 @@ export class BulkData {
     }
   }
 
-  setImportType(type: 'patients' | 'doctors') {
+  setImportType(type: 'patients' | 'doctors' | 'lab_catalog') {
     this.importType.set(type);
     this.importResults.set(null);
   }
@@ -76,9 +76,12 @@ export class BulkData {
     if (type === 'patients') {
       csvContent = 'firstName,lastName,email,username,password,documentId,birthDate,gender,phone,address,bloodType,allergies\n' +
                    'Juan,Perez,juan@ejemplo.com,jperez,MedicalCare888!,12345678,1990-05-15,Male,04121234567,Caracas,O+,Ninguna';
-    } else {
+    } else if (type === 'doctors') {
       csvContent = 'firstName,lastName,email,username,password,licenseNumber,phone,address,specialty,gender\n' +
                    'Maria,Gomez,maria@ejemplo.com,mgomez,MedicalCare888!,MPPS-9999,04247654321,Valencia,Cardiologia,Female';
+    } else {
+      csvContent = 'name,price,category,description\n' +
+                   'Hematologia Completa,15.00,Laboratorio,Analisis de sangre completo con todos los valores.';
     }
 
     try {

@@ -1,4 +1,4 @@
-const { User, Patient, Doctor, Role, Specialty, sequelize } = require('../models');
+const { User, Patient, Doctor, LabTest, Role, Specialty, sequelize } = require('../models');
 const fs = require('fs');
 const { isCsvFile, isXlsxFile, validateRecord, parseCsv, parseXlsx } = require('../services/importService');
 
@@ -33,6 +33,7 @@ exports.importData = async (req, res) => {
       try {
         if (type === 'patients') await importPatient(record, t, userOrgId);
         else if (type === 'doctors') await importDoctor(record, t, userOrgId);
+        else if (type === 'lab_catalog') await importLabTest(record, t, userOrgId);
         else throw new Error('Invalid import type');
         await t.commit();
         successCount++;
@@ -51,6 +52,7 @@ exports.importData = async (req, res) => {
       errors
     });
   } catch (error) {
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     console.error('Bulk import error:', error);
     res.status(500).json({ error: error.message });
   }
@@ -63,7 +65,7 @@ async function importPatient(data, transaction, organizationId) {
     const user = await User.create({
         username: data.username,
         email: data.email,
-        password: data.password || 'MedicalCare888!', // Default password if not provided
+        password: data.password || 'MedicalCare888!', 
         firstName: data.firstName,
         lastName: data.lastName,
         gender: data.gender,
@@ -116,5 +118,15 @@ async function importDoctor(data, transaction, organizationId) {
         phone: data.phone,
         address: data.address,
         specialtyId: specialtyId
+    }, { transaction });
+}
+
+async function importLabTest(data, transaction, organizationId) {
+    await LabTest.create({
+        name: data.name,
+        price: parseFloat(data.price),
+        category: data.category || 'General',
+        description: data.description || '',
+        organizationId // Even if doesn't exist in model, it's safe to pass if model is updated
     }, { transaction });
 }
