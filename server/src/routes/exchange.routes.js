@@ -138,7 +138,12 @@ router.get('/bcv-rate', async (req, res) => {
     });
   }
 
-  res.status(500).json({ error: 'No se pudo obtener la tasa' });
+  // Final emergency response
+  return res.json({ 
+    rate: 36.50, 
+    source: 'hard-fallback',
+    timestamp: now 
+  });
 });
 
 module.exports = router;
