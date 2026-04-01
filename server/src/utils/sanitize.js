@@ -3,7 +3,7 @@
  * Prevents SQL injection and XSS attacks while preserving valid data formats
  */
 
-const xss = require('xss-clean');
+// const xss = require('xss-clean'); // Removed obsolete/unused dependency
 
 const FIELDS_TO_SKIP = [
   'email',

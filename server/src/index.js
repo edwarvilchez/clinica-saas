@@ -4,16 +4,16 @@ const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
+// const rateLimit = require('express-rate-limit'); // Disabled for Vercel production
 require('dotenv').config();
 const sequelize = require('./config/db.config');
 const models = require('./models');
-const seedRoles = require('./utils/seeder');
-const seedTestData = require('./utils/testSeeder');
+// const seedRoles = require('./utils/seeder');
+// const seedTestData = require('./utils/testSeeder');
 const { initializeSocket } = require('./sockets/videoSocket');
 const logger = require('./utils/logger');
-const swaggerJsdoc = require('swagger-jsdoc');
-const swaggerUi = require('swagger-ui-express');
+// const swaggerJsdoc = require('swagger-jsdoc'); // Disabled for Vercel production
+// const swaggerUi = require('swagger-ui-express'); // Disabled for Vercel production
 const { sanitizeInput } = require('./utils/sanitize');
 const checkSubscription = require('./middlewares/subscription.middleware');
 const authMiddleware = require('./middlewares/auth.middleware');
@@ -63,42 +63,14 @@ const swaggerOptions = {
   apis: ['./src/routes/*.js'],
 };
 
-const swaggerSpec = swaggerJsdoc(swaggerOptions);
+// const swaggerSpec = swaggerJsdoc(swaggerOptions); // Disabled for Vercel production
 
 // 1. CORS - Improved with medicalcare-888.com
+// Simplified CORS for Production Diagnosis
 const corsOptions = {
-  origin: (origin, callback) => {
-    const allowedOrigins = [
-      process.env.CLIENT_URL,
-      /^https?:\/\/localhost(:\d+)?$/,
-      /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
-      /medicalcare-888\.com$/, // NEW: Support for production domain
-      /easypanel\.host$/,
-      /nominusve\.com$/,
-      /vercel\.app$/ // NEW: Allow all Vercel deployments
-    ];
-
-    if (!origin) return callback(null, true);
-
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (!allowed) return false;
-      if (allowed instanceof RegExp) return allowed.test(origin);
-      const sanitizedOrigin = origin.toLowerCase().trim().replace(/\/$/, '');
-      const sanitizedAllowed = allowed.toString().toLowerCase().trim().replace(/\/$/, '');
-      return sanitizedAllowed === sanitizedOrigin;
-    });
-
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      logger.warn({ blockedOrigin: origin }, 'CORS Blocked');
-      if (process.env.NODE_ENV !== 'production') return callback(null, true);
-      callback(new Error(`CORS Error: Origin ${origin} not allowed`));
-    }
-  },
+  origin: true, // Allow all for now
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-auth-token'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 };
 
 app.use(cors(corsOptions));
@@ -110,24 +82,10 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100, // Slightly more permissive for medical workflows
-  message: 'Demasiados intentos, intente en 15 minutos',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 300, 
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/', apiLimiter);
+// Limiters disabled for production diagnosis
+// app.use('/api/auth/login', authLimiter);
+// app.use('/api/auth/register', authLimiter);
+// app.use('/api/', apiLimiter);
 
 // 3. Parser & Sanitization
 app.use(express.json({ limit: '50kb' })); // Increased limit for detailed medical records
@@ -262,11 +220,11 @@ const connectDB = async () => {
         validateEnv();
         await sequelize.authenticate();
         
-        // Skip roles seeding on Vercel to optimize cold starts
+        // Skip roles seeding and heavy initialization on Vercel to optimize cold starts
         if (!process.env.VERCEL) {
-            await initializeDatabase();
-            await seedRoles();
-            initializeSocket(server);
+            // await initializeDatabase();
+            // await seedRoles();
+            // initializeSocket(server); // Disabled for Vercel production
         }
         
         isInitialized = true;
