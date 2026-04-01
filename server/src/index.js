@@ -76,7 +76,8 @@ const corsOptions = {
       /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
       /medicalcare-888\.com$/, // NEW: Support for production domain
       /easypanel\.host$/,
-      /nominusve\.com$/
+      /nominusve\.com$/,
+      /vercel\.app$/ // NEW: Allow all Vercel deployments
     ];
 
     if (!origin) return callback(null, true);
