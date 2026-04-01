@@ -246,10 +246,10 @@ export class Patients implements OnInit {
       cancelButtonColor: '#64748b',
     }).then((result) => {
       const filename = `Listado_Pacientes_ClinicaSaaS_${new Date().toISOString().split('T')[0]}`;
-      const title = 'Listado de Pacientes - Clinica SaaS';
+      const title = 'Listado de Pacientes - MedicalCare 888';
       const user = this.authService.currentUser();
       const branding = {
-        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clinica SaaS Platform'),
+        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888 Platform'),
         professional: user ? `${user.firstName} ${user.lastName}` : undefined,
         tagline: this.langService.translate('patients_list.subtitle')
       };

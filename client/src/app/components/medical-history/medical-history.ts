@@ -283,7 +283,7 @@ export class MedicalHistory implements OnInit {
         address: 'N/A',
         phone: this.patient()?.User?.phone || 'N/A',
         printDate: new Date().toLocaleString(),
-        agreement: 'Clinica SaaS Platform',
+        agreement: 'MedicalCare 888 Platform',
       },
       sections: [{
         title: 'RESULTADOS DE LABORATORIO',
@@ -348,7 +348,7 @@ export class MedicalHistory implements OnInit {
         <body>
           <div class="header">
             <div class="logo">
-              ${this.orgService.settings().logoUrl ? `<img src="${this.orgService.settings().logoUrl}" style="max-height: 60px;">` : this.orgService.settings().name || 'Clinica SaaS'}
+              ${this.orgService.settings().logoUrl ? `<img src="${this.orgService.settings().logoUrl}" style="max-height: 60px;">` : this.orgService.settings().name || 'MedicalCare 888'}
             </div>
             <div>Informe Médico Clínico</div>
           </div>
@@ -416,7 +416,7 @@ export class MedicalHistory implements OnInit {
           ${leaveHtml}
 
           <div class="footer">
-            <p>Generado electrónicamente por ${this.orgService.settings().name || 'Clinica SaaS Platform'}</p>
+            <p>Generado electrónicamente por ${this.orgService.settings().name || 'MedicalCare 888 Platform'}</p>
             <p>${new Date().toLocaleString()}</p>
           </div>
         </body>
@@ -460,7 +460,7 @@ export class MedicalHistory implements OnInit {
       const title = `Historia Médica: ${patientName}`;
       const user = this.authService.currentUser();
       const branding = {
-        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clinica SaaS Platform'),
+        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888 Platform'),
         professional: user ? `${user.firstName} ${user.lastName}` : undefined,
         tagline: this.langService.translate('medical_history.subtitle')
       };

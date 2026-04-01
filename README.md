@@ -2,7 +2,7 @@
 
 Sistema completo de gestión para clínicas médicas desarrollado con Angular y Node.js.
 
-![Versión](https://img.shields.io/badge/versión-2.1.0-blue.svg)
+![Versión](https://img.shields.io/badge/versión-2.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Security](https://img.shields.io/badge/security-9%2F10-brightgreen.svg)
 ![Test Coverage](https://img.shields.io/badge/coverage-18%25-yellow.svg)
@@ -74,6 +74,14 @@ Sistema completo de gestión para clínicas médicas desarrollado con Angular y 
 - ✅ **Activación Automática** de servicios premium
 - ✅ **Gestión de Organización**
 - ✅ **SuperAdmin Bypass**: Acceso total sin restricciones de suscripción
+
+## 🆕 v2.2.0 (Onboarding & Payment Experience - Abril 2026)
+
+- ✅ **Flujo de Pago Previo (Onboarding)**: Los nuevos usuarios ahora pueden pagar su suscripción antes de registrarse, facilitando la conversión y asegurando que el acceso premium se active inmediatamente tras el registro.
+- ✅ **Vinculación de Pagos a Huérfanos**: Nuevo sistema de detección de pagos realizados por invitados que se vinculan automáticamente a la nueva organización al completar el registro.
+- ✅ **Localización de Branding Administrativo**: Implementación total de `LanguageService` en el módulo de Imagen Corporativa, permitiendo previsualizaciones bilingües de reportes médicos.
+- ✅ **Sesión Segura con i18n**: Internacionalización de los diálogos de cierre de sesión y gestión de perfiles para una experiencia de usuario consistente.
+- ✅ **Soporte de Registro desde Planes**: Redirección inteligente desde el catálogo de precios al registro, capturando automáticamente el tipo de plan y el ID de pago.
 
 ## 🆕 v2.1.0 (Dashboard & Branding - Marzo 2026)
 

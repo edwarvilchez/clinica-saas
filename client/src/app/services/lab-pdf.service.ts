@@ -24,7 +24,7 @@ export class LabPdfService {
     
     // Branding Setup
     const branding = {
-      name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clinica SaaS Platform'),
+      name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888'),
       tagline: user?.businessName ? 'Servicios de Salud Integrales' : 'Gestión Médica Profesional'
     };
 
@@ -57,7 +57,7 @@ export class LabPdfService {
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(148, 163, 184); // Slate-400
-    doc.text('POWERED BY Clinica SaaS PLATFORM', pageWidth - 14, 8, { align: 'right' });
+    doc.text('POWERED BY MedicalCare 888', pageWidth - 14, 8, { align: 'right' });
 
     // Lab Order / Document ID (Derecha)
     doc.setFontSize(14);

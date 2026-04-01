@@ -86,9 +86,142 @@ export class Payments implements OnInit {
   createNewPayment() {
     if (this.authService.hasRole(['PATIENT'])) {
       this.createPatientPayment();
-    } else {
-      this.createAdminPayment();
+      return;
     }
+
+    Swal.fire({
+      title: this.langService.translate('payments.selectRole'),
+      icon: 'question',
+      showDenyButton: true,
+      showCancelButton: true,
+      confirmButtonText: `<i class="bi bi-person-heart me-1"></i> ${this.langService.translate('payments.patientPayment')}`,
+      denyButtonText: `<i class="bi bi-award me-1"></i> ${this.langService.translate('payments.subscriptionPayment')}`,
+      cancelButtonText: this.langService.translate('common.cancel'),
+      denyButtonColor: '#7c3aed',
+      confirmButtonColor: '#10b981',
+      width: '550px'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.createAdminPayment();
+      } else if (result.isDenied) {
+        this.createSubscriptionPayment();
+      }
+    });
+  }
+
+  createSubscriptionPayment() {
+    const user = this.authService.currentUser();
+    const currentType = user?.accountType || 'PROFESSIONAL';
+    
+    // Simple mapping for demo/manual entry if plan not found
+    const planMap: any = {
+      'PROFESSIONAL': { name: 'Consultorio', price: 49 },
+      'CLINIC': { name: 'Clínica', price: 119 },
+      'HOSPITAL': { name: 'Hospital', price: 249 },
+      'ENTERPRISE': { name: 'Enterprise', price: 499 }
+    };
+    
+    const plan = planMap[currentType] || planMap['PROFESSIONAL'];
+    const isEs = this.langService.lang() === 'es';
+
+    Swal.fire({
+      title: isEs ? 'Registrar Pago de Plan' : 'Register Plan Payment',
+      html: `
+        <div class="text-start">
+          <div class="alert alert-primary bg-opacity-10 border-0 p-3 mb-3">
+             <div class="d-flex justify-content-between">
+                <span>Plan:</span> <strong class="text-primary">${plan.name}</strong>
+             </div>
+             <div class="d-flex justify-content-between">
+                <span>${isEs ? 'Monto Base' : 'Base Amount'}:</span> <strong>$${plan.price}.00</strong>
+             </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold mb-1">${this.langService.translate('payments.method')}</label>
+            <select id="method" class="form-select form-select-sm">
+                <option value="Transferencia">${isEs ? 'Transferencia Bancaria (Bs.)' : 'Bank Transfer (Bs.)'}</option>
+                <option value="Pago Móvil">${isEs ? 'Pago Móvil (Bs.)' : 'Mobile Payment (Bs.)'}</option>
+                <option value="Zelle">Zelle (USD)</option>
+                <option value="TDC / TDD">${isEs ? 'Tarjeta (Punto de Venta)' : 'Card (POS)'}</option>
+            </select>
+          </div>
+
+          <div class="row g-2 mb-3">
+             <div class="col-6">
+                <label class="form-label small fw-bold mb-1">${this.langService.translate('payments.payCurrency')}</label>
+                <select id="curr" class="form-select form-select-sm">
+                   <option value="USD">USD ($)</option>
+                   <option value="VES">VES (Bs.)</option>
+                </select>
+             </div>
+             <div class="col-6">
+                <label class="form-label small fw-bold mb-1">${this.langService.translate('payments.amount')}</label>
+                <input id="amount" type="number" class="form-control form-control-sm" value="${plan.price}">
+             </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold mb-1">${this.langService.translate('payments.reference')}</label>
+            <input id="ref" class="form-control form-control-sm" placeholder="REF-XXXXXX">
+          </div>
+
+          <div class="mb-3">
+             <label class="form-label small fw-bold mb-1">${this.langService.translate('payments.attachReceipt')}</label>
+             <input id="receiptFile" type="file" class="form-control form-control-sm" accept="image/*,application/pdf">
+          </div>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: this.langService.translate('common.confirm'),
+      cancelButtonText: this.langService.translate('common.cancel'),
+      confirmButtonColor: '#10b981',
+      preConfirm: () => {
+        const method = (document.getElementById('method') as HTMLSelectElement).value;
+        const ref = (document.getElementById('ref') as HTMLInputElement).value;
+        const amount = (document.getElementById('amount') as HTMLInputElement).value;
+        const curr = (document.getElementById('curr') as HTMLSelectElement).value;
+        const fileInput = document.getElementById('receiptFile') as HTMLInputElement;
+        const file = fileInput?.files ? fileInput.files[0] : null;
+
+        if (!ref || !amount) {
+           Swal.showValidationMessage(isEs ? 'Faltan campos requeridos' : 'Required fields missing');
+           return false;
+        }
+
+        const formData = new FormData();
+        formData.append('concept', `Pago Suscripción: ${plan.name} (${curr})`);
+        formData.append('instrument', method);
+        formData.append('reference', ref);
+        formData.append('currency', curr);
+        formData.append('paymentType', 'SUBSCRIPTION');
+        formData.append('planType', currentType);
+        formData.append('billingCycle', 'Mensual');
+        formData.append('status', 'Pending');
+        
+        let finalAmount = parseFloat(amount);
+        if (curr === 'VES') {
+           finalAmount = finalAmount / this.currencyService.rate;
+        }
+        formData.append('amount', finalAmount.toString());
+
+        if (file) formData.append('receipt', file);
+        return formData;
+      }
+    }).then(result => {
+      if (result.isConfirmed) {
+        this.http.post(`${API_URL}/payments/subscription`, result.value, { headers: this.getHeaders() })
+          .subscribe({
+            next: () => {
+              this.loadPayments();
+              Swal.fire(isEs ? 'Enviado' : 'Sent', isEs ? 'Su pago de suscripción ha sido enviado para verificación.' : 'Your subscription payment has been sent for verification.', 'success');
+            },
+            error: (err) => {
+               Swal.fire('Error', err.error?.error || err.error?.message || 'Error', 'error');
+            }
+          });
+      }
+    });
   }
 
   createPatientPayment() {
@@ -641,10 +774,10 @@ export class Payments implements OnInit {
       cancelButtonColor: '#64748b',
     }).then((result) => {
       const filename = `Reporte_Pagos_ClinicaSaaS_${new Date().toISOString().split('T')[0]}`;
-      const title = 'Listado de Pagos - Clinica SaaS';
+      const title = 'Listado de Pagos - MedicalCare 888';
       const user = this.authService.currentUser();
       const branding = {
-        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clinica SaaS Platform'),
+        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888 Platform'),
         professional: user ? `${user.firstName} ${user.lastName}` : undefined,
         tagline: this.langService.translate('payments.subtitle')
       };

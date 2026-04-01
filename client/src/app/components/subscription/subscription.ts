@@ -195,11 +195,6 @@ export class Subscription implements OnInit {
 
   payForPlan(plan: PricingPlan) {
     const user = this.authService.currentUser();
-    if (!user) {
-      this.router.navigate(['/register']);
-      return;
-    }
-
     const cycle = this.billingCycle();
     const amount = this.getPrice(plan.price);
     const concept = `Suscripción ${plan.name} (${cycle})`;
@@ -284,14 +279,34 @@ export class Subscription implements OnInit {
       }
     }).then((result) => {
       if (result.isConfirmed) {
-        this.http.post(`${API_URL}/payments/subscription`, result.value, { headers: this.getHeaders() })
+        const url = user ? `${API_URL}/payments/subscription` : `${API_URL}/payments/subscription/guest`;
+        const headers = user ? { headers: this.getHeaders() } : {};
+        
+        this.http.post(url, result.value, headers)
           .subscribe({
-            next: () => {
-              Swal.fire(
-                isEs ? '¡Pago Enviado!' : 'Payment Sent!', 
-                isEs ? 'Tu pago ha sido registrado y está siendo verificado. Te notificaremos cuando tu plan esté activo.' : 'Your payment has been recorded and is being verified. We will notify you when your plan is active.', 
-                'success'
-              );
+            next: (res: any) => {
+              const successTitle = user ? (isEs ? '¡Pago Enviado!' : 'Payment Sent!') : this.langService.translate('payments.onboardingSuccess');
+              const successText = user 
+                ? (isEs ? 'Tu pago ha sido registrado y está siendo verificado. Te notificaremos cuando tu plan esté activo.' : 'Your payment has been recorded and is being verified. We will notify you when your plan is active.')
+                : this.langService.translate('payments.onboardingRegister');
+
+              Swal.fire({
+                title: successTitle,
+                text: successText,
+                icon: 'success',
+                confirmButtonText: user ? 'OK' : this.langService.translate('payments.goToRegister'),
+                confirmButtonColor: '#10b981'
+              }).then(() => {
+                if (!user) {
+                  this.router.navigate(['/register'], { 
+                    queryParams: { 
+                      plan: plan.type,
+                      cycle: cycle,
+                      paymentId: res.id || res.id
+                    } 
+                  });
+                }
+              });
             },
             error: (err) => {
               console.error(err);

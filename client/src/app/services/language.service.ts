@@ -38,6 +38,11 @@ const ES_DICT = {
     login: 'Iniciar Sesión',
     register: 'Registrarse',
     logout: 'Cerrar Sesión',
+    logoutConfirm: '¿Desea cerrar sesión?',
+    logoutText: 'Tendrá que ingresar sus credenciales de nuevo.',
+    logoutYes: 'Sí, salir',
+    logoutCancel: 'Cancelar',
+    welcome: '¡Bienvenido!',
     email: 'Email',
     password: 'Contraseña'
   },
@@ -46,7 +51,25 @@ const ES_DICT = {
     title: 'Historial de Videoconsultas'
   },
   team: {
-    sidebar: 'Gestión de Equipo'
+    sidebar: 'Gestión de Equipo',
+    title: 'Personal de la Clínica',
+    subtitle: 'Gestión de miembros y roles del equipo administrativo y médico',
+    addMember: 'Añadir Miembro',
+    newMember: 'Nuevo Miembro del Equipo',
+    member: 'Miembro',
+    role: 'Rol',
+    selectRole: 'Seleccione un rol',
+    license: 'Número de Licencia',
+    gender: 'Género',
+    invitationButton: 'Enviar Invitación',
+    noMembers: 'No hay miembros registrados aún.',
+    messages: {
+      loading: 'Procesando...',
+      success: 'Miembro añadido y correo de bienvenida enviado.',
+      confirmDelete: '¿Eliminar miembro?',
+      confirmDeleteText: 'El usuario perderá el acceso a la plataforma.',
+      yesDelete: 'Confirmar Eliminación'
+    }
   },
   billing: {
     sidebar: 'Mi Suscripción',
@@ -71,7 +94,7 @@ const ES_DICT = {
   payments: {
     title: 'Control de Pagos',
     subtitle: 'Gestión de facturación y estados de cuenta',
-    newPayment: 'Nuevo Pago',
+    newPayment: 'Nueva Transacción',
     export: 'Exportar Reporte',
     reference: 'Referencia',
     patient: 'Paciente',
@@ -86,27 +109,36 @@ const ES_DICT = {
     generalPayment: 'Pago General',
     edit: 'Editar Pago',
     delete: 'Eliminar Pago',
-    registerTitle: 'Registrar Pago de Cita',
+    registerTitle: 'Registrar Nuevo Pago',
     editTitle: 'Editar Pago de Cita',
     payCurrency: 'Moneda del Pago',
     bankPlatform: 'Banco / Plataforma',
     updateReceipt: 'Actualizar Comprobante (Opcional)',
-    hasAttachment: 'Ya tiene un archivo adjunto',
-    selectAppointment: 'Cita a Pagar',
+    hasAttachment: 'Este pago ya tiene un comprobante adjunto.',
+    selectAppointment: 'Seleccionar Cita',
     method: 'Método de Pago',
-    select: 'Seleccione...',
+    select: 'Seleccione una opción',
     bankPlatformPlaceholder: 'Ej: Banesco, Mercantil, Zelle...',
-    refPlaceholder: 'Últimos 4-6 dígitos',
-    payDate: 'Fecha de Pago',
-    attachReceipt: 'Adjuntar Comprobante (Opcional)',
+    refPlaceholder: 'Número de comprobante o referencia',
+    payDate: 'Fecha del Pago',
+    attachReceipt: 'Adjuntar Comprobante',
     saveChanges: 'Guardar Cambios',
-    confirmDelete: '¿Estás seguro?',
-    confirmDeleteText: 'Esta acción eliminará el registro del pago permanentemente.',
+    confirmDelete: '¿Eliminar Pago?',
+    confirmDeleteText: 'Esta acción no se puede deshacer.',
     yesDelete: 'Sí, eliminar',
     deleted: 'Eliminado',
     deletedMsg: 'El pago ha sido eliminado.',
-    updated: 'Actualizado',
-    updatedMsg: 'Su pago ha sido actualizado de forma exitosa.'
+    updated: '¡Actualizado!',
+    updatedMsg: 'El pago ha sido actualizado correctamente.',
+    viewReceipt: 'Ver Recibo / Comprobante',
+    subscriptionPayment: 'Registrar Pago de Suscripción (Plan)',
+    patientPayment: 'Registrar Pago de Paciente',
+    selectRole: 'Tipo de Pago',
+    onboardingTitle: 'Pago de Suscripción',
+    onboardingSuccess: 'Pago registrado con éxito.',
+    onboardingRegister: 'Ahora, complete su registro para activar su cuenta.',
+    goToRegister: 'Ir a Registro',
+    onboardingExisting: 'Pago de renovación registrado con éxito. Su plan se activará en breve.'
   },
   medical_history: {
     title: 'Historia Médica Digital',
@@ -256,7 +288,7 @@ const ES_DICT = {
   dashboard: {
     controlPanel: 'Panel de Control',
     welcome: 'Bienvenido de nuevo',
-    report: 'Descargar Reporte',
+    reportBtn: 'Descargar Reporte',
     newAppointment: 'Nueva Cita',
     activity: 'Actividad de Citas',
     upcoming: 'Próximas Citas',
@@ -272,8 +304,39 @@ const ES_DICT = {
       incomeAnalysis: 'Análisis de Ingresos',
       daily: 'Ingreso Diario',
       weekly: 'Ingreso Semanal',
-      monthly: 'Ingreso Mensual'
+      monthly: 'Ingreso Mensual',
+      today: 'Citas Hoy',
+      patients: 'Pacientes Totales',
+      video: 'Videoconsultas (Mes)',
+      incomeUSD: 'Ingresos USD (Mes)',
+      incomeBs: 'Ingresos Bs (Mes)'
     },
+    specialties: {
+      pediatrics: 'Pediatría',
+      general: 'Medicina General',
+      dentistry: 'Odontología',
+      cardiology: 'Cardiología',
+      gynecology: 'Ginecología',
+      traumatology: 'Traumatología',
+      dermatology: 'Dermatología',
+      neurology: 'Neurología',
+      ophthalmology: 'Oftalmología',
+      psychiatry: 'Psiquiatría'
+    },
+    report: {
+      stat: 'Estadística',
+      value: 'Valor',
+      title: 'Reporte de Actividad - MedicalCare 888',
+      tagline: 'Gestión Clínica Profesional',
+      specialtyPerf: 'Rendimiento por Especialidad',
+      pending: 'Pend',
+      attended: 'Atend'
+    },
+    export: {
+      title: 'Exportar Reporte',
+      text: 'Seleccione el formato de descarga'
+    },
+    redirecting: 'Redirigiendo al módulo de citas...',
     trial: {
       daysRemaining: 'Tu prueba gratuita finaliza en {{days}} días',
       trialDesc: 'Acceso total a todas las funciones premium habilitado.',
@@ -332,20 +395,92 @@ const ES_DICT = {
     allSpecialties: 'Todas las especialidades',
     specialist: 'Especialista',
     viewProfile: 'Ver Perfil',
-    schedule: 'Ver Agenda'
+    schedule: 'Ver Agenda',
+    noResults: 'No se encontraron doctores con los criterios de búsqueda.',
+    active: 'Activo',
+    inactive: 'Inactivo',
+    available: 'Disponible',
+    fields: {
+      firstName: 'Nombre',
+      lastName: 'Apellido',
+      email: 'Email',
+      phone: 'Teléfono',
+      license: 'Licencia Médica',
+      specialty: 'Especialidad',
+      password: 'Contraseña',
+      passwordPlaceholder: 'Mínimo 6 caracteres'
+    },
+    messages: {
+      completeRequired: 'Por favor completa todos los campos',
+      created: '¡Doctor Creado!',
+      createdMsg: 'El doctor ha sido registrado exitosamente en el sistema.',
+      confirmDelete: '¿Eliminar Doctor?',
+      confirmDeleteMsg: 'El doctor dejará de tener acceso al sistema.',
+      deleteConfirmBtn: 'Eliminar',
+      deleted: 'Eliminado',
+      deletedMsg: 'El doctor ha sido retirado del sistema.',
+      toggleStatus: '¿{action} Doctor?',
+      toggleStatusMsg: 'El doctor {name} quedará {status} en el sistema.',
+      toggleBypass: '¿{action} Bypass?',
+      toggleBypassMsg: 'El doctor {name} {action2} los límites de suscripción.',
+      toggleBypassTooltip: 'Bypass de suscripción (VIP)'
+    }
   },
   nurses: {
     title: 'Personal de Enfermería',
     subtitle: 'Gestión de turnos y asignaciones de enfermería',
     new: 'Nueva Enfermera',
-    searchPlaceholder: 'Buscar enfermera...',
-    allShifts: 'Todos los turnos',
-    filters: 'Filtros',
     table: {
       nurse: 'Enfermera',
       specialty: 'Especialidad',
       shift: 'Turno',
       license: 'Licencia'
+    },
+    noResults: 'No se encontraron enfermeras.',
+    searchPlaceholder: 'Buscar enfermera...',
+    allShifts: 'Todos los turnos',
+    filters: 'Filtros',
+    showing: 'Mostrando',
+    of: 'de',
+    filtersCleared: 'Filtros Limpiados',
+    filtersClearedMsg: 'Se han restablecido todos los filtros de búsqueda.',
+    fields: {
+      firstName: 'Nombre',
+      lastName: 'Apellido',
+      email: 'Email',
+      phone: 'Teléfono',
+      license: 'Número de Licencia',
+      shift: 'Turno',
+      specialization: 'Especialidad',
+      password: 'Contraseña',
+      passwordPlaceholder: 'Mínimo 6 caracteres'
+    },
+    shifts: {
+      morning: 'Mañana',
+      afternoon: 'Tarde',
+      night: 'Noche',
+      rotating: 'Rotativo'
+    },
+    specialties: {
+      general: 'Enfermería General',
+      icu: 'Cuidados Intensivos',
+      pediatrics: 'Pediatría',
+      surgery: 'Quirófano',
+      emergency: 'Emergencias',
+      geriatrics: 'Geriatría',
+      neonatology: 'Neonatología',
+      oncology: 'Oncología'
+    },
+    messages: {
+      completeRequired: 'Por favor complete todos los campos obligatorios.',
+      created: 'Enfermera Creada',
+      createdMsg: 'El registro ha sido creado exitosamente.',
+      confirmDelete: '¿Estás seguro?',
+      confirmDeleteText: 'Esta acción no se puede deshacer.',
+      yesDelete: 'Sí, eliminar',
+      deleted: 'Eliminado',
+      deletedMsg: 'El registro ha sido eliminado.',
+      errorDelete: 'No se pudo eliminar el registro.'
     }
   },
   booking: {
@@ -424,6 +559,7 @@ const ES_DICT = {
     rateInfo: 'Tasa de Referencia',
     rateDetail: 'Monto en Bs. calculado según tasa oficial BCV:',
     showingInUsd: 'Precios en USD',
+    showingInVes: 'Precios en Bs.S',
     table: {
       category: 'Categoría / Examen',
       price: 'Precio (USD)',
@@ -484,31 +620,32 @@ const ES_DICT = {
   bulk_import: {
     title: 'Carga Masiva de Datos',
     subtitle: 'Importación de registros mediante archivos CSV',
-    config: 'Configuración de Carga',
-    step1: '1. Seleccione Tipo de Dato',
+    config: 'Configuración de Importación',
+    step1: '1. Seleccione el tipo de datos',
     patients: 'Pacientes',
     doctors: 'Doctores',
-    step2: '2. Descargar Plantilla',
-    templateDesc: 'Utilice nuestra plantilla CSV estructurada para evitar errores de formato.',
-    downloadTemplate: 'Descargar Plantilla (.csv)',
-    step3: '3. Cargar Archivo',
-    fileReady: 'Archivo listo',
-    startImport: 'Iniciar Importación',
-    processing: 'Procesando registros...',
-    status: 'Estado de la Operación',
-    emptyLabel: 'Los resultados de la importación aparecerán aquí',
-    analyzing: 'Analizando archivo...',
-    analyzingDesc: 'Esto puede tardar unos segundos dependiendo del tamaño del archivo.',
-    summary: 'Resumen de transacciones procesadas.',
-    importSummary: 'Importación finalizada: {{success}} exitosos, {{errors}} fallidos.',
+    lab_catalog: 'Catálogo Lab',
+    step2: '2. Descargue la plantilla (opcional)',
+    templateDesc: 'Asegúrese de que su archivo siga el formato de nuestra plantilla para evitar errores durante la carga.',
+    downloadTemplate: 'Descargar Plantilla CSV',
+    step3: '3. Seleccione el archivo CSV',
+    fileReady: 'Archivo seleccionado',
+    startImport: 'Iniciar Carga Masiva',
+    processing: 'Procesando...',
+    status: 'Estado de la Carga',
+    emptyLabel: 'Seleccione un archivo para comenzar la importación',
+    analyzing: 'Analizando el archivo...',
+    analyzingDesc: 'Estamos validando los registros antes de guardarlos en el sistema.',
+    summary: 'Resumen de la operación',
+    importSummary: 'Carga Finalizada: {{success}} exitosos, {{errors}} fallidos.',
     success: 'Exitosos',
-    failed: 'Fallidos',
+    failed: 'Errores',
     errorDetail: 'Detalle de Errores',
-    failedRecord: 'Registro Fallido',
-    finished: 'Importación Finalizada',
-    selectFileError: 'Por favor seleccione un archivo CSV',
-    importError: 'Error al importar datos',
-    template_filename: 'plantilla'
+    failedRecord: 'Registro fallido',
+    finished: '¡Importación Finalizada!',
+    selectFileError: 'Por favor seleccione un archivo .csv para continuar',
+    importError: 'Error al procesar la carga masiva. Intente de nuevo.',
+    template_filename: 'plantilla_importacion'
   },
   landing: {
     title: 'La Plataforma de Gestión Médica',
@@ -528,7 +665,33 @@ const ES_DICT = {
     registerHere: 'Regístrate aquí',
     publicBooking: 'Agendar Cita (Público)',
     businessName: 'Nombre del Centro / Consultorio',
-    businessNamePlaceholder: 'Ej: Centro Médico San José'
+    businessNamePlaceholder: 'Ej: Centro Médico San José',
+    professional: 'Profesional de Salud',
+    clinic: 'Clínica / Consultorio',
+    hospital: 'Hospital / Centro'
+  },
+  branding: {
+    title: 'Imagen Corporativa & Branding',
+    subtitle: 'Personalice la aplicación y los reportes médicos con su identidad institucional.',
+    saveChanges: 'Guardar Cambios',
+    saving: 'Guardando...',
+    generalSettings: 'Ajustes Generales',
+    orgName: 'Nombre de la Institución',
+    orgPlaceholder: 'Ej: Centro Clínico Los Olivos',
+    logo: 'Logo de la Clínica (URL)',
+    logoPlaceholder: 'URL de la imagen (PNG transparente recomendado)',
+    logoHint: 'Recomendamos usar un logo con fondo transparente y dimensiones de aprox. 200x60px.',
+    primaryColor: 'Color Primario de la Aplicación',
+    colorHint: 'Este color se aplicará globalmente a botones, encabezados y reportes.',
+    previewTitle: 'Previsualización de Informe Médico',
+    previewDate: 'Fecha:',
+    previewFolio: 'Folio:',
+    previewPatient: 'Datos del Paciente',
+    previewDiagnosis: 'Diagnóstico Médico',
+    previewDiagnosisHint: 'Aquí aparecerá el diagnóstico y los hallazgos clínicos del médico tratante.',
+    previewFooter: 'Este informe ha sido generado electrónicamente por',
+    success: 'Configuración guardada correctamente.',
+    error: 'No se pudo guardar la configuración.'
   },
   patients_list: {
     title: 'Gestión de Pacientes',
@@ -562,7 +725,77 @@ const ES_DICT = {
     address: 'Dirección',
     bloodType: 'Tipo de Sangre',
     allergies: 'Alergias',
-    acceptTerms: 'Acepto los términos. Datos bajo ISO 27001, ISO 9001 y GDPR.'
+    acceptTerms: 'Acepto los términos. Datos bajo ISO 27001, ISO 9001 y GDPR.',
+    patient: 'Paciente',
+    patientDesc: 'Accede a tus citas y expediente médico.',
+    professionalDesc: 'Gestiona tu consulta y pacientes.',
+    clinicDesc: 'Administra tu clínica completa.',
+    hospitalDesc: 'Gestión hospitalaria centralizada.',
+    error: 'Error al registrar'
+  },
+  public_booking: {
+    title: 'Agendar Cita Médica',
+    subtitle: 'Reserva tu consulta en minutos, sin necesidad de cuenta',
+    backToLogin: 'Volver al Login',
+    steps: {
+      personal: 'Datos Personales',
+      appointment: 'Datos de la Cita'
+    },
+    personalInfo: {
+      title: 'Información Personal',
+      firstName: 'Nombre',
+      lastName: 'Apellido',
+      email: 'Correo Electrónico',
+      phone: 'Teléfono (WhatsApp)',
+      document: 'Cédula / Pasaporte',
+      placeholders: {
+        firstName: 'Ej: Juan',
+        lastName: 'Ej: Pérez',
+        email: 'correo@ejemplo.com',
+        phone: '04121234567',
+        document: 'V-12345678'
+      }
+    },
+    appointmentInfo: {
+      title: 'Detalles de la Cita',
+      doctor: 'Especialista',
+      doctorPlaceholder: 'Seleccione un especialista',
+      date: 'Fecha de la Cita',
+      time: 'Hora',
+      timePlaceholder: 'Seleccione una hora',
+      reason: 'Motivo de Consulta',
+      reasonPlaceholder: 'Ej: Control General, Revisión...',
+      notes: 'Notas Adicionales (Opcional)',
+      notesPlaceholder: 'Cualquier información relevante...'
+    },
+    actions: {
+      continue: 'Continuar',
+      back: 'Volver',
+      confirm: 'Confirmar y Agendar',
+      booking: 'Agendando...',
+      hasAccount: '¿Ya tienes cuenta?',
+      loginNow: 'Iniciar Sesión'
+    },
+    errors: {
+      required: 'Este campo es obligatorio',
+      email: 'Ingresa un correo electrónico válido',
+      minlength: 'Demasiado corto',
+      pattern: 'Formato inválido',
+      invalidDate: 'Fecha no válida',
+      selectDoctor: 'Selecciona un especialista',
+      selectTime: 'Selecciona una hora',
+      general: 'Ocurrió un error al agendar la cita. Intenta de nuevo.'
+    },
+    success: {
+      title: '¡Cita Agendada!',
+      msg: 'Tu cita ha sido registrada exitosamente.',
+      notification: 'Recibirás una confirmación por WhatsApp.',
+      calendar: 'Agregar al Calendario',
+      didYouKnow: '¿Sabías que puedes crear una cuenta?',
+      accountBenefits: 'Con una cuenta puedes ver tu historial, gestionar tus citas y mucho más.',
+      createAccount: 'Crear Cuenta Gratis',
+      gotIt: 'Entendido'
+    }
   },
   subscription: {
     pricingTitle: 'Planes y Precios',
@@ -619,6 +852,11 @@ const EN_DICT = {
     login: 'Login',
     register: 'Register',
     logout: 'Logout',
+    logoutConfirm: 'Logout?',
+    logoutText: 'You will have to enter your credentials again.',
+    logoutYes: 'Yes, logout',
+    logoutCancel: 'Cancel',
+    welcome: 'Welcome!',
     email: 'Email',
     password: 'Password'
   },
@@ -627,7 +865,25 @@ const EN_DICT = {
     title: 'Video Consultation History'
   },
   team: {
-    sidebar: 'Team Management'
+    sidebar: 'Team Management',
+    title: 'Clinic Staff',
+    subtitle: 'Management of team members and roles for administrative and medical staff',
+    addMember: 'Add Member',
+    newMember: 'New Team Member',
+    member: 'Member',
+    role: 'Role',
+    selectRole: 'Select a role',
+    license: 'License Number',
+    gender: 'Gender',
+    invitationButton: 'Send Invitation',
+    noMembers: 'No members registered yet.',
+    messages: {
+      loading: 'Processing...',
+      success: 'Member added and welcome email sent.',
+      confirmDelete: 'Remove member?',
+      confirmDeleteText: 'The user will lose access to the platform.',
+      yesDelete: 'Confirm Removal'
+    }
   },
   billing: {
     sidebar: 'My Subscription',
@@ -659,13 +915,6 @@ const EN_DICT = {
     concept: 'Concept',
     amount: 'Amount',
     fecha: 'Date',
-    collect: 'Collect',
-    receipt: 'Receipt',
-    pending: 'Pending',
-    paid: 'Paid',
-    doctorConsultation: 'Consultation / Doctor',
-    generalPayment: 'General Payment',
-    edit: 'Edit Payment',
     delete: 'Delete Payment',
     registerTitle: 'Register Appointment Payment',
     editTitle: 'Edit Appointment Payment',
@@ -837,7 +1086,7 @@ const EN_DICT = {
   dashboard: {
     controlPanel: 'Control Panel',
     welcome: 'Welcome back',
-    report: 'Download Report',
+    reportBtn: 'Download Report',
     newAppointment: 'New Appointment',
     activity: 'Appointment Activity',
     upcoming: 'Upcoming Appointments',
@@ -853,8 +1102,39 @@ const EN_DICT = {
       incomeAnalysis: 'Income Analysis',
       daily: 'Daily Income',
       weekly: 'Weekly Income',
-      monthly: 'Monthly Income'
+      monthly: 'Monthly Income',
+      today: 'Appointments Today',
+      patients: 'Total Patients',
+      video: 'Video Consultations (Month)',
+      incomeUSD: 'Income USD (Month)',
+      incomeBs: 'Income Bs (Month)'
     },
+    specialties: {
+      pediatrics: 'Pediatrics',
+      general: 'General Medicine',
+      dentistry: 'Dentistry',
+      cardiology: 'Cardiology',
+      gynecology: 'Gynecology',
+      traumatology: 'Traumatology',
+      dermatology: 'Dermatology',
+      neurology: 'Neurology',
+      ophthalmology: 'Ophthalmology',
+      psychiatry: 'Psychiatry'
+    },
+    report: {
+      stat: 'Statistic',
+      value: 'Value',
+      title: 'Activity Report - MedicalCare 888',
+      tagline: 'Professional Clinical Management',
+      specialtyPerf: 'Specialty Performance',
+      pending: 'Pend',
+      attended: 'Attend'
+    },
+    export: {
+      title: 'Export Report',
+      text: 'Select download format'
+    },
+    redirecting: 'Redirecting to the appointments module...',
     trial: {
       daysRemaining: 'Your free trial ends in {{days}} days',
       trialDesc: 'Full access to all premium features enabled.',
@@ -911,22 +1191,93 @@ const EN_DICT = {
     new: 'New Doctor',
     searchPlaceholder: 'Search by name or specialty...',
     allSpecialties: 'All specialties',
-    specialist: 'Specialist',
     viewProfile: 'View Profile',
-    schedule: 'View Schedule'
+    schedule: 'View Schedule',
+    noResults: 'No doctors found with the search criteria.',
+    active: 'Active',
+    inactive: 'Inactive',
+    available: 'Available',
+    fields: {
+      firstName: 'First Name',
+      lastName: 'Last Name',
+      email: 'Email',
+      phone: 'Phone',
+      license: 'Medical License',
+      specialty: 'Specialty',
+      password: 'Password',
+      passwordPlaceholder: 'Minimum 6 characters'
+    },
+    messages: {
+      completeRequired: 'Please complete all fields',
+      created: 'Doctor Created!',
+      createdMsg: 'The doctor has been successfully registered in the system.',
+      confirmDelete: 'Delete Doctor?',
+      confirmDeleteMsg: 'The doctor will no longer have access to the system.',
+      deleteConfirmBtn: 'Delete',
+      deleted: 'Deleted',
+      deletedMsg: 'The doctor has been removed from the system.',
+      toggleStatus: '{action} Doctor?',
+      toggleStatusMsg: 'Doctor {name} will be {status} in the system.',
+      toggleBypass: '{action} Bypass?',
+      toggleBypassMsg: 'Doctor {name} will {action2} subscription limits.',
+      toggleBypassTooltip: 'Subscription Bypass (VIP)'
+    }
   },
   nurses: {
     title: 'Nursing Staff',
     subtitle: 'Shift management and nursing assignments',
     new: 'New Nurse',
-    searchPlaceholder: 'Search nurse...',
-    allShifts: 'All shifts',
-    filters: 'Filters',
     table: {
       nurse: 'Nurse',
       specialty: 'Specialty',
       shift: 'Shift',
       license: 'License'
+    },
+    noResults: 'No nurses found.',
+    searchPlaceholder: 'Search nurse...',
+    allShifts: 'All shifts',
+    filters: 'Filters',
+    showing: 'Showing',
+    of: 'of',
+    filtersCleared: 'Filters Cleared',
+    filtersClearedMsg: 'All search filters have been reset.',
+    fields: {
+      firstName: 'First Name',
+      lastName: 'Last Name',
+      email: 'Email',
+      phone: 'Phone',
+      license: 'License Number',
+      shift: 'Shift',
+      specialization: 'Specialty',
+      password: 'Password',
+      passwordPlaceholder: 'Minimum 6 characters'
+    },
+    shifts: {
+      morning: 'Morning',
+      afternoon: 'Afternoon',
+      night: 'Night',
+      rotating: 'Rotating'
+    },
+    specialties: {
+      general: 'General Nursing',
+      icu: 'Intensive Care',
+      pediatrics: 'Pediatrics',
+      surgery: 'Surgery',
+      emergency: 'Emergency',
+      geriatrics: 'Geriatrics',
+      neonatology: 'Neonatology',
+      oncology: 'Oncology'
+    },
+    messages: {
+      completeRequired: 'Please complete all required fields.',
+      created: 'Nurse Created',
+      createdMsg: 'The record has been successfully created.',
+      confirmDelete: 'Are you sure?',
+      confirmDeleteText: 'This action cannot be undone.',
+      yesDelete: 'Yes, delete',
+      deleted: 'Deleted',
+      deletedMsg: 'The record has been deleted.',
+      errorDelete: 'Could not delete the record.'
     }
   },
   booking: {
@@ -1005,6 +1356,7 @@ const EN_DICT = {
     rateInfo: 'Reference Rate',
     rateDetail: 'Amount in Bs. calculated according to official BCV rate:',
     showingInUsd: 'Prices in USD',
+    showingInVes: 'Prices in Bs.S',
     table: {
       category: 'Category / Test',
       price: 'Price (USD)',
@@ -1066,29 +1418,27 @@ const EN_DICT = {
     title: 'Bulk Data Import',
     subtitle: 'Import records via CSV files',
     config: 'Import Configuration',
-    step1: '1. Select Data Type',
+    step1: '1. Select data type',
     patients: 'Patients',
     doctors: 'Doctors',
-    step2: '2. Download Template',
-    templateDesc: 'Use our structured CSV template to avoid formatting errors.',
-    downloadTemplate: 'Download Template (.csv)',
-    step3: '3. Upload File',
-    fileReady: 'File ready',
-    startImport: 'Start Import',
-    processing: 'Processing records...',
-    status: 'Operation Status',
-    emptyLabel: 'Import results will appear here',
+    lab_catalog: 'Lab Catalog',
+    step2: '2. Download template (optional)',
+    templateDesc: 'Make sure your file follows our template format to avoid errors during upload.',
+    downloadTemplate: 'Download CSV Template',
+    step3: '3. Select CSV file',
+    fileReady: 'File selected',
+    startImport: 'Start Bulk Import',
+    processing: 'Processing...',
+    status: 'Upload Status',
+    emptyLabel: 'Select a file to begin import',
     analyzing: 'Analyzing file...',
-    analyzingDesc: 'This may take a few seconds depending on the file size.',
-    summary: 'Summary of processed transactions.',
-    importSummary: 'Import completed: {{success}} successful, {{errors}} failed.',
+    analyzingDesc: 'We are validating records before saving them to the system.',
+    summary: 'Operation Summary',
+    importSummary: 'Import Finished: {{success}} successful, {{errors}} failed.',
     success: 'Successful',
-    failed: 'Failed',
+    failed: 'Errors',
     errorDetail: 'Error Detail',
     failedRecord: 'Failed Record',
-    finished: 'Import Finished',
-    selectFileError: 'Please select a CSV file',
-    importError: 'Error importing data',
     template_filename: 'template'
   },
   landing: {
@@ -1109,7 +1459,10 @@ const EN_DICT = {
     registerHere: 'Register here',
     publicBooking: 'Book Appointment (Public)',
     businessName: 'Center / Clinic Name',
-    businessNamePlaceholder: 'e.g. San Jose Medical Center'
+    businessNamePlaceholder: 'e.g. San Jose Medical Center',
+    professional: 'Health Professional',
+    clinic: 'Clinic / Practice',
+    hospital: 'Hospital / Center'
   },
   patients_list: {
     title: 'Patient Management',
@@ -1143,7 +1496,77 @@ const EN_DICT = {
     address: 'Address',
     bloodType: 'Blood Type',
     allergies: 'Allergies',
-    acceptTerms: 'I accept the terms. Data under ISO 27001, ISO 9001, and GDPR compliance.'
+    acceptTerms: 'I accept the terms. Data under ISO 27001, ISO 9001, and GDPR compliance.',
+    patient: 'Patient',
+    patientDesc: 'Access your appointments and medical record.',
+    professionalDesc: 'Manage your practice and patients.',
+    clinicDesc: 'Manage your full clinic operations.',
+    hospitalDesc: 'Centralized hospital management.',
+    error: 'Registration error'
+  },
+  public_booking: {
+    title: 'Book Medical Appointment',
+    subtitle: 'Reserve your consultation in minutes, no account needed',
+    backToLogin: 'Back to Login',
+    steps: {
+      personal: 'Personal Info',
+      appointment: 'Appointment'
+    },
+    personalInfo: {
+      title: 'Personal Information',
+      firstName: 'First Name',
+      lastName: 'Last Name',
+      email: 'Email Address',
+      phone: 'Phone (WhatsApp)',
+      document: 'ID / Passport',
+      placeholders: {
+        firstName: 'e.g. John',
+        lastName: 'e.g. Smith',
+        email: 'email@example.com',
+        phone: '+1 555-1234567',
+        document: '12345678'
+      }
+    },
+    appointmentInfo: {
+      title: 'Appointment Details',
+      doctor: 'Specialist',
+      doctorPlaceholder: 'Select a specialist',
+      date: 'Appointment Date',
+      time: 'Time',
+      timePlaceholder: 'Select a time slot',
+      reason: 'Reason for Visit',
+      reasonPlaceholder: 'e.g. General Checkup, Follow-up...',
+      notes: 'Additional Notes (Optional)',
+      notesPlaceholder: 'Any relevant information...'
+    },
+    actions: {
+      continue: 'Continue',
+      back: 'Back',
+      confirm: 'Confirm & Book',
+      booking: 'Booking...',
+      hasAccount: 'Already have an account?',
+      loginNow: 'Log In'
+    },
+    errors: {
+      required: 'This field is required',
+      email: 'Please enter a valid email address',
+      minlength: 'Too short',
+      pattern: 'Invalid format',
+      invalidDate: 'Invalid date',
+      selectDoctor: 'Please select a specialist',
+      selectTime: 'Please select a time slot',
+      general: 'An error occurred while booking the appointment. Please try again.'
+    },
+    success: {
+      title: 'Appointment Booked!',
+      msg: 'Your appointment has been successfully registered.',
+      notification: 'You will receive a WhatsApp confirmation.',
+      calendar: 'Add to Calendar',
+      didYouKnow: 'Did you know you can create an account?',
+      accountBenefits: 'With an account you can view your history, manage appointments and more.',
+      createAccount: 'Create Free Account',
+      gotIt: 'Got it'
+    }
   },
   subscription: {
     pricingTitle: 'Plans & Pricing',

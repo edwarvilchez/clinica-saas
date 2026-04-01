@@ -119,7 +119,7 @@ export class Login implements OnInit, OnDestroy {
       title: 'Protección y Blindaje Legal',
       html: `
         <div class="text-start">
-          <p>Clinica SaaS cumple con los más altos estándares internacionales:</p>
+          <p>MedicalCare 888 cumple con los más altos estándares internacionales:</p>
           <ul class="list-group list-group-flush mb-0 small">
             <li class="list-group-item bg-transparent px-0 border-0">
               <i class="bi bi-shield-check text-primary me-2"></i><strong>ISO/IEC 27001:</strong> Gestión de Seguridad de la Información.

@@ -25,9 +25,9 @@ async function seed() {
       const firstOrg = await Organization.findOne();
       
       const user = await User.create({
-        username: 'dr_demo',
-        email: 'doctor.demo@clinica.com',
-        password: 'ClinicaSaaS123!',
+        username: 'dr_medical',
+        email: 'doctor.demo@medicalcare-888.com',
+        password: 'MedicalCare888!',
         firstName: 'Guillermo',
         lastName: 'Vivas',
         roleId: docRole.id,

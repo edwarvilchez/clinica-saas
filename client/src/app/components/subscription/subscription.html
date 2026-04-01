@@ -5,7 +5,7 @@
       <div class="bg-primary rounded-2 p-1 d-inline-flex">
         <i class="bi bi-activity text-white fs-5"></i>
       </div>
-      <h2 class="fw-bold mb-0 text-primary fs-4">CLINICA SAAS</h2>
+      <h2 class="fw-bold mb-0 text-primary fs-4">MedicalCare 888</h2>
     </div>
 
     <!-- Toggles for Language and Currency (Duality) -->
@@ -117,20 +117,18 @@
             </div>
           </div>
 
-          <div class="mb-4">
-            <div class="d-flex align-items-baseline gap-1">
+          <div class="mb-4" style="overflow: hidden;">
+            <div class="d-flex flex-wrap align-items-baseline gap-1" style="min-width:0;">
               <span class="price-tag">{{ currencyService.formatAmount(getPrice(plan.price)) }}</span>
-              <span class="period-tag"
-                >/
+              <span class="period-tag">/
                 {{
                   billingCycle() === 'Mensual'
                     ? ('subscription.monthly' | translate)
                     : getCurrentCycleLabel().toLowerCase()
-                }}</span
-              >
+                }}</span>
             </div>
             <!-- Dual Currency (Equivalent) -->
-            <div class="x-small text-muted fw-bold mt-1">
+            <div class="x-small text-muted fw-bold mt-1" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                ≈ {{ currencyService.formatAmount(getPrice(plan.price), currencyService.currency() === 'USD' ? 'VES' : 'USD') }}
             </div>
           </div>
@@ -210,7 +208,7 @@
     <!-- Footer Copyright -->
     <div class="mt-5 pt-4 border-top border-white border-opacity-10 text-center">
       <p class="x-small text-white-50 mb-0">
-        &copy; {{ currentYear }} <strong>Clinica SaaS</strong>. Crafted with <i class="bi bi-heart-fill text-danger mx-1"></i> by <strong>CGK888Digital</strong>. All rights reserved.
+        &copy; {{ currentYear }} <strong>MedicalCare 888</strong>. Crafted with <i class="bi bi-heart-fill text-danger mx-1"></i> by <strong>CGK888Digital</strong>. All rights reserved.
       </p>
     </div>
   </div>

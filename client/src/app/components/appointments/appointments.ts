@@ -253,13 +253,13 @@ export class Appointments implements OnInit {
     const endDateISO = endDateObj.toISOString().split('.')[0];
     const endTime = endDateISO.replace(/-/g, '').replace(/:/g, '') + 'Z';
     const details = `Cita con Dr. ${doctorName}\nPaciente: ${patientName}\nMotivo: ${formData.reason}`;
-    const location = 'Clínica Clinica SaaS';
+    const location = 'Clínica MedicalCare 888';
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent('Cita Médica: ' + formData.reason)}&details=${encodeURIComponent(details)}&location=${encodeURIComponent(location)}&dates=${startTime}/${endTime}&add=edwarvilchez1977@gmail.com`;
   }
 
   getWhatsAppLink(formData: any, patientName: string, doctorName: string, phone: string) {
     const message = encodeURIComponent(
-      `*Confirmación de Cita - Clínica Clinica SaaS*\n\n` +
+      `*Confirmación de Cita - MedicalCare 888*\n\n` +
       `Hola ${patientName}, tu cita ha sido agendada:\n\n` +
       `*Doctor:* ${doctorName}\n` +
       `*Fecha:* ${formData.date.replace('T', ' ')}\n` +
@@ -459,10 +459,10 @@ export class Appointments implements OnInit {
       cancelButtonColor: '#64748b',
     }).then((result) => {
       const filename = `Listado_Citas_ClinicaSaaS_${new Date().toISOString().split('T')[0]}`;
-      const title = 'Listado de Citas Médicas - Clinica SaaS';
+      const title = 'Listado de Citas Médicas - MedicalCare 888';
       const user = this.authService.currentUser();
       const branding = {
-        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clinica SaaS Platform'),
+        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888'),
         professional: user ? `${user.firstName} ${user.lastName}` : undefined,
         tagline: this.langService.translate('appointments_list.subtitle')
       };

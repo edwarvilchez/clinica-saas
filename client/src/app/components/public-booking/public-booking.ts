@@ -218,7 +218,7 @@ export class PublicBooking implements OnInit, OnDestroy {
     const isEs = this.langService.lang() === 'es';
     
     const message = encodeURIComponent(
-      `*${isEs ? 'Confirmación de Cita - Clínica Clinica SaaS' : 'Appointment Confirmation - Clinica SaaS Clinic'}*\n\n` +
+      `*${isEs ? 'Confirmación de Cita - Clínica MedicalCare 888' : 'Appointment Confirmation - MedicalCare 888 Clinic'}*\n\n` +
       `${isEs ? 'Hola' : 'Hello'} ${patientName}, ${isEs ? 'tu cita ha sido agendada' : 'your appointment has been scheduled'}:\n\n` +
       `*Doctor:* ${doctorName}\n` +
       `*${isEs ? 'Fecha' : 'Date'}:* ${dateTime}\n` +
@@ -241,7 +241,7 @@ export class PublicBooking implements OnInit, OnDestroy {
     const endTime = endDateISO.replace(/-/g, '').replace(/:/g, '') + 'Z';
 
     const details = `Cita con Dr. ${doctorName}\nPaciente: ${patientName}\nMotivo: ${formData.reason}`;
-    const location = 'Clínica Clinica SaaS';
+    const location = 'Clínica MedicalCare 888';
     const isEs = this.langService.lang() === 'es';
     const title = isEs ? 'Cita Médica: ' : 'Medical Appointment: ';
 

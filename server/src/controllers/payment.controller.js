@@ -38,11 +38,16 @@ exports.createSubscriptionPayment = async (req, res) => {
     const { amount, concept, instrument, reference, billingCycle, planType } = req.body;
     const user = req.user;
 
-    // Verify Organization ownership
-    const org = await Organization.findByPk(user.organizationId);
-    if (!org) return res.status(404).json({ error: 'Organization not found' });
-    if (org.ownerId !== user.id && user.role !== 'SUPERADMIN') {
-       return res.status(403).json({ error: 'Only the organization owner can make subscription payments' });
+    let organizationId = null;
+
+    if (user) {
+        // Verify Organization ownership
+        const org = await Organization.findByPk(user.organizationId);
+        if (!org) return res.status(404).json({ error: 'Organization not found' });
+        if (org.ownerId !== user.id && user.role !== 'SUPERADMIN') {
+           return res.status(403).json({ error: 'Only the organization owner can make subscription payments' });
+        }
+        organizationId = user.organizationId;
     }
 
     let receiptUrl = null;
@@ -60,7 +65,7 @@ exports.createSubscriptionPayment = async (req, res) => {
       billingCycle, 
       planType,     
       receiptUrl,
-      organizationId: user.organizationId,
+      organizationId: organizationId,
       patientId: null,
       appointmentId: null
     });

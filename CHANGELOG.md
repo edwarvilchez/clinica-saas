@@ -1,6 +1,38 @@
-# Changelog - Clinica SaaS
+# Changelog - MedicalCare 888
 
 Todas las modificaciones notables del proyecto serán documentadas en este archivo.
+
+## [2.2.1] - 2026-04-01
+
+### 🏷️ Rebranding Completo — MedicalCare 888
+
+#### UI / Frontend
+- ✅ **Branding Global**: Eliminadas **todas** las referencias a "Clinica SaaS" y "CLINICA SAAS" visibles al usuario en todos los componentes públicos y autenticados.
+  - `public-booking.html` — header corregido
+  - `register.html` — hero y header lateral corregidos
+  - `subscription.html` — header y footer copyright corregidos
+  - `forgot-password.html`, `reset-password.html` — headers corregidos
+  - `branding.html` — fallback de `orgName` corregido
+  - `app.ts` — título de la aplicación actualizado
+- ✅ **Servicios de PDF y Exportación**: Actualizado branding en `export.service.ts`, `lab-pdf.service.ts` y `appointments.ts` para que los documentos generados reflejen "MedicalCare 888" en encabezados, pie de página y enlaces de WhatsApp/Google Calendar.
+
+#### i18n — Sistema de Traducción (ES/EN)
+- ✅ **Bloque `public_booking` completo**: Agregadas las secciones faltantes en ambos diccionarios:
+  - `personalInfo.*` — etiquetas y placeholders del formulario de datos personales
+  - `appointmentInfo.*` — etiquetas para selección de especialista, fecha y hora
+  - `actions.*` — botones de continuar, confirmar y volver
+  - `errors.*` — mensajes de validación (`required`, `email`, `pattern`, `general`)
+  - `success.*` — mensajes de confirmación tras agendar cita (título, cuerpo, notificación, calendario, CTA de registro)
+- ✅ **Claves `register.*` añadidas**: `patient`, `patientDesc`, `professionalDesc`, `clinicDesc`, `hospitalDesc`, `error` — resuelven el display de las tarjetas de selección de tipo de cuenta.
+- ✅ **Claves `landing.*` añadidas**: `professional`, `clinic`, `hospital` — usadas en el selector de tipo de organización del registro.
+
+#### CSS / Layout
+- ✅ **Fix overflow de precios en Bs.S**: Corregido el desbordamiento de texto en las tarjetas de planes de suscripción cuando el monto en Bolívares es extenso.
+  - `.price-tag` ahora usa `font-size: clamp(1rem, 2.5vw, 1.6rem)` con `text-overflow: ellipsis`
+  - `.plan-card` tiene `overflow: hidden` y `min-width: 0`
+  - Contenedor del precio usa `flex-wrap` para adaptarse al espacio disponible
+
+---
 
 ## [2.2.0] - 2026-04-01
 

@@ -30,6 +30,8 @@
   padding: 1.25rem;
   border: 2px solid #f3f4f6;
   transition: all 0.5s ease;
+  overflow: hidden;
+  min-width: 0;
   box-shadow:
     0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -93,17 +95,23 @@
 
 /* Pricing Text */
 .price-tag {
-  font-size: 1.85rem;
+  font-size: clamp(1rem, 2.5vw, 1.6rem);
   font-weight: 900;
   color: #111827;
   line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
 }
 
 .period-tag {
   color: #9ca3af;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: lowercase;
+  white-space: nowrap;
 }
 
 /* Feature List */

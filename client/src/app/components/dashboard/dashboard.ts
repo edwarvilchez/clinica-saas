@@ -78,7 +78,7 @@ export class Dashboard implements OnInit {
   public barChartData: ChartData<'bar'> = {
     labels: [],
     datasets: [
-      { data: [], label: 'Citas', backgroundColor: '#3b82f6', hoverBackgroundColor: '#2563eb' }
+      { data: [], label: '', backgroundColor: '#3b82f6', hoverBackgroundColor: '#2563eb' }
     ]
   };
 
@@ -135,6 +135,14 @@ export class Dashboard implements OnInit {
       if (stats.specialtyStats && stats.specialtyStats.length > 0) {
         this.updatePieChartData(stats.specialtyStats);
       }
+    });
+
+    // Reaccionar al cambio de idioma para re-renderizar gráficos
+    effect(() => {
+      this.langService.lang(); // track signal
+      const stats = this.stats();
+      if (stats.activityData?.length > 0) this.updateChartData(stats.activityData);
+      if (stats.specialtyStats?.length > 0) this.updatePieChartData(stats.specialtyStats);
     });
   }
 
@@ -220,15 +228,49 @@ export class Dashboard implements OnInit {
   }
 
   updatePieChartData(specialtyStats: any[]) {
+    // Mapa de traducción para especialidades conocidas
+    const specialtyKeyMap: Record<string, string> = {
+      'pediatría': 'dashboard.specialties.pediatrics',
+      'pediatrics': 'dashboard.specialties.pediatrics',
+      'medicina general': 'dashboard.specialties.general',
+      'general medicine': 'dashboard.specialties.general',
+      'odontología': 'dashboard.specialties.dentistry',
+      'dentistry': 'dashboard.specialties.dentistry',
+      'cardiología': 'dashboard.specialties.cardiology',
+      'cardiology': 'dashboard.specialties.cardiology',
+      'ginecología': 'dashboard.specialties.gynecology',
+      'gynecology': 'dashboard.specialties.gynecology',
+      'traumatología': 'dashboard.specialties.traumatology',
+      'traumatology': 'dashboard.specialties.traumatology',
+      'dermatología': 'dashboard.specialties.dermatology',
+      'dermatology': 'dashboard.specialties.dermatology',
+      'neurología': 'dashboard.specialties.neurology',
+      'neurology': 'dashboard.specialties.neurology',
+      'oftalmología': 'dashboard.specialties.ophthalmology',
+      'ophthalmology': 'dashboard.specialties.ophthalmology',
+      'psiquiatría': 'dashboard.specialties.psychiatry',
+      'psychiatry': 'dashboard.specialties.psychiatry',
+    };
+
+    const translateSpecialty = (name: string): string => {
+      const key = specialtyKeyMap[name.toLowerCase()];
+      if (key) {
+        const translated = this.langService.translate(key);
+        // Si la clave no existe en el diccionario, devuelve el nombre original
+        return translated !== key ? translated : name;
+      }
+      return name;
+    };
+
     // Only show specialties with active appointments (pending or completed)
     const activeStats = specialtyStats.filter(s => (s.pending + s.completed) > 0);
     
     this.pieChartData = {
-      labels: activeStats.map(s => s.name),
+      labels: activeStats.map(s => translateSpecialty(s.name)),
       datasets: [{
         data: activeStats.map(s => s.pending + s.completed),
         backgroundColor: [
-          '#10b981', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
+          '#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', 
           '#ec4899', '#6366f1', '#14b8a6', '#f97316', '#84cc16'
         ],
         hoverOffset: 4,
@@ -282,45 +324,47 @@ export class Dashboard implements OnInit {
 
   downloadDailyReport() {
     const s = this.stats();
-    const headers = ['Estadística', 'Valor'];
+    const t = (k: string) => this.langService.translate(k);
+
+    const headers = [t('dashboard.report.stat'), t('dashboard.report.value')];
     const rows = [
-      ['Citas Hoy', s.appointmentsToday],
-      ['Pacientes Totales', s.totalPatients],
-      ['Presenciales (Mes)', s.inPersonCount],
-      ['Videoconsultas (Mes)', s.videoCount],
-      ['Ingresos USD (Mes)', s.incomeDetails?.month?.USD || 0],
-      ['Ingresos Bs (Mes)', s.incomeDetails?.month?.Bs || 0],
+      [t('dashboard.stats.today'),        s.appointmentsToday],
+      [t('dashboard.stats.patients'),     s.totalPatients],
+      [t('dashboard.stats.inPerson'),     s.inPersonCount],
+      [t('dashboard.stats.video'),        s.videoCount],
+      [t('dashboard.stats.incomeUSD'),    s.incomeDetails?.month?.USD || 0],
+      [t('dashboard.stats.incomeBs'),     s.incomeDetails?.month?.Bs  || 0],
     ];
 
     if (s.specialtyStats && s.specialtyStats.length > 0) {
       rows.push(['', '']);
-      rows.push(['Rendimiento por Especialidad', '']);
+      rows.push([t('dashboard.report.specialtyPerf'), '']);
       s.specialtyStats.forEach((ext: any) => {
-        rows.push([ext.name, `Pend: ${ext.pending} / Atend: ${ext.completed}`]);
+        rows.push([ext.name, `${t('dashboard.report.pending')}: ${ext.pending} / ${t('dashboard.report.attended')}: ${ext.completed}`]);
       });
     }
 
     Swal.fire({
-      title: 'Exportar Reporte',
-      text: 'Seleccione el formato de descarga',
+      title: this.langService.translate('dashboard.export.title'),
+      text:  this.langService.translate('dashboard.export.text'),
       icon: 'question',
       showDenyButton: true,
       showCancelButton: true,
       confirmButtonText: '<i class="bi bi-file-pdf"></i> PDF',
-      denyButtonText: '<i class="bi bi-file-excel"></i> Excel',
-      cancelButtonText: '<i class="bi bi-file-text"></i> CSV',
+      denyButtonText:    '<i class="bi bi-file-excel"></i> Excel',
+      cancelButtonText:  '<i class="bi bi-file-text"></i> CSV',
       confirmButtonColor: '#ef4444',
-      denyButtonColor: '#22c55e',
-      cancelButtonColor: '#64748b',
+      denyButtonColor:    '#22c55e',
+      cancelButtonColor:  '#64748b',
     }).then((result) => {
       const filename = `Reporte_Diario_${new Date().toISOString().split('T')[0]}`;
-      const title = 'Reporte de Actividad - Clinica SaaS';
+      const title = this.langService.translate('dashboard.report.title');
       const user = this.authService.currentUser();
       
       const branding = {
-        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clinica SaaS Platform'),
+        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888'),
         professional: user ? `${user.firstName} ${user.lastName}` : undefined,
-        tagline: user?.businessName ? this.langService.translate('landing.description').substring(0, 30) + '...' : 'Gestión Clínica Profesional'
+        tagline: user?.businessName ? this.langService.translate('landing.description').substring(0, 30) + '...' : this.langService.translate('dashboard.report.tagline')
       };
       
       if (result.isConfirmed) {
@@ -337,8 +381,8 @@ export class Dashboard implements OnInit {
     this.router.navigate(['/appointments']);
     setTimeout(() => {
       Swal.fire({
-        title: 'Nueva Cita',
-        text: 'Redirigiendo al módulo de citas...',
+        title: this.langService.translate('appointments_list.new'),
+        text: this.langService.translate('dashboard.redirecting'),
         icon: 'info',
         showConfirmButton: false,
         timer: 1000
