@@ -2,6 +2,28 @@
 
 Todas las modificaciones notables del proyecto serán documentadas en este archivo.
 
+## [2.2.2] - 2026-04-03
+
+### 🐛 Fix — Producción Vercel: BCV Rate 500 + SPA Routing 404
+
+#### Server — `server/src/routes/exchange.routes.js`
+
+- ✅ **Timeout total de 8 s** con `Promise.race` para no exceder el límite de 10 s de Vercel Serverless.
+- ✅ **Eliminadas llamadas secuenciales lentas** (BCV 10 s + 2 APIs 5 s + dolarvzla 8 s = 28 s → siempre timeout).
+- ✅ **El endpoint nunca retorna 500**: si todos los métodos fallan, responde `200` con `source: 'fallback'` y la tasa por defecto (`36.50 Bs/USD`) o la última tasa cacheada en memoria.
+- ✅ **Intento 2 condicional**: la API alternativa solo se llama si queda tiempo dentro del presupuesto (evita timeout acumulado).
+
+#### Client — `client/src/app/services/currency.service.ts`
+
+- ✅ **Validación del rate guardado en localStorage**: se ignoran valores `<= 0` antes de restaurar.
+- ✅ **`catch` silencioso en `fetchBcvRate`**: fallos del servicio secundario ya no generan logs de error en consola de producción.
+
+#### Infra — `vercel.json`
+
+- ✅ **Fix SPA routing 404**: cambiado el rewrite catch-all de `/(.*) → /client/$1` a `/(.*) → /index.html`. Vercel sirve assets estáticos antes de evaluar rewrites, por lo que las rutas de Angular (`/login`, `/dashboard`, etc.) ahora cargan correctamente al recargar la página.
+
+---
+
 ## [2.2.1] - 2026-04-01
 
 ### 🏷️ Rebranding Completo — MedicalCare 888
