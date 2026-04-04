@@ -1,7 +1,19 @@
 const express = require('express');
 const app = express();
+require('dotenv').config();
+const cors = require('cors');
 
-// Ensure these are picked up by Vercel's NFT (Node File Trace)
+// CORS configuration (Essential for local dev to work with localhost:4200)
+const corsOptions = {
+  origin: true, // Reflects the origin of the request (safe for dev)
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+};
+
+app.use(cors(corsOptions));
+
+// Ensure these are picked up by Vercel's NFT
 try {
   require('pg');
   require('pg-hstore');
@@ -73,19 +85,19 @@ const loadApp = async (req, res, next) => {
     console.log('🚀 [Vercel] Lazy-loading full application context...');
     
     // Dependencies
-    const cors = require('cors');
     const morgan = require('morgan');
     const helmet = require('helmet');
     const compression = require('compression');
-    require('dotenv').config();
     const sequelize = require('./config/db.config');
     const logger = require('./utils/logger');
     const { sanitizeInput } = require('./utils/sanitize');
     const authMiddleware = require('./middlewares/auth.middleware');
 
     // App Middleware Configuration
-    app.use(cors({ origin: true, credentials: true }));
-    app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+    app.use(helmet({ 
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      contentSecurityPolicy: false // Disable CSP in dev to avoid blocking calls
+    }));
     app.use(express.json({ limit: '1mb' }));
     app.use(express.urlencoded({ extended: true, limit: '1mb' }));
     app.use(morgan('dev'));

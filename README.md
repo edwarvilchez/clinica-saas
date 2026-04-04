@@ -75,6 +75,12 @@ Sistema completo de gestión para clínicas médicas desarrollado con Angular y 
 - ✅ **Gestión de Organización**
 - ✅ **SuperAdmin Bypass**: Acceso total sin restricciones de suscripción
 
+## 🆕 v2.2.3 (Local Development & CORS - Abril 2026)
+
+- ✅ **Bootstrap de Entorno**: Carga anticipada de `dotenv` en el punto de entrada para asegurar que el servidor use el puerto definido en `.env` (5000) desde el arranque, corrigiendo el descalce con el cliente.
+- ✅ **CORS Robustecido**: Implementación de middleware de CORS global para permitir la comunicación segura entre el frontend local (puerto 4200/Vite) y el backend sin bloqueos de origen.
+- ✅ **Optimización de Middleware**: Refactorización del lazy-loader `loadApp` para delegar la gestión de cabeceras de seguridad al motor principal del servidor.
+
 ## 🆕 v2.2.2 (i18n & Payments UI Sync - Abril 2026)
 
 - ✅ **Sincronización de Idiomas**: Corrección integral de claves de traducción faltantes en el diccionario `EN_DICT` para el módulo de pagos, eliminando la visualización de claves crudas.
