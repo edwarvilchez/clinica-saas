@@ -1,6 +1,6 @@
-# 🏗️ Arquitectura del Proyecto - Clinica SaaS
+# 🏗️ Arquitectura del Proyecto - MedicalCare 888
 
-**Clinica SaaS** es un sistema integral de gestión médica y hospitalaria diseñado para optimizar los flujos de trabajo clínicos y administrativos. Este documento detalla la arquitectura técnica, las tecnologías utilizadas y la estructura del código.
+**MedicalCare 888** es un sistema integral de gestión médica y hospitalaria diseñado para optimizar los flujos de trabajo clínicos y administrativos. Este documento detalla la arquitectura técnica, las tecnologías utilizadas y la estructura del código.
 
 ---
 

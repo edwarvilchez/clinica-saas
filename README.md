@@ -1,4 +1,4 @@
-# 🏥 Clinica SaaS - Sistema de Gestión Clínica
+# 🏥 MedicalCare 888 - Sistema de Gestión Clínica
 
 Sistema completo de gestión para clínicas médicas desarrollado con Angular y Node.js.
 
@@ -457,4 +457,4 @@ Este proyecto está bajo la Licencia MIT - ver el archivo LICENSE para más deta
 
 ---
 
-**Desarrollado con ❤️ para mejorar la gestión de clínicas médicas**
+**Desarrollado con ❤️ para elevar la calidad del proyecto MedicalCare 888**
