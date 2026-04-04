@@ -34,8 +34,12 @@
       "destination": "api/index.js"
     },
     {
+      "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff2?|ttf|eot|pdf|txt))",
+      "destination": "/client/$1"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/client/index.html"
     }
   ],
   "env": {
