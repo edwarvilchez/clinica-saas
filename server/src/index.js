@@ -1,6 +1,14 @@
 const express = require('express');
 const app = express();
 
+// Ensure these are picked up by Vercel's NFT (Node File Trace)
+try {
+  require('pg');
+  require('pg-hstore');
+} catch (e) {
+  console.warn('⚠️ [Vercel] Pre-loading pg failed at root level.');
+}
+
 /**
  * 🛡️ ULTRA-ISOLATED BOOT (Emergency Mode)
  * This is the ONLY thing that runs immediately at top-level.
@@ -56,7 +64,7 @@ let bootError = null;
  * ONLY when an actual API request comes in.
  */
 const loadApp = async (req, res, next) => {
-  if (req.path === '/api/health') return next();
+  if (req.path === '/api/health' || req.path === '/api/debug-files') return next();
 
   if (isAppLoaded) return next();
   if (bootError) return res.status(500).json({ error: 'Critical Boot Failure', detail: bootError.message });

@@ -73,4 +73,9 @@ const sequelize = config.url
       }
     );
 
+// Force inclusion for Vercel
+if (process.env.VERCEL) {
+  sequelize.connectionManager.lib = require('pg');
+}
+
 module.exports = sequelize;
