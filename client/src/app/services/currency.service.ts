@@ -21,11 +21,15 @@ export class CurrencyService {
     if (savedCurrency) {
       this.currentCurrency.set(savedCurrency);
     }
-    
+
+    // Restore last known rate immediately (survives API cold-start failures)
     const savedRate = localStorage.getItem('exchangeRate');
     if (savedRate) {
-      this.exchangeRate.set(parseFloat(savedRate));
-      this.rateSource.set('manual');
+      const parsed = parseFloat(savedRate);
+      if (parsed > 0) {
+        this.exchangeRate.set(parsed);
+        this.rateSource.set('manual');
+      }
     }
   }
 
@@ -53,21 +57,24 @@ export class CurrencyService {
 
   async fetchBcvRate(): Promise<number> {
     try {
-      const response: any = await firstValueFrom(this.http.get(this.API_RATE_URL));
-      
-      if (response && response.rate) {
+      const response: any = await firstValueFrom(
+        this.http.get(this.API_RATE_URL)
+      );
+
+      if (response?.rate && response.rate > 0) {
         this.exchangeRate.set(response.rate);
-        this.rateSource.set(response.source === 'bcv' ? 'bcv' : 'default');
+        this.rateSource.set(
+          response.source === 'bcv' || response.source === 'er-api' ? 'bcv' : 'default'
+        );
         this.lastUpdated.set(new Date(response.timestamp));
         localStorage.setItem('exchangeRate', response.rate.toString());
-        
         return response.rate;
       }
-    } catch (error) {
-      console.warn('No se pudo obtener tasa del BCV:', error);
+    } catch {
+      // Secondary service failure — silently use last-known rate from localStorage
     }
-    
-    // Return current rate if fetch fails
+
+    // Return whatever we already have (default 30 or last-saved value)
     return this.exchangeRate();
   }
 

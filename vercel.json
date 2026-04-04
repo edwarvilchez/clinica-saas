@@ -6,7 +6,18 @@
       "src": "api/index.js",
       "use": "@vercel/node",
       "config": {
-        "includeFiles": "server/**"
+        "includeFiles": [
+          "server/**",
+          "server/node_modules/pg/**",
+          "server/node_modules/pg-hstore/**",
+          "server/node_modules/pg-pool/**",
+          "server/node_modules/pg-types/**",
+          "server/node_modules/pg-int8/**",
+          "server/node_modules/postgres-array/**",
+          "server/node_modules/postgres-bytea/**",
+          "server/node_modules/postgres-date/**",
+          "server/node_modules/postgres-interval/**"
+        ]
       }
     },
     {
@@ -24,7 +35,7 @@
     },
     {
       "source": "/(.*)",
-      "destination": "client/$1"
+      "destination": "/index.html"
     }
   ],
   "env": {
