@@ -15,6 +15,36 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+app.get('/api/debug-files', (req, res) => {
+  const fs = require('fs');
+  const path = require('path');
+  
+  function listFiles(dir, depth = 0) {
+    if (depth > 3) return [];
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      let result = [];
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          result.push({ name: entry.name, type: 'dir', children: listFiles(fullPath, depth + 1) });
+        } else {
+          result.push({ name: entry.name, type: 'file' });
+        }
+      }
+      return result;
+    } catch (e) {
+      return [{ error: e.message }];
+    }
+  }
+
+  const root = path.resolve('.');
+  res.json({
+    root,
+    files: listFiles(root)
+  });
+});
+
 // --- NO OTHER TOP-LEVEL REQUIRES EXCEPT MINIMAL BOOTSTRAP ---
 
 let isAppLoaded = false;
