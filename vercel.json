@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "name": "clinica-888-final",
+  "name": "clinica-saas",
   "builds": [
     {
       "src": "api/index.js",
@@ -8,15 +8,11 @@
       "config": {
         "includeFiles": [
           "server/**",
+          "node_modules/pg/**",
+          "node_modules/pg-hstore/**",
+          "node_modules/sequelize/**",
           "server/node_modules/pg/**",
-          "server/node_modules/pg-hstore/**",
-          "server/node_modules/pg-pool/**",
-          "server/node_modules/pg-types/**",
-          "server/node_modules/pg-int8/**",
-          "server/node_modules/postgres-array/**",
-          "server/node_modules/postgres-bytea/**",
-          "server/node_modules/postgres-date/**",
-          "server/node_modules/postgres-interval/**"
+          "server/node_modules/pg-hstore/**"
         ]
       }
     },
@@ -28,22 +24,25 @@
       }
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/(.*)",
-      "destination": "api/index.js"
+      "src": "/api/(.*)",
+      "dest": "api/index.js"
     },
     {
-      "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff2?|ttf|eot|pdf|txt))",
-      "destination": "/client/$1"
+      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff2?|ttf|eot|pdf|txt))",
+      "dest": "/client/$1"
     },
     {
-      "source": "/(.*)",
-      "destination": "/client/index.html"
+      "handle": "filesystem"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/client/index.html"
     }
   ],
-  "env": {
-    "NODE_ENV": "production",
-    "VERCEL": "true"
+  "cleanUrls": true,
+  "github": {
+    "silent": true
   }
 }
