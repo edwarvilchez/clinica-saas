@@ -75,6 +75,11 @@ Sistema completo de gestión para clínicas médicas desarrollado con Angular y 
 - ✅ **Gestión de Organización**
 - ✅ **SuperAdmin Bypass**: Acceso total sin restricciones de suscripción
 
+## 🆕 v2.2.2 (i18n & Payments UI Sync - Abril 2026)
+
+- ✅ **Sincronización de Idiomas**: Corrección integral de claves de traducción faltantes en el diccionario `EN_DICT` para el módulo de pagos, eliminando la visualización de claves crudas.
+- ✅ **UI de Pagos**: Ajuste de consistencia en las cabeceras de tablas del panel administrativo y reporte de transacciones.
+
 ## 🆕 v2.2.1 (Production Cleanup & Rebranding - Abril 2026)
 
 - ✅ **Branding Médico**: Cambio de identidad completo a **MedicalCare 888**, asegurando consistencia en títulos y descripciones a nivel de código y documentación.
