@@ -64,6 +64,7 @@ https://clinicasaas.app/citas/gestion/${appointmentId}
 
   async sendAppointmentReminder(patientPhone, appointmentDetails) {
     const { patientName, time, doctorName, appointmentId } = appointmentDetails;
+    const clientUrl = process.env.CLIENT_URL || 'https://clinicasaas.app';
     
     const message = `🔔 *Recordatorio de Cita*
 
@@ -73,10 +74,40 @@ Hola ${patientName}, te recordamos que tienes una cita en 15 minutos:
 👨‍⚕️ *Doctor:* ${doctorName}
 
 Si no puedes asistir, por favor notifícanos inmediatamente:
-https://clinicasaas.app/citas/cancelar/${appointmentId}`;
+${clientUrl}/appointments`;
 
-    this._simulateSend(patientPhone, message);
-    return { success: true, messageId: 'rem-' + Date.now() };
+    return await this._sendMessage(patientPhone, message);
+  }
+
+  async send24hAppointmentReminder(patientPhone, appointmentDetails) {
+    const { patientName, date, time, doctorName, appointmentId, rawDate, specialtyName } = appointmentDetails;
+    const clientUrl = process.env.CLIENT_URL || 'https://clinicasaas.app';
+
+    const calendarLink = this._generateGoogleCalendarLink(
+      `Cita Médica - Dr. ${doctorName}`,
+      rawDate || new Date(),
+      30,
+      `Cita médica de ${specialtyName || 'Medicina General'} con Dr. ${doctorName}. Paciente: ${patientName}.`
+    );
+
+    const message = `⏰ *Recordatorio de Cita Médica (Mañana)*
+
+Hola ${patientName}, te recordamos que tienes una cita agendada para mañana:
+
+📅 *Fecha:* ${date}
+⏰ *Hora:* ${time}
+👨‍⚕️ *Doctor:* ${doctorName} ${specialtyName ? `(${specialtyName})` : ''}
+🏥 *MedicalCare 888*
+
+📅 *Añadir a Google Calendar:*
+${calendarLink}
+
+🔗 *Gestionar o confirmar tu cita:*
+${clientUrl}/appointments
+
+¡Te esperamos puntualmente!`;
+
+    return await this._sendMessage(patientPhone, message);
   }
 
   async sendCancellationNotice(patientPhone, { patientName, date, time }) {
@@ -84,8 +115,44 @@ https://clinicasaas.app/citas/cancelar/${appointmentId}`;
 
 Hola ${patientName}, tu cita del ${date} a las ${time} ha sido cancelada.`;
 
-    this._simulateSend(patientPhone, message);
-    return { success: true };
+    return await this._sendMessage(patientPhone, message);
+  }
+
+  async _sendMessage(to, body) {
+    const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_NUMBER } = process.env;
+
+    if (TWILIO_ACCOUNT_SID && TWILIO_AUTH_TOKEN && TWILIO_WHATSAPP_NUMBER) {
+      try {
+        const axios = require('axios');
+        const auth = Buffer.from(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`).toString('base64');
+        const formattedTo = to.startsWith('whatsapp:') ? to : `whatsapp:${to}`;
+        const formattedFrom = TWILIO_WHATSAPP_NUMBER.startsWith('whatsapp:') ? TWILIO_WHATSAPP_NUMBER : `whatsapp:${TWILIO_WHATSAPP_NUMBER}`;
+        
+        const params = new URLSearchParams();
+        params.append('From', formattedFrom);
+        params.append('To', formattedTo);
+        params.append('Body', body);
+
+        const response = await axios.post(
+          `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`,
+          params,
+          {
+            headers: {
+              'Authorization': `Basic ${auth}`,
+              'Content-Type': 'application/x-www-form-urlencoded'
+            }
+          }
+        );
+
+        return { success: true, messageId: response.data.sid, provider: 'twilio' };
+      } catch (err) {
+        console.error('❌ Error enviando WhatsApp vía Twilio:', err.response?.data || err.message);
+        return { success: false, error: err.message };
+      }
+    }
+
+    this._simulateSend(to, body);
+    return { success: true, messageId: 'sim-' + Date.now(), provider: 'simulation' };
   }
 
   _simulateSend(to, body) {

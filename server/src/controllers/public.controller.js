@@ -64,6 +64,12 @@ exports.createPublicAppointment = async (req, res) => {
       }
     }
 
+    // Determine initial appointment status based on paymentInfo
+    const { Payment } = require('../models');
+    const paymentInfo = req.body.paymentInfo;
+    const isOnlineInstant = paymentInfo && ['Card', 'Stripe', 'PayPal', 'Online'].includes(paymentInfo.method);
+    const initialStatus = paymentInfo ? (isOnlineInstant ? 'Confirmed' : 'Pending') : 'Confirmed';
+
     // Create appointment
     const appointment = await Appointment.create({
       patientId: patient.id,
@@ -71,8 +77,26 @@ exports.createPublicAppointment = async (req, res) => {
       date: appointmentInfo.date,
       reason: appointmentInfo.reason,
       notes: appointmentInfo.notes,
-      status: 'Confirmed'
+      status: initialStatus
     });
+
+    // Create Payment record if paymentInfo is provided
+    let paymentRecord = null;
+    if (paymentInfo) {
+      paymentRecord = await Payment.create({
+        amount: paymentInfo.amount || 50.00,
+        method: paymentInfo.method || 'Card',
+        currency: paymentInfo.currency || 'USD',
+        status: isOnlineInstant ? 'Paid' : 'Pending',
+        reference: paymentInfo.reference || `PAY-${Date.now()}`,
+        bank: paymentInfo.bank || 'Pasarela Online',
+        concept: paymentInfo.concept || `Cita Médica - ${appointmentInfo.reason || 'Consulta'}`,
+        paymentType: 'APPOINTMENT',
+        patientId: patient.id,
+        appointmentId: appointment.id,
+        organizationId: user.organizationId || null
+      });
+    }
 
     // Fetch full appointment details for WhatsApp
     const appointmentDetails = await Appointment.findByPk(appointment.id, {
@@ -117,6 +141,15 @@ exports.createPublicAppointment = async (req, res) => {
         minute: '2-digit' 
       });
 
+      const paymentSummary = paymentRecord ? `
+💳 INFORMACIÓN DE PAGO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💰 Monto: ${paymentRecord.amount} ${paymentRecord.currency}
+💳 Método: ${paymentRecord.method}
+📌 Referencia: ${paymentRecord.reference}
+Estatus de Pago: ${paymentRecord.status === 'Paid' ? 'Pagado (Confirmado)' : 'Pendiente de Verificación'}
+` : '';
+
       const emailMessage = `Hola ${patientInfo.firstName},
 
 Tu cita ha sido agendada exitosamente en Clínica Clinica SaaS.
@@ -128,7 +161,7 @@ Tu cita ha sido agendada exitosamente en Clínica Clinica SaaS.
 ⏰ Hora: ${formattedTime}
 📝 Motivo: ${appointmentInfo.reason}
 🏥 Lugar: Clínica Clinica SaaS
-
+${paymentSummary}
 ${appointmentInfo.notes ? `📌 Notas: ${appointmentInfo.notes}\n` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -144,7 +177,7 @@ Equipo de Clínica Clinica SaaS`;
 
       await sendEmail({
         email: user.email,
-        subject: '✅ Confirmación de Cita - Clínica Clinica SaaS',
+        subject: `✅ Confirmación de Cita ${paymentRecord ? '(Con Pago Registrado)' : ''} - MedicalCare 888`,
         message: emailMessage
       });
       console.log('✅ Email confirmation sent successfully to:', user.email);
@@ -156,6 +189,7 @@ Equipo de Clínica Clinica SaaS`;
     res.status(201).json({ 
       message: 'Appointment created successfully',
       appointmentId: appointment.id,
+      payment: paymentRecord,
       accountExists
     });
   } catch (error) {
@@ -179,6 +213,117 @@ exports.getPublicDoctors = async (req, res) => {
       ]
     });
     res.json(doctors);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.verifyPrescription = async (req, res) => {
+  try {
+    const { hash } = req.params;
+    const { Prescription, MedicalRecord, Patient, User, Doctor, Specialty, Drug } = require('../models');
+
+    const prescription = await Prescription.findOne({
+      where: { verificationHash: hash },
+      include: [
+        { model: Drug, as: 'drug' },
+        {
+          model: MedicalRecord,
+          include: [
+            {
+              model: Patient,
+              include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+            },
+            {
+              model: Doctor,
+              include: [
+                { model: User, attributes: ['firstName', 'lastName', 'email'] },
+                { model: Specialty, attributes: ['name'] }
+              ]
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!prescription) {
+      return res.status(404).json({
+        valid: false,
+        message: 'Receta médica no encontrada o el código de verificación es inválido.'
+      });
+    }
+
+    const patientUser = prescription.MedicalRecord?.Patient?.User;
+    const patientName = patientUser ? `${patientUser.firstName} ${patientUser.lastName}` : 'Paciente';
+
+    const doctorUser = prescription.MedicalRecord?.Doctor?.User;
+    const doctorName = doctorUser ? `${doctorUser.firstName} ${doctorUser.lastName}` : 'Médico Asignado';
+    const specialtyName = prescription.MedicalRecord?.Doctor?.Specialty?.name || 'Medicina General';
+    const doctorLicense = prescription.MedicalRecord?.Doctor?.medicalLicense || 'MP-REG-888';
+
+    res.json({
+      valid: true,
+      status: prescription.status === 'active' ? 'VÁLIDA' : prescription.status.toUpperCase(),
+      prescriptionId: prescription.id,
+      verificationHash: prescription.verificationHash,
+      digitalSignature: prescription.digitalSignature,
+      issuedAt: prescription.createdAt,
+      doctor: {
+        name: `Dr. ${doctorName}`,
+        specialty: specialtyName,
+        medicalLicense: doctorLicense
+      },
+      patient: {
+        name: patientName
+      },
+      medication: {
+        drugName: prescription.drugName,
+        dosage: prescription.dosage,
+        frequency: prescription.frequency,
+        duration: prescription.duration,
+        instructions: prescription.instructions
+      }
+    });
+  } catch (error) {
+    console.error('Error verificando prescripción:', error);
+    res.status(500).json({ valid: false, error: 'Error interno al verificar la receta.' });
+  }
+};
+
+exports.getCheckoutPreview = async (req, res) => {
+  try {
+    const { doctorId } = req.body;
+    const { Doctor, User, Specialty } = require('../models');
+
+    let baseFee = 50.00;
+    let doctorName = 'Médico de Turno';
+    let specialtyName = 'Medicina General';
+
+    if (doctorId) {
+      const doctor = await Doctor.findByPk(doctorId, {
+        include: [{ model: User }, { model: Specialty }]
+      });
+      if (doctor) {
+        doctorName = `Dr. ${doctor.User.firstName} ${doctor.User.lastName}`;
+        if (doctor.Specialty) specialtyName = doctor.Specialty.name;
+        if (doctor.consultationFee) baseFee = parseFloat(doctor.consultationFee);
+      }
+    }
+
+    const taxes = Math.round(baseFee * 0.16 * 100) / 100;
+    const total = Math.round((baseFee + taxes) * 100) / 100;
+
+    res.json({
+      doctorName,
+      specialtyName,
+      currency: 'USD',
+      breakdown: {
+        subtotal: baseFee,
+        taxes: taxes,
+        total: total
+      },
+      availableMethods: ['Card', 'Stripe', 'PayPal', 'PagoMovil', 'Transfer']
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -98,7 +98,9 @@ router.get('/', authMiddleware, authorize('appointments:read'), appointmentContr
  *       400:
  *         description: Error de validación
  */
-router.post('/', authMiddleware, authorize('appointments:write'), validate(createAppointmentSchema), appointmentController.createAppointment);
+const { checkSubscriptionActive, checkAppointmentQuota } = require('../middlewares/quotaEnforcer.middleware');
+
+router.post('/', authMiddleware, checkSubscriptionActive, checkAppointmentQuota, authorize('appointments:write'), validate(createAppointmentSchema), appointmentController.createAppointment);
 
 /**
  * @swagger
