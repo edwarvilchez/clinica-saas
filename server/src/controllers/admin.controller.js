@@ -275,3 +275,26 @@ exports.provisionTenant = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// CrewAI Autonomous Agents (Medicusve Dev & Security Auditor)
+const crewaiCopilot = require('../utils/crewaiCopilot.service');
+
+exports.scaffoldModuleCrewAI = async (req, res) => {
+  try {
+    const { moduleSlug, moduleName, summary, depends } = req.body;
+    const result = await crewaiCopilot.generateModuleScaffold(moduleSlug, moduleName, summary, depends);
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.auditSecurityCrewAI = async (req, res) => {
+  try {
+    const { manifest, permissionsMatrix } = req.body;
+    const report = await crewaiCopilot.auditSecurityMatrix(manifest, permissionsMatrix);
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
