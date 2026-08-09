@@ -38,6 +38,19 @@ const Prescription = sequelize.define('Prescription', {
       model: 'MedicalRecords',
       key: 'id'
     }
+  },
+  verificationHash: {
+    type: DataTypes.STRING,
+    unique: true,
+    allowNull: true
+  },
+  digitalSignature: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
+  status: {
+    type: DataTypes.ENUM('active', 'dispensed', 'cancelled'),
+    defaultValue: 'active'
   }
 }, {
   timestamps: true

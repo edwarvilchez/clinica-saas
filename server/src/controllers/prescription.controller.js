@@ -40,8 +40,28 @@ exports.createPrescription = async (req, res) => {
       }
     }
 
-    const prescription = await Prescription.create(req.body);
-    res.status(201).json(prescription);
+    const crypto = require('crypto');
+    const secret = process.env.JWT_SECRET || 'secret888_medicalcare';
+    const timestamp = Date.now();
+    const verificationHash = crypto.createHash('sha256').update(`${medicalRecordId}-${req.body.drugName}-${timestamp}-${Math.random()}`).digest('hex');
+    const digitalSignature = crypto.createHmac('sha256', secret).update(`${verificationHash}:${medicalRecordId}:${req.user.id}:${timestamp}`).digest('hex');
+
+    const prescriptionData = {
+      ...req.body,
+      verificationHash,
+      digitalSignature,
+      status: req.body.status || 'active'
+    };
+
+    const prescription = await Prescription.create(prescriptionData);
+    const clientUrl = process.env.CLIENT_URL || 'https://clinicasaas.app';
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${clientUrl}/prescriptions/verify/${verificationHash}`)}`;
+
+    res.status(201).json({
+      ...prescription.toJSON(),
+      qrUrl,
+      verificationUrl: `${clientUrl}/prescriptions/verify/${verificationHash}`
+    });
   } catch (error) {
     logger.error({ error }, 'Error creating prescription');
     res.status(500).json({ message: 'Error al crear la prescripción' });
