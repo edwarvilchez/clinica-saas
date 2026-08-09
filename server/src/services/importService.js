@@ -20,15 +20,21 @@ function isXlsxFile(filePath) {
   return ['.xls', '.xlsx'].includes(ext);
 }
 
-function validateRecord(type, record) {
+function validateRecord(type, record, rowIndex = 1) {
   const errors = [];
   if (type === 'patients' || type === 'doctors') {
-    if (!record.username || !record.email) errors.push('Missing username or email');
-    if (type === 'doctors' && !record.licenseNumber) errors.push('Missing licenseNumber for doctor');
-    if (record.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(record.email)) errors.push('Invalid email');
+    if (!record.username || !record.email) errors.push({ row: rowIndex, field: 'username/email', message: 'Falta nombre de usuario o correo electrónico' });
+    if (type === 'doctors' && !record.licenseNumber) errors.push({ row: rowIndex, field: 'licenseNumber', message: 'Falta la licencia médica obligatoria' });
+    if (record.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(record.email)) errors.push({ row: rowIndex, field: 'email', message: `Formato de correo electrónico inválido: '${record.email}'` });
   } else if (type === 'lab_catalog') {
-    if (!record.name) errors.push('Missing name for lab test');
-    if (!record.price) errors.push('Missing price for lab test');
+    if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre de la prueba de laboratorio' });
+    if (!record.price || isNaN(parseFloat(record.price))) errors.push({ row: rowIndex, field: 'price', message: 'Falta el precio o valor numérico inválido' });
+  } else if (type === 'medical_history') {
+    if (!record.patientDocumentId && !record.patientEmail) errors.push({ row: rowIndex, field: 'patientDocumentId', message: 'Se requiere cédula o email del paciente' });
+    if (!record.diagnosis && !record.symptoms) errors.push({ row: rowIndex, field: 'diagnosis', message: 'Se requieren síntomas o diagnóstico' });
+  } else if (type === 'pharmacy_inventory') {
+    if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre comercial del medicamento' });
+    if (!record.stock || isNaN(parseInt(record.stock))) errors.push({ row: rowIndex, field: 'stock', message: 'Cantidad de stock requerida' });
   }
   return errors;
 }
