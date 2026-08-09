@@ -55,6 +55,26 @@ const Payment = sequelize.define('Payment', {
     type: DataTypes.STRING, // 'PROFESSIONAL', 'CLINIC', 'HOSPITAL'
     allowNull: true
   },
+  doctorFeePercentage: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 70.00
+  },
+  doctorFeeAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00
+  },
+  clinicFeeAmount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00
+  },
+  pharmacyDiscount: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 0.00
+  },
+  reconciliationStatus: {
+    type: DataTypes.ENUM('PENDING', 'RECONCILED', 'DISBURSED'),
+    defaultValue: 'PENDING'
+  },
   organizationId: {
     type: DataTypes.UUID,
     allowNull: true,
