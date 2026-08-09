@@ -38,6 +38,27 @@ const Patient = sequelize.define('Patient', {
   allergies: {
     type: DataTypes.TEXT
   },
+  insuranceProvider: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    defaultValue: 'Particular'
+  },
+  policyNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  coverageType: {
+    type: DataTypes.ENUM('INSURANCE', 'SELF_PAY'),
+    defaultValue: 'SELF_PAY'
+  },
+  copayPercentage: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 0.00
+  },
+  coverageStatus: {
+    type: DataTypes.ENUM('ACTIVE', 'PENDING_APPROVAL', 'EXPIRED', 'INACTIVE'),
+    defaultValue: 'ACTIVE'
+  },
   deletedAt: {
     type: DataTypes.DATE,
     allowNull: true

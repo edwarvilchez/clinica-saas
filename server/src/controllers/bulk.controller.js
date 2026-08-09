@@ -4,28 +4,34 @@ const { isCsvFile, isXlsxFile, validateRecord, parseCsv, parseXlsx } = require('
 
 exports.importData = async (req, res) => {
   const { type } = req.params;
-  const filePath = req.file.path;
+  const filePath = req.file ? req.file.path : null;
   const errors = [];
   let successCount = 0;
 
+  const dryRun = req.query.dryRun === 'true' || req.body.dryRun === 'true' || req.body.dryRun === true;
+
+  if (!filePath) {
+    return res.status(400).json({ message: 'Se requiere subir un archivo CSV o Excel válido' });
+  }
+
   const { organizationId, role } = req.user;
   const isSuperAdmin = role === 'SUPERADMIN' || role === 'SUPERADMIN';
-
-  // Non-superadmins must have an organization
   const userOrgId = isSuperAdmin ? null : organizationId;
 
   try {
     let records = [];
     if (isCsvFile(filePath)) records = await parseCsv(filePath);
     else if (isXlsxFile(filePath)) records = await parseXlsx(filePath);
-    else throw new Error('Unsupported file format');
+    else throw new Error('Formato de archivo no soportado. Debe ser CSV o Excel (.xlsx)');
 
-    if (records.length > 5000) throw new Error('Import too large; maximum 5000 rows allowed');
+    if (records.length > 5000) throw new Error('El archivo excede el máximo permitido de 5,000 filas');
 
+    let rowIndex = 1;
     for (const record of records) {
-      const validation = validateRecord(type, record);
-      if (validation.length) {
-        errors.push({ record, error: validation.join('; ') });
+      rowIndex++;
+      const validationErrors = validateRecord(type, record, rowIndex);
+      if (validationErrors.length > 0) {
+        errors.push(...validationErrors);
         continue;
       }
 
@@ -34,25 +40,36 @@ exports.importData = async (req, res) => {
         if (type === 'patients') await importPatient(record, t, userOrgId);
         else if (type === 'doctors') await importDoctor(record, t, userOrgId);
         else if (type === 'lab_catalog') await importLabTest(record, t, userOrgId);
-        else throw new Error('Invalid import type');
-        await t.commit();
+        else if (type === 'pharmacy_inventory') await importPharmacyItem(record, t, userOrgId);
+        else throw new Error(`Tipo de importación inválido: ${type}`);
+
+        if (dryRun) {
+          await t.rollback(); // En modo simulación siempre revertimos cambios
+        } else {
+          await t.commit();
+        }
         successCount++;
       } catch (err) {
         await t.rollback();
-        errors.push({ record, error: err.message });
+        errors.push({ row: rowIndex, field: 'transaction', message: err.message });
       }
     }
 
-    fs.unlinkSync(filePath);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.json({
-      message: `Import completed: ${successCount} successful, ${errors.length} failed.`,
+      dryRun,
+      message: dryRun 
+        ? `Simulación finalizada: ${successCount} filas válidas, ${errors.length} filas con error.` 
+        : `Importación completada: ${successCount} exitosas, ${errors.length} fallidas.`,
+      totalRows: records.length,
       successCount,
       errorCount: errors.length,
+      canProceed: errors.length === 0,
       errors
     });
   } catch (error) {
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
     console.error('Bulk import error:', error);
     res.status(500).json({ error: error.message });
   }
@@ -127,6 +144,20 @@ async function importLabTest(data, transaction, organizationId) {
         price: parseFloat(data.price),
         category: data.category || 'General',
         description: data.description || '',
-        organizationId // Even if doesn't exist in model, it's safe to pass if model is updated
+        organizationId
     }, { transaction });
+}
+
+async function importPharmacyItem(data, transaction, organizationId) {
+    const { Drug } = require('../models');
+    if (Drug) {
+        await Drug.create({
+            name: data.name,
+            genericName: data.genericName || data.name,
+            dosageForm: data.dosageForm || 'Tabletas',
+            presentation: data.presentation || 'Caja',
+            stock: parseInt(data.stock) || 0,
+            organizationId
+        }, { transaction });
+    }
 }

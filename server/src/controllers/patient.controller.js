@@ -69,3 +69,116 @@ exports.deletePatient = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/**
+ * Express Admission for Patients: Searches or creates patient by Document ID and assigns queue ticket.
+ */
+exports.expressAdmission = async (req, res) => {
+  try {
+    const { documentId, firstName, lastName, email, phone, insuranceProvider, policyNumber, coverageType } = req.body;
+    const { organizationId } = req.user;
+
+    if (!documentId || !firstName || !lastName) {
+      return res.status(400).json({ message: 'Cédula/DNI, nombres y apellidos son obligatorios' });
+    }
+
+    let patient = await Patient.findOne({
+      where: { documentId },
+      include: [User]
+    });
+
+    if (!patient) {
+      const { Role } = require('../models');
+      const patientRole = await Role.findOne({ where: { name: 'PATIENT' } });
+
+      const user = await User.create({
+        username: email || `pac.${documentId.toLowerCase()}`,
+        email: email || `pac.${documentId.toLowerCase()}@medicusve.com`,
+        password: 'MedicusvePatient123!',
+        firstName,
+        lastName,
+        roleId: patientRole ? patientRole.id : null,
+        organizationId
+      });
+
+      patient = await Patient.create({
+        userId: user.id,
+        documentId,
+        phone,
+        insuranceProvider: insuranceProvider || 'Particular',
+        policyNumber: policyNumber || null,
+        coverageType: coverageType || (policyNumber ? 'INSURANCE' : 'SELF_PAY'),
+        coverageStatus: 'ACTIVE',
+        organizationId
+      });
+
+      patient.User = user;
+    } else {
+      // Update coverage info if provided
+      if (insuranceProvider || policyNumber) {
+        await patient.update({
+          insuranceProvider: insuranceProvider || patient.insuranceProvider,
+          policyNumber: policyNumber || patient.policyNumber,
+          coverageType: coverageType || (policyNumber ? 'INSURANCE' : 'SELF_PAY')
+        });
+      }
+    }
+
+    const ticketNumber = `TICKET-${Math.floor(100 + Math.random() * 900)}`;
+
+    res.status(201).json({
+      message: '✅ Admisión Express completada exitosamente',
+      ticketNumber,
+      admissionTime: new Date(),
+      patient: {
+        id: patient.id,
+        documentId: patient.documentId,
+        name: `${patient.User?.firstName} ${patient.User?.lastName}`,
+        insuranceProvider: patient.insuranceProvider,
+        coverageType: patient.coverageType,
+        coverageStatus: patient.coverageStatus
+      }
+    });
+  } catch (error) {
+    console.error('Error in expressAdmission:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Verify Insurance Coverage and calculate copay / deductible
+ */
+exports.verifyInsuranceCoverage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { totalConsultationCost } = req.body;
+
+    const patient = await Patient.findByPk(id, { include: [User] });
+    if (!patient) return res.status(404).json({ message: 'Paciente no encontrado' });
+
+    const total = parseFloat(totalConsultationCost || 100);
+    const isInsurance = patient.coverageType === 'INSURANCE' && patient.coverageStatus === 'ACTIVE';
+
+    const copayPercentage = isInsurance ? (patient.copayPercentage > 0 ? patient.copayPercentage : 15.00) : 100.00;
+    const patientAmountToPay = (total * (copayPercentage / 100)).toFixed(2);
+    const insuranceAmountCovered = (total - patientAmountToPay).toFixed(2);
+
+    res.json({
+      patientId: patient.id,
+      patientName: `${patient.User?.firstName} ${patient.User?.lastName}`,
+      insuranceProvider: patient.insuranceProvider,
+      policyNumber: patient.policyNumber,
+      coverageStatus: patient.coverageStatus,
+      isApproved: isInsurance,
+      financialBreakdown: {
+        totalConsultationCost: total.toFixed(2),
+        patientAmountToPay,
+        insuranceAmountCovered,
+        copayPercentage: `${parseFloat(copayPercentage)}%`
+      }
+    });
+  } catch (error) {
+    console.error('Error in verifyInsuranceCoverage:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

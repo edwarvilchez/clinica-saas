@@ -172,6 +172,10 @@ const loadFullApp = async (req, res, next) => {
     app.use('/api/public', require('./routes/public.routes'));
     app.use('/api/admin', [...protectedRoutes, roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN'])], require('./routes/admin.routes'));
 
+    // 🚀 Dynamic Module Loader (Odoo Addons Framework Engine)
+    const moduleLoader = require('./engine/moduleLoader');
+    await moduleLoader.loadAllModules(app, sequelize);
+
     // Final 404 handler for API
     app.use('/api/*', (req, res) => {
         res.status(404).json({ message: 'Ruta API no encontrada' });
