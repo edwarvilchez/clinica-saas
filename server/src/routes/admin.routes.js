@@ -20,5 +20,6 @@ router.put('/users/:id/toggle-bypass', roleMiddleware(['SUPERADMIN', 'PLATFORM_A
 // Only SUPERADMIN and PLATFORM_ADMIN can create admins — email whitelist enforced in controller
 router.post('/super-admins', roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN']), adminController.createSuperAdmin);
 router.post('/platform-admins', roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN']), adminController.createPlatformAdmin);
+router.post('/tenants/provision', roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN']), adminController.provisionTenant);
 
 module.exports = router;

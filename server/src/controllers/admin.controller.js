@@ -248,3 +248,30 @@ exports.createPlatformAdmin = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// Provision a new Tenant database via PostgreSQL TEMPLATE
+const tenantOrchestrator = require('../services/tenantOrchestrator.service');
+
+exports.provisionTenant = async (req, res) => {
+  try {
+    const { tenantName, ownerEmail, planType, templateDbName } = req.body;
+    if (!tenantName) {
+      return res.status(400).json({ message: 'El nombre del tenant o clínica es obligatorio' });
+    }
+
+    const result = await tenantOrchestrator.provisionTenantDatabase({
+      tenantName,
+      ownerEmail,
+      planType,
+      templateDbName
+    });
+
+    res.status(201).json({
+      message: '✅ Base de datos de tenant aprovisionada exitosamente por TEMPLATE Postgres',
+      tenant: result
+    });
+  } catch (error) {
+    console.error('Error provisioning tenant DB:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
