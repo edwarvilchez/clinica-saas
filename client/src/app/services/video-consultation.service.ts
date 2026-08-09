@@ -51,6 +51,12 @@ export class VideoConsultationService {
     
     const user = JSON.parse(userJson);
     if (!this.socket) {
+      // No conectar socket en producción (Vercel no soporta WebSockets persistentes)
+      if (this.socketUrl === window.location.origin) {
+        console.log('ℹ️ WebSockets deshabilitados en producción (Vercel). Las notificaciones de llamada usarán polling o están desactivadas.');
+        return;
+      }
+
       this.socket = io(this.socketUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true

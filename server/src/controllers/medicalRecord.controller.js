@@ -72,3 +72,47 @@ exports.getPatientHistory = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+const aiCopilot = require('../utils/aiCopilot.service');
+
+exports.getAISummary = async (req, res) => {
+  try {
+    const { organizationId, role } = req.user;
+    const { patientId } = req.params;
+
+    const hasAccess = await validatePatientAccess(patientId, organizationId, role);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'No tienes acceso a este paciente' });
+    }
+
+    const patient = await Patient.findByPk(patientId, { include: [User] });
+    if (!patient) return res.status(404).json({ message: 'Paciente no encontrado' });
+
+    const patientName = patient.User ? `${patient.User.firstName} ${patient.User.lastName}` : 'Paciente';
+
+    const records = await MedicalRecord.findAll({
+      where: { patientId },
+      include: [
+        { model: Prescription, as: 'prescriptions' }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    const summary = await aiCopilot.generatePatientSummary(patientName, records);
+    res.json(summary);
+  } catch (error) {
+    console.error('Error generating AI summary:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.suggestICD11 = async (req, res) => {
+  try {
+    const { symptoms, diagnosis } = req.body;
+    const suggestions = await aiCopilot.suggestCIE11Codes(symptoms || '', diagnosis || '');
+    res.json(suggestions);
+  } catch (error) {
+    console.error('Error suggesting ICD11 codes:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

@@ -17,8 +17,8 @@ router.put('/organizations/:id/status', roleMiddleware(['SUPERADMIN', 'PLATFORM_
 router.put('/users/:id/toggle-status', roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN']), adminController.toggleUserStatus);
 router.put('/users/:id/toggle-bypass', roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN']), adminController.toggleUserBypass);
 
-// Only SUPERADMIN can create platform admins — email whitelist enforced in controller
-router.post('/super-admins', roleMiddleware(['SUPERADMIN']), adminController.createSuperAdmin);
-router.post('/platform-admins', roleMiddleware(['SUPERADMIN']), adminController.createPlatformAdmin);
+// Only SUPERADMIN and PLATFORM_ADMIN can create admins — email whitelist enforced in controller
+router.post('/super-admins', roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN']), adminController.createSuperAdmin);
+router.post('/platform-admins', roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN']), adminController.createPlatformAdmin);
 
 module.exports = router;

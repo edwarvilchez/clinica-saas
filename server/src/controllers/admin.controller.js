@@ -7,7 +7,7 @@ const { Organization, User, Role } = require('../models');
 // Emails autorizados para crear nuevos SUPERADMIN - Cargados desde variables de entorno
 const ALLOWED_MASTER_EMAILS = process.env.ALLOWED_MASTER_EMAILS 
   ? process.env.ALLOWED_MASTER_EMAILS.split(',') 
-  : ['edwarvilchez1977@gmail.com'];
+  : ['edwarvilchez1977@gmail.com', 'edwarvilchez@gmail.com', 'cgk888digital@gmail.com'];
 
 // List ALL organizations in the platform with stats
 exports.getAllOrganizations = async (req, res) => {

@@ -15,11 +15,10 @@ Para evitar errores de conectividad en entornos serverless (IPv6/IPv4), la `DATA
 | Variable | Descripción | Ejemplo |
 |----------|-------------|---------|
 | `DATABASE_URL` | Connection string de Supabase (Transaction Pooler) | `postgresql://...pooler.supabase.com:6543/...` |
-| `JWT_SECRET` | Secret para tokens JWT | Generar string aleatorio seguro |
-| `INIT_SECRET` | Secret para endpoints de reset | Solo desarrollo |
+| `JWT_SECRET` | Secret para tokens JWT | (String aleatorio largo y seguro) |
+| `INIT_SECRET` | Secret para endpoints de reset | (Solo para desarrollo local) |
 | `ALLOWED_ORIGINS` | Dominios permitidos (comma-separated) | `https://tu-dominio.vercel.app` |
 | `ALLOW_DB_RESET` | Habilitar reset de BD | `false` en producción |
-| `INITIAL_ADMIN_PASSWORD` | Password inicial del SuperAdmin | `ClinicaSaaS2026!` |
 
 ### 🛡️ Seguridad de Contraseñas
 - **Cambio obligatorio**: Los nuevos usuarios deben cambiar su contraseña en el primer inicio de sesión (`mustChangePassword: true`)

@@ -179,4 +179,10 @@ router.post('/reset-password', validate(resetPasswordSchema), authController.res
  */
 router.post('/change-password', authMiddleware, validate(changePasswordSchema), authController.changePassword);
 
+// 2FA TOTP Endpoints
+router.post('/2fa/verify', authController.verify2FALogin);
+router.post('/2fa/setup', authMiddleware, authController.setup2FA);
+router.post('/2fa/enable', authMiddleware, authController.enable2FA);
+router.post('/2fa/disable', authMiddleware, authController.disable2FA);
+
 module.exports = router;

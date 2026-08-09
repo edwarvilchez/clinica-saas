@@ -80,6 +80,14 @@ const User = sequelize.define('User', {
   subscriptionBypass: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  twoFactorEnabled: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
+  twoFactorSecret: {
+    type: DataTypes.STRING,
+    allowNull: true
   }
 }, {
   hooks: {

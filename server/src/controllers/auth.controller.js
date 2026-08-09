@@ -86,6 +86,27 @@ exports.register = async (req, res) => {
       if (patientData?.organizationId) {
         organizationId = patientData.organizationId;
       }
+
+      // Check Doctor quota limit for organization
+      if (finalRoleName === 'DOCTOR' && organizationId) {
+        const { PLAN_LIMITS } = require('../middlewares/quotaEnforcer.middleware');
+        const org = await Organization.findByPk(organizationId);
+        if (org) {
+          const planType = org.type || 'PROFESSIONAL';
+          const limits = PLAN_LIMITS[planType] || PLAN_LIMITS.PROFESSIONAL;
+          if (limits.maxDoctors !== Infinity) {
+            const DoctorModel = require('../models/Doctor');
+            const currentCount = await DoctorModel.count({ where: { organizationId } });
+            if (currentCount >= limits.maxDoctors) {
+              await t.rollback();
+              return res.status(403).json({
+                error: 'UPGRADE_REQUIRED',
+                message: `Has alcanzado el límite máximo de doctores (${limits.maxDoctors}) permitidos por tu plan ${planType}. Actualiza a un plan superior.`
+              });
+            }
+          }
+        }
+      }
     }
 
     // Si se envía una contraseña, se usa. Si no, se genera una temporal.
@@ -287,6 +308,20 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: 'Tu cuenta ha sido desactivada. Por favor, contacta al administrador.' });
     }
 
+    if (user.twoFactorEnabled) {
+      log(`[LOGIN 2FA REQUIRED] 2FA enabled for: ${email}`);
+      const tempToken = jwt.sign(
+        { id: user.id, role: user.Role.name, is2FAPending: true },
+        process.env.JWT_SECRET,
+        { expiresIn: '10m' }
+      );
+      return res.json({
+        requires2FA: true,
+        message: 'Se requiere código de verificación de 2FA',
+        tempToken
+      });
+    }
+
     log(`Account active. Generating Token...`);
 
     // Incluir mustChangePassword en el token JWT para que el guard del frontend pueda verificarlo
@@ -311,8 +346,9 @@ exports.login = async (req, res) => {
         gender: user.gender,
         organizationId: user.organizationId,
         Organization: user.Organization,
-        subscriptionBypass: user.subscriptionBypass, // Nomimus-inspired flag
-        mustChangePassword: user.mustChangePassword  // Exponer flag al frontend
+        subscriptionBypass: user.subscriptionBypass,
+        mustChangePassword: user.mustChangePassword,
+        twoFactorEnabled: user.twoFactorEnabled
       }
     });
   } catch (error) {
@@ -492,6 +528,129 @@ exports.changePassword = async (req, res) => {
   } catch (error) {
     console.error('Change Password Error:', error);
     res.status(500).json({ message: 'Error al cambiar la contraseña' });
+  }
+};
+
+const totp = require('../utils/totp.service');
+
+exports.verify2FALogin = async (req, res) => {
+  try {
+    const { tempToken, code } = req.body;
+    if (!tempToken || !code) {
+      return res.status(400).json({ message: 'Token temporal y código de 6 dígitos son requeridos' });
+    }
+
+    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    if (!decoded || !decoded.is2FAPending) {
+      return res.status(401).json({ message: 'Token temporal inválido o expirado' });
+    }
+
+    const user = await User.findByPk(decoded.id, { include: [Role, Organization] });
+    if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
+      return res.status(400).json({ message: 'El usuario no tiene 2FA activo' });
+    }
+
+    const isValid = totp.verifyTOTP(user.twoFactorSecret, code);
+    if (!isValid) {
+      return res.status(401).json({ message: 'Código de autenticación inválido o expirado' });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, role: user.Role.name, mustChangePassword: user.mustChangePassword },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        businessName: user.businessName,
+        accountType: user.accountType,
+        role: user.Role.name,
+        gender: user.gender,
+        organizationId: user.organizationId,
+        Organization: user.Organization,
+        subscriptionBypass: user.subscriptionBypass,
+        mustChangePassword: user.mustChangePassword,
+        twoFactorEnabled: true
+      }
+    });
+  } catch (error) {
+    res.status(401).json({ message: 'Falló la verificación de 2FA', error: error.message });
+  }
+};
+
+exports.setup2FA = async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    const secret = totp.generateSecret();
+    const { otpauthUrl, qrImageUrl } = totp.getQRCodeUrl(user.email, secret);
+
+    res.json({
+      secret,
+      otpauthUrl,
+      qrImageUrl
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al generar configuración de 2FA', error: error.message });
+  }
+};
+
+exports.enable2FA = async (req, res) => {
+  try {
+    const { secret, code } = req.body;
+    if (!secret || !code) {
+      return res.status(400).json({ message: 'Se requiere la clave secreta y el código de verificación' });
+    }
+
+    const isValid = totp.verifyTOTP(secret, code);
+    if (!isValid) {
+      return res.status(400).json({ message: 'El código de 6 dígitos ingresado es incorrecto' });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    user.twoFactorEnabled = true;
+    user.twoFactorSecret = secret;
+    await user.save();
+
+    res.json({ message: '✅ Autenticación de doble factor activada con éxito.', twoFactorEnabled: true });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al activar 2FA', error: error.message });
+  }
+};
+
+exports.disable2FA = async (req, res) => {
+  try {
+    const { code, password } = req.body;
+    const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    let isAuthorized = false;
+    if (code && user.twoFactorSecret) {
+      isAuthorized = totp.verifyTOTP(user.twoFactorSecret, code);
+    }
+    if (!isAuthorized && password) {
+      isAuthorized = await user.comparePassword(password);
+    }
+
+    if (!isAuthorized) {
+      return res.status(401).json({ message: 'Código TOTP o contraseña incorrecta' });
+    }
+
+    user.twoFactorEnabled = false;
+    user.twoFactorSecret = null;
+    await user.save();
+
+    res.json({ message: 'Autenticación de doble factor desactivada.', twoFactorEnabled: false });
+  } catch (error) {
+    res.status(500).json({ message: 'Error al desactivar 2FA', error: error.message });
   }
 };
 

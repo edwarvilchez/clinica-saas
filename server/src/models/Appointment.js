@@ -29,6 +29,10 @@ const Appointment = sequelize.define('Appointment', {
     type: DataTypes.BOOLEAN,
     defaultValue: false
   },
+  reminder24hSent: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
   deletedAt: {
     type: DataTypes.DATE,
     allowNull: true
