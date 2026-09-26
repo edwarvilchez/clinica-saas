@@ -1,0 +1,625 @@
+// ============================================================================
+// DBML SCHEMA: CLINICA - SAAS
+// Compatible con https://database.build/ y https://dbdiagram.io/
+// ============================================================================
+
+Project ClinicaSaaS {
+  database_type: 'PostgreSQL'
+  Note: 'Arquitectura Integral de Base de Datos para Clínica Médica Multi-Tenant (SaaS)'
+}
+
+// ------------------------------------------------------
+// 1. CORE & MULTI-TENANT
+// ------------------------------------------------------
+Table Organizations {
+  id uuid [pk]
+  name varchar(255) [not null]
+  slug varchar(255) [unique, not null]
+  rif varchar(50)
+  email varchar(255)
+  phone varchar(50)
+  address text
+  subscriptionPlan varchar(50) [default: 'PRO']
+  subscriptionStatus varchar(50) [default: 'TRIAL']
+  trialEndsAt timestamp
+  isActive boolean [default: true]
+  ownerId uuid
+  createdAt timestamp
+  updatedAt timestamp
+}
+
+Table Roles {
+  id serial [pk]
+  name varchar(100) [unique, not null]
+  description text
+  permissions jsonb
+  createdAt timestamp
+  updatedAt timestamp
+}
+
+Table Users {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  roleId integer [ref: > Roles.id]
+  username varchar(100) [unique, not null]
+  email varchar(255) [unique, not null]
+  password varchar(255) [not null]
+  firstName varchar(100) [not null]
+  lastName varchar(100) [not null]
+  accountType varchar(50) [default: 'PATIENT']
+  gender varchar(20)
+  isActive boolean [default: true]
+  createdAt timestamp
+  updatedAt timestamp
+}
+
+Table AuditLogs {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  userId uuid [ref: > Users.id]
+  action varchar(100) [not null]
+  entity varchar(100) [not null]
+  entityId varchar(100)
+  oldValues jsonb
+  newValues jsonb
+  ipAddress varchar(50)
+  userAgent text
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 2. PERSONAL CLÍNICO & RRHH
+// ------------------------------------------------------
+Table Departments {
+  id serial [pk]
+  name varchar(150) [not null]
+  description text
+  createdAt timestamp
+}
+
+Table Specialties {
+  id serial [pk]
+  departmentId integer [ref: > Departments.id]
+  name varchar(150) [not null]
+  description text
+  basePriceUSD numeric(10,2) [default: 0.00]
+  isActive boolean [default: true]
+  createdAt timestamp
+}
+
+Table Doctors {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  userId uuid [unique, not null, ref: - Users.id]
+  specialtyId integer [ref: > Specialties.id]
+  medicalLicense varchar(100)
+  mpps varchar(100)
+  colegioMedico varchar(100)
+  consultationFeeUSD numeric(10,2) [default: 0.00]
+  commissionPercentage numeric(5,2) [default: 70.00]
+  bankDetails jsonb
+  createdAt timestamp
+}
+
+Table Nurses {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  userId uuid [unique, not null, ref: - Users.id]
+  licenseNumber varchar(100)
+  shift varchar(50) [default: 'MAÑANA']
+  department varchar(100) [default: 'HOSPITALIZACIÓN']
+  createdAt timestamp
+}
+
+Table Staff {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  userId uuid [unique, not null, ref: - Users.id]
+  position varchar(100) [not null]
+  department varchar(100) [default: 'ADMINISTRACIÓN']
+  createdAt timestamp
+}
+
+Table Employees {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  userId uuid [ref: > Users.id]
+  doctorId uuid [ref: > Doctors.id]
+  departmentId integer [ref: > Departments.id]
+  specialtyId integer [ref: > Specialties.id]
+  employeeCode varchar(50) [not null]
+  documentType varchar(20) [default: 'CEDULA']
+  documentNumber varchar(50) [not null]
+  fullName varchar(200) [not null]
+  jobTitle varchar(100) [not null]
+  salaryUSD numeric(10,2) [default: 0.00]
+  hireDate date
+  status varchar(50) [default: 'ACTIVE']
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 3. SEGUROS & BAREMOS
+// ------------------------------------------------------
+Table InsuranceCompanies {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  name varchar(200) [not null]
+  rif varchar(50) [not null]
+  contactEmail varchar(255)
+  contactPhone varchar(50)
+  claimSubmissionUrl text
+  isActive boolean [default: true]
+  createdAt timestamp
+}
+
+Table InsurancePolicies {
+  id uuid [pk]
+  insuranceCompanyId uuid [not null, ref: > InsuranceCompanies.id]
+  patientId uuid
+  policyNumber varchar(100) [not null]
+  planName varchar(100)
+  holderType varchar(50) [default: 'TITULAR']
+  coveragePercentage numeric(5,2) [default: 80.00]
+  coverageLimitUSD numeric(12,2) [default: 50000.00]
+  isActive boolean [default: true]
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 4. PACIENTES & HISTORIAS MÉDICAS
+// ------------------------------------------------------
+Table Patients {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  userId uuid [ref: > Users.id]
+  insuranceCompanyId uuid [ref: > InsuranceCompanies.id]
+  medicalRecordNumber varchar(100) [unique, not null, note: 'HC-CI']
+  documentType varchar(20) [default: 'CEDULA']
+  documentPrefix varchar(5) [default: 'V']
+  documentNumber varchar(50) [not null]
+  birthDate date
+  gender varchar(20)
+  bloodType varchar(10)
+  phone varchar(50)
+  address text
+  emergencyContact jsonb
+  allergies text
+  chronicDiseases text
+  pathologicalHistory jsonb
+  familyInfo jsonb
+  hasInsurance boolean [default: false]
+  policyNumber varchar(100)
+  createdAt timestamp
+}
+
+Table MedicalRecords {
+  id uuid [pk]
+  patientId uuid [not null, ref: > Patients.id]
+  doctorId uuid [not null, ref: > Doctors.id]
+  consultationDate timestamp
+  reasonForVisit text
+  symptoms text
+  diagnosis text [not null]
+  physicalExam jsonb
+  vitalSigns jsonb
+  treatmentPlan text
+  cie11Code varchar(50)
+  notes text
+  createdAt timestamp
+}
+
+Table Drugs {
+  id uuid [pk]
+  genericName varchar(200) [not null]
+  commercialName varchar(200)
+  pharmaceuticalForm varchar(100)
+  concentration varchar(100)
+  presentation varchar(100)
+  indications text
+  contraindications text
+  sideEffects text
+  createdAt timestamp
+}
+
+Table Prescriptions {
+  id uuid [pk]
+  medicalRecordId uuid [not null, ref: > MedicalRecords.id]
+  drugId uuid [ref: > Drugs.id]
+  dosage varchar(100) [not null]
+  frequency varchar(100) [not null]
+  durationDays integer [default: 7]
+  instructions text
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 5. CITAS & TELEMEDICINA
+// ------------------------------------------------------
+Table Appointments {
+  id uuid [pk]
+  patientId uuid [not null, ref: > Patients.id]
+  doctorId uuid [not null, ref: > Doctors.id]
+  appointmentDate timestamp [not null]
+  durationMinutes integer [default: 30]
+  type varchar(50) [default: 'IN_PERSON']
+  status varchar(50) [default: 'SCHEDULED']
+  reason text
+  notes text
+  createdAt timestamp
+}
+
+Table VideoConsultations {
+  id uuid [pk]
+  appointmentId uuid [unique, ref: - Appointments.id]
+  doctorId uuid [not null, ref: > Users.id]
+  patientId uuid [not null, ref: > Users.id]
+  roomId varchar(100) [unique, not null]
+  status varchar(50) [default: 'scheduled']
+  startTime timestamp
+  endTime timestamp
+  duration integer [default: 0]
+  notes text
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 6. OPERACIONES HOSPITALARIAS & EPISODIOS
+// ------------------------------------------------------
+Table HospitalBeds {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  currentPatientId uuid [ref: > Patients.id]
+  bedNumber varchar(50) [not null]
+  room varchar(50) [not null]
+  floor varchar(50) [default: 'Piso 1']
+  ward varchar(50) [default: 'HOSPITALIZATION']
+  dailyRateUSD numeric(10,2) [default: 100.00]
+  status varchar(50) [default: 'AVAILABLE']
+  createdAt timestamp
+}
+
+Table Admissions {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  patientId uuid [not null, ref: > Patients.id]
+  attendingDoctorId uuid [ref: > Doctors.id]
+  insuranceCompanyId uuid [ref: > InsuranceCompanies.id]
+  admissionNumber varchar(100) [unique, not null]
+  episodeNumber varchar(100) [unique, not null]
+  medicalRecordNumber varchar(100) [not null]
+  admissionType varchar(50) [default: 'HOSPITALIZATION']
+  admissionDate timestamp
+  dischargeDate timestamp
+  status varchar(50) [default: 'ADMITTED']
+  currentArea varchar(100) [default: 'ADMISIÓN GENERAL']
+  areaMovements jsonb
+  hasInsurance boolean [default: false]
+  insurancePolicyNumber varchar(100)
+  insurancePlan varchar(100)
+  insuranceHolderType varchar(50) [default: 'TITULAR']
+  insuranceCoverageAmountUSD numeric(12,2) [default: 0.00]
+  insuranceAuthorizationCode varchar(100)
+  insuranceClaimNumber varchar(100)
+  insuranceCartaAval varchar(255)
+  titularData jsonb
+  guarantorData jsonb
+  patientDataSnapshot jsonb
+  initialDiagnosis text [not null]
+  dischargeNotes text
+  companionName varchar(150)
+  companionPhone varchar(50)
+  notes text
+  createdAt timestamp
+}
+
+Table EmergencyTriages {
+  id uuid [pk]
+  admissionId uuid [ref: > Admissions.id]
+  patientId uuid [not null, ref: > Patients.id]
+  assignedDoctorId uuid [ref: > Doctors.id]
+  triageLevel integer [not null, default: 3]
+  chiefComplaint text [not null]
+  systolicBP integer
+  diastolicBP integer
+  heartRate integer
+  respiratoryRate integer
+  temperature numeric(4,1)
+  oxygenSaturation integer
+  glasgowScore integer [default: 15]
+  painScale integer [default: 0]
+  status varchar(50) [default: 'WAITING']
+  createdAt timestamp
+}
+
+Table HospitalStays {
+  id uuid [pk]
+  admissionId uuid [not null, ref: > Admissions.id]
+  patientId uuid [not null, ref: > Patients.id]
+  bedId uuid [not null, ref: > HospitalBeds.id]
+  attendingDoctorId uuid [ref: > Doctors.id]
+  checkInDate timestamp
+  checkOutDate timestamp
+  dailyRateUSD numeric(10,2) [default: 0.00]
+  totalCostUSD numeric(12,2) [default: 0.00]
+  status varchar(50) [default: 'ACTIVE']
+  notes text
+  createdAt timestamp
+}
+
+Table Surgeries {
+  id uuid [pk]
+  admissionId uuid [ref: > Admissions.id]
+  patientId uuid [not null, ref: > Patients.id]
+  specialtyId integer [ref: > Specialties.id]
+  leadSurgeonId uuid [not null, ref: > Doctors.id]
+  assistantSurgeonId uuid [ref: > Doctors.id]
+  anesthesiologistId uuid [ref: > Doctors.id]
+  surgeryNumber varchar(100) [unique, not null]
+  procedureName varchar(255) [not null]
+  operatingRoom varchar(100) [default: 'Quirófano 1']
+  scheduledDate date [not null]
+  scheduledStartTime time
+  estimatedDurationMinutes integer [default: 120]
+  anesthesiaType varchar(50) [default: 'GENERAL']
+  status varchar(50) [default: 'SCHEDULED']
+  preOpDiagnosis text
+  postOpDiagnosis text
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 7. LABORATORIO CLÍNICO
+// ------------------------------------------------------
+Table LabTests {
+  id uuid [pk]
+  code varchar(50) [unique, not null]
+  name varchar(200) [not null]
+  category varchar(100) [default: 'HEMATOLOGÍA']
+  priceUSD numeric(10,2) [not null]
+  referenceValues jsonb
+  sampleType varchar(100) [default: 'Sangre Total']
+  createdAt timestamp
+}
+
+Table LabCombos {
+  id uuid [pk]
+  code varchar(50) [unique, not null]
+  name varchar(200) [not null]
+  description text
+  priceUSD numeric(10,2) [not null]
+  isActive boolean [default: true]
+  createdAt timestamp
+}
+
+Table LabComboTests {
+  comboId uuid [ref: > LabCombos.id]
+  testId uuid [ref: > LabTests.id]
+  indexes {
+    (comboId, testId) [pk]
+  }
+}
+
+Table LabResults {
+  id uuid [pk]
+  patientId uuid [not null, ref: > Patients.id]
+  testId uuid [ref: > LabTests.id]
+  orderNumber varchar(100) [not null]
+  sampleStatus varchar(50) [default: 'RECEIVED']
+  resultsData jsonb
+  pathologistDoctorId uuid [ref: > Doctors.id]
+  validationDate timestamp
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 8. INVENTARIOS & MOVIMIENTOS
+// ------------------------------------------------------
+Table InventoryItems {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  specialtyId integer [ref: > Specialties.id]
+  doctorId uuid [ref: > Doctors.id]
+  code varchar(100) [unique, not null]
+  name varchar(200) [not null]
+  category varchar(100) [default: 'MEDICINE']
+  unit varchar(50) [default: 'Unidad']
+  costUSD numeric(10,2) [default: 0.00]
+  salePriceUSD numeric(10,2) [default: 0.00]
+  stockQuantity integer [default: 0]
+  minStock integer [default: 10]
+  lotNumber varchar(100)
+  expiryDate date
+  createdAt timestamp
+}
+
+Table InventoryMovements {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  itemId uuid [not null, ref: > InventoryItems.id]
+  patientId uuid [ref: > Patients.id]
+  doctorId uuid [ref: > Doctors.id]
+  movementType varchar(50) [not null]
+  quantity integer [not null]
+  unitCostUSD numeric(10,2) [default: 0.00]
+  totalCostUSD numeric(12,2) [default: 0.00]
+  reason text
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 9. VENTAS, COTIZACIONES & COMBOS
+// ------------------------------------------------------
+Table ClinicalServices {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  specialtyId integer [ref: > Specialties.id]
+  code varchar(50) [not null]
+  name varchar(200) [not null]
+  category varchar(50) [default: 'CONSULTATION']
+  description text
+  priceUSD numeric(10,2) [not null, default: 0.00]
+  isTaxExempt boolean [default: true]
+  taxRate numeric(5,2) [default: 0.00]
+  requiresDoctor boolean [default: false]
+  isActive boolean [default: true]
+  createdAt timestamp
+}
+
+Table ClinicalPackages {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  code varchar(50) [not null]
+  name varchar(200) [not null]
+  category varchar(50) [default: 'SURGERY']
+  description text
+  totalPriceUSD numeric(12,2) [not null, default: 0.00]
+  estimatedDurationHours numeric(6,2) [default: 2.0]
+  items jsonb
+  isActive boolean [default: true]
+  notes text
+  createdAt timestamp
+}
+
+Table Quotes {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  patientId uuid [ref: > Patients.id]
+  doctorId uuid [ref: > Doctors.id]
+  insuranceCompanyId uuid [ref: > InsuranceCompanies.id]
+  quoteNumber varchar(100) [unique, not null]
+  title varchar(200) [not null]
+  patientName varchar(200) [not null]
+  patientDocumentId varchar(50)
+  patientPhone varchar(50)
+  patientEmail varchar(255)
+  bcvRate numeric(12,4) [default: 1.0000]
+  subtotalUSD numeric(12,2) [not null, default: 0.00]
+  totalUSD numeric(12,2) [not null, default: 0.00]
+  totalVES numeric(16,2) [not null, default: 0.00]
+  patientPayableUSD numeric(12,2) [default: 0.00]
+  validUntil date
+  status varchar(50) [default: 'SENT']
+  notes text
+  terms text
+  createdAt timestamp
+}
+
+Table QuoteItems {
+  id uuid [pk]
+  quoteId uuid [not null, ref: > Quotes.id]
+  serviceId uuid [ref: > ClinicalServices.id]
+  concept varchar(255) [not null]
+  quantity integer [not null, default: 1]
+  unitPriceUSD numeric(10,2) [not null, default: 0.00]
+  unitPriceVES numeric(14,2) [default: 0.00]
+  discountPercent numeric(5,2) [default: 0.00]
+  totalPriceUSD numeric(12,2) [not null, default: 0.00]
+  totalPriceVES numeric(16,2) [not null, default: 0.00]
+  createdAt timestamp
+}
+
+// ------------------------------------------------------
+// 10. PAGOS, HONORARIOS & CONTABILIDAD VENEZOLANA
+// ------------------------------------------------------
+Table Payments {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  patientId uuid [ref: > Patients.id]
+  appointmentId uuid [ref: > Appointments.id]
+  amountUSD numeric(10,2) [not null]
+  amountVES numeric(14,2) [not null]
+  exchangeRateBCV numeric(12,4) [not null]
+  paymentMethod varchar(50) [not null]
+  referenceNumber varchar(100)
+  status varchar(50) [default: 'COMPLETED']
+  notes text
+  createdAt timestamp
+}
+
+Table DoctorFees {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  doctorId uuid [not null, ref: > Doctors.id]
+  patientId uuid [ref: > Patients.id]
+  paymentId uuid [ref: > Payments.id]
+  insuranceCompanyId uuid [ref: > InsuranceCompanies.id]
+  clinicalServiceId uuid [ref: > ClinicalServices.id]
+  voucherNumber varchar(100) [unique, not null]
+  grossAmountUSD numeric(10,2) [not null]
+  clinicCommissionUSD numeric(10,2) [not null]
+  doctorNetAmountUSD numeric(10,2) [not null]
+  taxRetentionISLR_VES numeric(12,2) [default: 0.00]
+  status varchar(50) [default: 'PENDING_PAYMENT']
+  paymentDate date
+  createdAt timestamp
+}
+
+Table InsuranceClaims {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  insuranceCompanyId uuid [not null, ref: > InsuranceCompanies.id]
+  patientId uuid [not null, ref: > Patients.id]
+  doctorId uuid [ref: > Doctors.id]
+  claimNumber varchar(100) [unique, not null]
+  claimedAmountUSD numeric(12,2) [not null]
+  approvedAmountUSD numeric(12,2) [default: 0.00]
+  deductibleUSD numeric(10,2) [default: 0.00]
+  copayUSD numeric(10,2) [default: 0.00]
+  status varchar(50) [default: 'SUBMITTED']
+  settlementDate date
+  rejectionReason text
+  createdAt timestamp
+}
+
+Table AccountCharts {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  code varchar(50) [not null]
+  name varchar(200) [not null]
+  type varchar(50) [not null]
+  level integer [default: 1]
+  parentAccountId uuid [ref: > AccountCharts.id]
+  isActive boolean [default: true]
+  createdAt timestamp
+}
+
+Table JournalEntries {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  entryNumber varchar(100) [unique, not null]
+  entryDate date [not null]
+  description text [not null]
+  totalDebitUSD numeric(14,2) [default: 0.00]
+  totalCreditUSD numeric(14,2) [default: 0.00]
+  bcvRate numeric(12,4) [default: 1.0000]
+  status varchar(50) [default: 'POSTED']
+  createdAt timestamp
+}
+
+Table JournalItems {
+  id uuid [pk]
+  journalEntryId uuid [not null, ref: > JournalEntries.id]
+  accountId uuid [not null, ref: > AccountCharts.id]
+  debitUSD numeric(12,2) [default: 0.00]
+  creditUSD numeric(12,2) [default: 0.00]
+  debitVES numeric(16,2) [default: 0.00]
+  creditVES numeric(16,2) [default: 0.00]
+  concept text
+  createdAt timestamp
+}
+
+Table TaxRetentions {
+  id uuid [pk]
+  organizationId uuid [ref: > Organizations.id]
+  voucherNumber varchar(100) [unique, not null]
+  taxType varchar(50) [default: 'ISLR']
+  beneficiaryName varchar(200) [not null]
+  beneficiaryRif varchar(50) [not null]
+  baseAmountVES numeric(16,2) [not null]
+  retentionPercentage numeric(5,2) [not null]
+  retainedAmountVES numeric(16,2) [not null]
+  retentionDate date [not null]
+  fiscalPeriod varchar(20) [not null]
+  createdAt timestamp
+}
