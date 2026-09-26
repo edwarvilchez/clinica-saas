@@ -1,0 +1,1166 @@
+<div class="container-fluid py-4 px-3 px-md-4">
+  <!-- Top Header Bar -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <div class="badge bg-success bg-opacity-10 text-success p-2 rounded-3">
+          <i class="bi bi-shield-check fs-4"></i>
+        </div>
+        <div>
+          <h1 class="h3 fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Gestión de Seguros y Reclamos Médicos' : 'Insurance & Medical Claims Management' }}</h1>
+          <p class="text-muted small mb-0">{{ langService.lang() === 'es' ? 'Convenios con aseguradoras, pólizas de pacientes y emisión de comprobantes de siniestros' : 'Insurance agreements, patient policies and official medical claim vouchers' }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Action Buttons -->
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <!-- VIEW TOGGLE (LISTA / KANBAN) ESTILO ODOO -->
+      <div class="btn-group bg-white p-1 rounded-pill border shadow-sm" role="group">
+        <button 
+          type="button" 
+          class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+          [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+          (click)="viewMode.set('list')">
+          <i class="bi bi-list-ul"></i>
+          <span class="x-small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+          [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+          (click)="viewMode.set('kanban')">
+          <i class="bi bi-kanban-fill"></i>
+          <span class="x-small">{{ langService.lang() === 'es' ? 'Kanban' : 'Kanban' }}</span>
+        </button>
+      </div>
+
+      <button class="btn btn-outline-primary rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 fw-semibold" (click)="openPolicyModal()">
+        <i class="bi bi-person-vcard"></i>
+        <span>{{ langService.lang() === 'es' ? 'Asignar Póliza' : 'Assign Policy' }}</span>
+      </button>
+
+      <button class="btn btn-outline-success rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 fw-semibold" (click)="openCompanyModal()">
+        <i class="bi bi-building-add"></i>
+        <span>{{ langService.lang() === 'es' ? 'Nueva Aseguradora' : 'New Insurer' }}</span>
+      </button>
+
+      <button class="btn btn-primary rounded-pill px-4 shadow-sm d-flex align-items-center gap-2 fw-bold" (click)="openClaimModal()">
+        <i class="bi bi-file-earmark-medical-fill"></i>
+        <span>{{ langService.lang() === 'es' ? 'Nuevo Reclamo a Aseguradora' : 'New Insurance Claim' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Metric Cards (Bimoneda USD & VES) -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm rounded-4 bg-white p-3 border-start border-4 border-primary">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small text-uppercase fw-bold">{{ langService.lang() === 'es' ? 'Total Siniestros' : 'Total Claims' }}</span>
+            <h4 class="fw-bold text-dark mb-0 mt-1">{{ totalClaimsCount() }}</h4>
+            <small class="text-muted x-small">{{ langService.lang() === 'es' ? 'Expedientes Registrados' : 'Registered Files' }}</small>
+          </div>
+          <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+            <i class="bi bi-folder-check fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm rounded-4 bg-white p-3 border-start border-4 border-success">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small text-uppercase fw-bold">{{ langService.lang() === 'es' ? 'Total Reclamado' : 'Total Claimed' }}</span>
+            <h4 class="fw-bold text-success mb-0 mt-1">{{ formatUSD(totalClaimedUSD()) }}</h4>
+            <small class="text-muted x-small font-monospace">{{ formatVES(totalClaimedUSD()) }}</small>
+          </div>
+          <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle">
+            <i class="bi bi-cash-stack fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm rounded-4 bg-white p-3 border-start border-4 border-info">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small text-uppercase fw-bold">{{ langService.lang() === 'es' ? 'Aprobados / Liquidados' : 'Approved / Paid' }}</span>
+            <h4 class="fw-bold text-info mb-0 mt-1">{{ formatUSD(totalApprovedUSD()) }}</h4>
+            <small class="text-muted x-small font-monospace">{{ formatVES(totalApprovedUSD()) }}</small>
+          </div>
+          <div class="bg-info bg-opacity-10 text-info p-3 rounded-circle">
+            <i class="bi bi-check2-all fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm rounded-4 bg-white p-3 border-start border-4 border-warning">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small text-uppercase fw-bold">{{ langService.lang() === 'es' ? 'En Revisión / Pendiente' : 'Under Review / Pending' }}</span>
+            <h4 class="fw-bold text-warning mb-0 mt-1">{{ formatUSD(totalPendingUSD()) }}</h4>
+            <small class="text-muted x-small font-monospace">{{ formatVES(totalPendingUSD()) }}</small>
+          </div>
+          <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
+            <i class="bi bi-hourglass-split fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <ul class="nav nav-pills custom-pills mb-4 bg-white p-1 rounded-pill shadow-sm border d-inline-flex flex-wrap gap-1">
+    <li class="nav-item">
+      <button 
+        class="nav-link rounded-pill px-4 py-2 fw-bold text-sm" 
+        [class.active]="activeTab() === 'claims'"
+        (click)="activeTab.set('claims')">
+        <i class="bi bi-file-earmark-medical me-2"></i>{{ langService.lang() === 'es' ? 'Reclamos a Aseguradoras (Siniestros)' : 'Insurance Claims (Vouchers)' }}
+        <span class="badge bg-primary bg-opacity-25 text-primary ms-2">{{ claims().length }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button 
+        class="nav-link rounded-pill px-4 py-2 fw-bold text-sm" 
+        [class.active]="activeTab() === 'companies'"
+        (click)="activeTab.set('companies')">
+        <i class="bi bi-buildings me-2"></i>{{ langService.lang() === 'es' ? 'Empresas Aseguradoras' : 'Insurance Companies' }}
+        <span class="badge bg-secondary bg-opacity-25 text-dark ms-2">{{ companies().length }}</span>
+      </button>
+    </li>
+    <li class="nav-item">
+      <button 
+        class="nav-link rounded-pill px-4 py-2 fw-bold text-sm" 
+        [class.active]="activeTab() === 'policies'"
+        (click)="activeTab.set('policies')">
+        <i class="bi bi-person-vcard me-2"></i>{{ langService.lang() === 'es' ? 'Pólizas de Pacientes' : 'Patient Policies' }}
+        <span class="badge bg-secondary bg-opacity-25 text-dark ms-2">{{ policies().length }}</span>
+      </button>
+    </li>
+  </ul>
+
+  <!-- Loading Spinner -->
+  <div *ngIf="loading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <!-- TAB 1: RECLAMOS A ASEGURADORAS (SINIESTROS) -->
+  <div *ngIf="!loading() && activeTab() === 'claims'">
+    <!-- Filter Toolbar -->
+    <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+      <div class="row g-2 align-items-center">
+        <!-- Search -->
+        <div class="col-md-3">
+          <div class="input-group search-bar rounded-pill overflow-hidden bg-light border">
+            <span class="input-group-text bg-light border-0 ps-3 text-muted">
+              <i class="bi bi-search"></i>
+            </span>
+            <input 
+              type="text" 
+              class="form-control border-0 bg-light py-2 shadow-none small" 
+              [placeholder]="langService.lang() === 'es' ? 'Buscar paciente, N° reclamo, carta aval...' : 'Search patient, claim #, aval...'"
+              [ngModel]="searchTerm()"
+              (ngModelChange)="searchTerm.set($event)">
+          </div>
+        </div>
+
+        <!-- Insurer Filter -->
+        <div class="col-sm-6 col-md-2">
+          <select class="form-select form-select-sm rounded-pill py-2" [ngModel]="claimCompanyFilter()" (ngModelChange)="claimCompanyFilter.set($event)">
+            <option value="ALL">{{ langService.lang() === 'es' ? 'Todas las Aseguradoras' : 'All Insurers' }}</option>
+            <option *ngFor="let c of companies()" [value]="c.id">{{ c.name }}</option>
+          </select>
+        </div>
+
+        <!-- Status Filter -->
+        <div class="col-sm-6 col-md-2">
+          <select class="form-select form-select-sm rounded-pill py-2" [ngModel]="claimStatusFilter()" (ngModelChange)="claimStatusFilter.set($event)">
+            <option value="ALL">{{ langService.lang() === 'es' ? 'Todos los Estados' : 'All Statuses' }}</option>
+            <option value="EMITTED">{{ langService.lang() === 'es' ? 'Emitido / Borrador' : 'Emitted / Draft' }}</option>
+            <option value="UNDER_REVIEW">{{ langService.lang() === 'es' ? 'En Revisión Aseguradora' : 'Under Review' }}</option>
+            <option value="APPROVED">{{ langService.lang() === 'es' ? 'Aprobado' : 'Approved' }}</option>
+            <option value="PARTIALLY_APPROVED">{{ langService.lang() === 'es' ? 'Parcialmente Aprobado' : 'Partially Approved' }}</option>
+            <option value="PAID">{{ langService.lang() === 'es' ? 'Pagado / Liquidado' : 'Paid / Settled' }}</option>
+            <option value="REJECTED">{{ langService.lang() === 'es' ? 'Rechazado' : 'Rejected' }}</option>
+          </select>
+        </div>
+
+        <!-- Date Range: Start -->
+        <div class="col-sm-6 col-md-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-light text-muted x-small">{{ langService.lang() === 'es' ? 'Desde' : 'From' }}</span>
+            <input type="date" class="form-control rounded-end-pill" [ngModel]="claimStartDateFilter()" (ngModelChange)="claimStartDateFilter.set($event)">
+          </div>
+        </div>
+
+        <!-- Date Range: End -->
+        <div class="col-sm-6 col-md-2">
+          <div class="input-group input-group-sm">
+            <span class="input-group-text bg-light text-muted x-small">{{ langService.lang() === 'es' ? 'Hasta' : 'To' }}</span>
+            <input type="date" class="form-control rounded-end-pill" [ngModel]="claimEndDateFilter()" (ngModelChange)="claimEndDateFilter.set($event)">
+          </div>
+        </div>
+
+        <!-- Reset Button -->
+        <div class="col-sm-6 col-md-1 text-end">
+          <button class="btn btn-light btn-sm rounded-pill w-100 py-2" (click)="claimStatusFilter.set('ALL'); claimCompanyFilter.set('ALL'); claimStartDateFilter.set(''); claimEndDateFilter.set(''); searchTerm.set('')">
+            <i class="bi bi-x-circle me-1"></i>{{ langService.lang() === 'es' ? 'Limpiar' : 'Clear' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Claims Table (Lista) -->
+    <div *ngIf="viewMode() === 'list'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light">
+            <tr>
+              <th class="ps-3 py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nº RECLAMO / FECHA' : 'CLAIM # / DATE' }}</th>
+              <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'ASEGURADORA' : 'INSURER' }}</th>
+              <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'PACIENTE & PÓLIZA' : 'PATIENT & POLICY' }}</th>
+              <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'SERVICIO & PERÍODO' : 'SERVICE & PERIOD' }}</th>
+              <th class="py-3 x-small fw-bold text-muted text-end">{{ langService.lang() === 'es' ? 'MONTO RECLAMADO' : 'CLAIMED AMOUNT' }}</th>
+              <th class="py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? 'ESTADO' : 'STATUS' }}</th>
+              <th class="pe-3 py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? 'ACCIONES' : 'ACTIONS' }}</th>
+            </tr>
+          </thead>
+          <tbody class="small">
+            <tr *ngFor="let c of filteredClaims()">
+              <!-- Claim # & Creation Date -->
+              <td class="ps-3">
+                <div class="fw-bold text-primary font-monospace fs-6">{{ c.claimNumber }}</div>
+                <small class="text-muted x-small d-block">
+                  <i class="bi bi-calendar-event me-1"></i>{{ formatDate(c.createdAt) }}
+                </small>
+              </td>
+
+              <!-- Insurance Company -->
+              <td>
+                <div class="fw-semibold text-dark">{{ c.InsuranceCompany?.name }}</div>
+                <span class="badge bg-light text-muted border rounded-pill x-small">{{ c.InsuranceCompany?.rif }}</span>
+              </td>
+
+              <!-- Patient & Policy / Authorization Code -->
+              <td>
+                <div class="fw-semibold text-dark">{{ c.Patient?.User?.firstName }} {{ c.Patient?.User?.lastName }}</div>
+                <small class="text-muted x-small d-block">C.I: {{ c.Patient?.documentId }}</small>
+                <div class="x-small text-primary mt-1" *ngIf="c.authorizationCode">
+                  <i class="bi bi-key-fill me-1"></i><strong>{{ langService.lang() === 'es' ? 'Aval:' : 'Auth:' }}</strong> {{ c.authorizationCode }}
+                </div>
+              </td>
+
+              <!-- Service Type & Range -->
+              <td>
+                <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill mb-1">
+                  {{ getServiceTypeLabel(c.serviceType) }}
+                </span>
+                <div class="x-small text-muted">
+                  <i class="bi bi-calendar3 me-1"></i>{{ formatDate(c.serviceStartDate) }} &rarr; {{ formatDate(c.serviceEndDate) }}
+                </div>
+                <div class="x-small text-muted" *ngIf="c.Doctor">
+                  <i class="bi bi-person-badge me-1"></i>Dr(a). {{ c.Doctor?.User?.firstName }} {{ c.Doctor?.User?.lastName }}
+                </div>
+              </td>
+
+              <!-- Total Claimed Amount (USD & VES at BCV rate) -->
+              <td class="text-end">
+                <div class="fw-bold text-success fs-6">{{ formatUSD(c.claimedAmountUSD) }}</div>
+                <small class="text-muted x-small font-monospace d-block">{{ formatVES(c.claimedAmountUSD, c.bcvRate) }}</small>
+                <span class="x-small text-muted" *ngIf="c.deductibleUSD > 0">
+                  {{ langService.lang() === 'es' ? 'Ded:' : 'Ded:' }} ${{ c.deductibleUSD }}
+                </span>
+              </td>
+
+              <!-- Status with Quick State Change -->
+              <td class="text-center">
+                <div class="dropdown">
+                  <button class="btn btn-sm dropdown-toggle rounded-pill py-1 px-2 fw-semibold x-small" [ngClass]="getStatusBadgeClass(c.status)" data-bs-toggle="dropdown" aria-expanded="false">
+                    {{ getStatusLabel(c.status) }}
+                  </button>
+                  <ul class="dropdown-menu shadow-sm border-0 rounded-3 x-small">
+                    <li><h6 class="dropdown-header x-small">{{ langService.lang() === 'es' ? 'Cambiar Estado:' : 'Change Status:' }}</h6></li>
+                    <li><a class="dropdown-item cursor-pointer" (click)="updateStatus(c, 'UNDER_REVIEW')"><i class="bi bi-hourglass text-warning me-2"></i>{{ langService.lang() === 'es' ? 'En Revisión Aseguradora' : 'Under Review' }}</a></li>
+                    <li><a class="dropdown-item cursor-pointer" (click)="updateStatus(c, 'APPROVED')"><i class="bi bi-check-circle text-success me-2"></i>{{ langService.lang() === 'es' ? 'Aprobar Siniestro' : 'Approve Claim' }}</a></li>
+                    <li><a class="dropdown-item cursor-pointer" (click)="updateStatus(c, 'PAID')"><i class="bi bi-cash-coin text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Marcar como Pagado' : 'Mark as Paid' }}</a></li>
+                    <li><a class="dropdown-item cursor-pointer" (click)="updateStatus(c, 'REJECTED')"><i class="bi bi-x-circle text-danger me-2"></i>{{ langService.lang() === 'es' ? 'Rechazar Siniestro' : 'Reject Claim' }}</a></li>
+                  </ul>
+                </div>
+              </td>
+
+              <!-- Actions -->
+              <td class="pe-3 text-center">
+                <div class="d-flex align-items-center justify-content-center gap-1">
+                  <!-- Open Voucher -->
+                  <button class="btn btn-outline-primary btn-sm rounded-circle p-2" [title]="langService.lang() === 'es' ? 'Ver / Imprimir Comprobante Oficial' : 'View / Print Claim Voucher'" (click)="openVoucherPreview(c)">
+                    <i class="bi bi-printer"></i>
+                  </button>
+                  <!-- Copy Public URL -->
+                  <button class="btn btn-outline-secondary btn-sm rounded-circle p-2" [title]="langService.lang() === 'es' ? 'Copiar Enlace Digital de Verificación' : 'Copy Digital Voucher Link'" (click)="copyPublicLink(c)">
+                    <i class="bi bi-link-45deg"></i>
+                  </button>
+                  <!-- Delete Claim -->
+                  <button class="btn btn-outline-danger btn-sm rounded-circle p-2" [title]="langService.lang() === 'es' ? 'Eliminar Reclamo' : 'Delete Claim'" (click)="deleteClaim(c)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+
+            <tr *ngIf="filteredClaims().length === 0">
+              <td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-file-earmark-medical display-6 d-block mb-2 text-secondary opacity-50"></i>
+                <p class="mb-2 fw-semibold">{{ langService.lang() === 'es' ? 'No se encontraron reclamos a aseguradoras' : 'No insurance claims found' }}</p>
+                <button class="btn btn-primary btn-sm rounded-pill px-3" (click)="openClaimModal()">
+                  <i class="bi bi-plus-circle me-1"></i>{{ langService.lang() === 'es' ? 'Crear Primer Reclamo' : 'Create First Claim' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VISTA 2: TABLERO KANBAN DE RECLAMOS & SINIESTROS ESTILO ODOO -->
+    <div *ngIf="viewMode() === 'kanban'" class="animate-fade-in">
+      <div class="row g-3">
+        <!-- Stage 1: Borrador / Apertura -->
+        <div class="col-12 col-md-6 col-xl">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-secondary">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-file-earmark-text text-secondary"></i>
+                <span>Apertura / Borrador</span>
+              </h6>
+              <span class="badge bg-secondary rounded-pill">{{ getClaimsByStage('EMITTED').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>{{ formatUSD(getClaimsStageTotalUSD('EMITTED')) }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let c of getClaimsByStage('EMITTED')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-primary text-white font-monospace x-small">{{ c.claimNumber }}</span>
+                  <span class="badge bg-light text-dark x-small">{{ formatDate(c.createdAt) }}</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ c.Patient?.User?.firstName }} {{ c.Patient?.User?.lastName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ c.InsuranceCompany?.name }}</div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-success">{{ formatUSD(c.claimedAmountUSD) }}</span>
+                  <button class="btn btn-outline-primary btn-xs rounded-pill" (click)="openVoucherPreview(c)">Comprobante</button>
+                </div>
+              </div>
+              <div *ngIf="getClaimsByStage('EMITTED').length === 0" class="text-center py-4 text-muted x-small">
+                Sin reclamos en apertura
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 2: En Auditoría Médica / Revisión -->
+        <div class="col-12 col-md-6 col-xl">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-warning">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-hourglass-split text-warning"></i>
+                <span>En Auditoría Médica</span>
+              </h6>
+              <span class="badge bg-warning text-dark rounded-pill">{{ getClaimsByStage('UNDER_REVIEW').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>{{ formatUSD(getClaimsStageTotalUSD('UNDER_REVIEW')) }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let c of getClaimsByStage('UNDER_REVIEW')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card border-start border-3 border-warning">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-warning text-dark font-monospace x-small">{{ c.claimNumber }}</span>
+                  <span class="badge bg-warning bg-opacity-10 text-dark x-small">Revisión</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ c.Patient?.User?.firstName }} {{ c.Patient?.User?.lastName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ c.InsuranceCompany?.name }}</div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-success">{{ formatUSD(c.claimedAmountUSD) }}</span>
+                  <button class="btn btn-outline-primary btn-xs rounded-pill" (click)="openVoucherPreview(c)">Comprobante</button>
+                </div>
+              </div>
+              <div *ngIf="getClaimsByStage('UNDER_REVIEW').length === 0" class="text-center py-4 text-muted x-small">
+                Sin reclamos en auditoría
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 3: Aprobado / Carta Aval Emitida -->
+        <div class="col-12 col-md-6 col-xl">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-info">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-shield-check text-info"></i>
+                <span>Carta Aval Aprobada</span>
+              </h6>
+              <span class="badge bg-info text-white rounded-pill">{{ getClaimsByStage('APPROVED').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>{{ formatUSD(getClaimsStageTotalUSD('APPROVED')) }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let c of getClaimsByStage('APPROVED')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card border-start border-3 border-info">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-info text-white font-monospace x-small">{{ c.claimNumber }}</span>
+                  <span class="badge bg-info bg-opacity-10 text-info x-small">Aprobado</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ c.Patient?.User?.firstName }} {{ c.Patient?.User?.lastName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ c.InsuranceCompany?.name }}</div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-success">{{ formatUSD(c.claimedAmountUSD) }}</span>
+                  <button class="btn btn-outline-info btn-xs rounded-pill" (click)="openVoucherPreview(c)">Ver</button>
+                </div>
+              </div>
+              <div *ngIf="getClaimsByStage('APPROVED').length === 0" class="text-center py-4 text-muted x-small">
+                Sin reclamos aprobados pendientes de cobro
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 4: Liquidado / Cobrado -->
+        <div class="col-12 col-md-6 col-xl">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-success">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-check2-all text-success"></i>
+                <span>Liquidado / Pagado</span>
+              </h6>
+              <span class="badge bg-success text-white rounded-pill">{{ getClaimsByStage('PAID').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>{{ formatUSD(getClaimsStageTotalUSD('PAID')) }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let c of getClaimsByStage('PAID')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card border-start border-3 border-success">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-success text-white font-monospace x-small">{{ c.claimNumber }}</span>
+                  <span class="badge bg-success bg-opacity-10 text-success x-small">Liquidado</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ c.Patient?.User?.firstName }} {{ c.Patient?.User?.lastName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ c.InsuranceCompany?.name }}</div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-success">{{ formatUSD(c.claimedAmountUSD) }}</span>
+                  <button class="btn btn-outline-success btn-xs rounded-pill" (click)="openVoucherPreview(c)">Comprobante</button>
+                </div>
+              </div>
+              <div *ngIf="getClaimsByStage('PAID').length === 0" class="text-center py-4 text-muted x-small">
+                Sin reclamos liquidados
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 5: Rechazado / Objetado -->
+        <div class="col-12 col-md-6 col-xl">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-danger">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-x-circle text-danger"></i>
+                <span>Rechazado / Objetado</span>
+              </h6>
+              <span class="badge bg-danger text-white rounded-pill">{{ getClaimsByStage('REJECTED').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>{{ formatUSD(getClaimsStageTotalUSD('REJECTED')) }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let c of getClaimsByStage('REJECTED')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card opacity-75">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-danger text-white font-monospace x-small">{{ c.claimNumber }}</span>
+                  <span class="badge bg-danger bg-opacity-10 text-danger x-small">Rechazado</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ c.Patient?.User?.firstName }} {{ c.Patient?.User?.lastName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ c.InsuranceCompany?.name }}</div>
+                <div class="d-flex justify-content-end pt-2 border-top">
+                  <button class="btn btn-outline-secondary btn-xs rounded-pill" (click)="openVoucherPreview(c)">Ver</button>
+                </div>
+              </div>
+              <div *ngIf="getClaimsByStage('REJECTED').length === 0" class="text-center py-4 text-muted x-small">
+                Sin reclamos rechazados
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: EMPRESAS ASEGURADORAS -->
+  <div *ngIf="!loading() && activeTab() === 'companies'" class="row g-3">
+    <div *ngFor="let c of filteredCompanies()" class="col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm rounded-4 h-100 bg-white p-3 hover-card">
+        <div class="d-flex align-items-start justify-content-between mb-2">
+          <div class="d-flex align-items-center gap-2">
+            <div class="ins-icon bg-success bg-opacity-10 text-success rounded-3 d-flex align-items-center justify-content-center p-2">
+              <i class="bi bi-shield-shaded fs-4"></i>
+            </div>
+            <div>
+              <span class="badge bg-light text-success border rounded-pill x-small px-2 mb-1">{{ c.rif }}</span>
+              <h6 class="fw-bold text-dark mb-0">{{ c.name }}</h6>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-muted x-small mb-3 mt-2">
+          <div class="mb-1"><i class="bi bi-person me-2 text-primary"></i><strong>{{ langService.lang() === 'es' ? 'Contacto:' : 'Contact:' }}</strong> {{ c.contactPerson || 'N/A' }}</div>
+          <div class="mb-1"><i class="bi bi-telephone me-2 text-primary"></i>{{ c.phone || 'N/A' }}</div>
+          <div><i class="bi bi-envelope me-2 text-primary"></i>{{ c.email || 'N/A' }}</div>
+        </div>
+
+        <div class="border-top pt-2 mt-auto d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small d-block">{{ langService.lang() === 'es' ? 'Cobertura Base' : 'Default Coverage' }}</span>
+            <span class="fw-bold text-success fs-6">{{ c.defaultCoveragePercent }}%</span>
+          </div>
+          <div class="text-end">
+            <span class="text-muted x-small d-block">{{ langService.lang() === 'es' ? 'Plazo de Pago' : 'Payment Term' }}</span>
+            <span class="fw-bold text-dark fs-6">{{ c.paymentTermDays }} {{ langService.lang() === 'es' ? 'días' : 'days' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: PÓLIZAS DE PACIENTES -->
+  <div *ngIf="!loading() && activeTab() === 'policies'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-3 py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nº PÓLIZA' : 'POLICY #' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'ASEGURADORA' : 'INSURER' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'PACIENTE / TITULAR' : 'PATIENT / HOLDER' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'COBERTURA' : 'COVERAGE' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? 'ESTADO' : 'STATUS' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of filteredPolicies()">
+            <td class="ps-3 fw-bold text-dark">{{ p.policyNumber }}</td>
+            <td>
+              <div class="fw-semibold text-primary">{{ p.InsuranceCompany?.name }}</div>
+              <small class="text-muted x-small">{{ p.InsuranceCompany?.rif }}</small>
+            </td>
+            <td>
+              <div class="fw-semibold text-dark">{{ p.Patient?.User?.firstName }} {{ p.Patient?.User?.lastName }}</div>
+              <small class="text-muted x-small">{{ langService.lang() === 'es' ? 'Titular:' : 'Holder:' }} {{ p.holderName || p.Patient?.User?.firstName }} ({{ p.relationship }})</small>
+            </td>
+            <td>
+              <span class="badge bg-success bg-opacity-10 text-success fw-bold">{{ p.coveragePercent }}%</span>
+              <span class="text-muted x-small ms-1">Deducible: ${{ p.deductibleUSD }}</span>
+            </td>
+            <td class="text-center">
+              <span class="badge rounded-pill bg-success-subtle text-success">{{ langService.lang() === 'es' ? 'Vigente' : 'Active' }}</span>
+            </td>
+          </tr>
+          <tr *ngIf="filteredPolicies().length === 0">
+            <td colspan="5" class="text-center py-4 text-muted small">
+              {{ langService.lang() === 'es' ? 'No hay pólizas registradas aún.' : 'No policies registered yet.' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: NUEVO RECLAMO A ASEGURADORA        -->
+<!-- ========================================== -->
+<div *ngIf="showClaimModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(5px);">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <!-- Modal Header -->
+      <div class="modal-header border-bottom px-4 py-3 bg-primary text-white">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-file-earmark-medical-fill fs-4"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0 text-white">{{ langService.lang() === 'es' ? 'Formulario de Reclamo a Empresa Aseguradora (Siniestro)' : 'Insurance Claim & Expense Voucher Form' }}</h5>
+            <small class="text-white-50 x-small">{{ langService.lang() === 'es' ? 'Emisión de expediente y comprobante oficial para cobro de gastos médicos' : 'Filing and voucher generation for medical expense settlement' }}</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white shadow-none" (click)="showClaimModal = false"></button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body p-4 bg-light">
+        <form (ngSubmit)="saveClaim()">
+          <!-- Section 1: Entidades & Cobertura -->
+          <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+              <i class="bi bi-1-circle-fill text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Datos del Paciente, Aseguradora y Médico Tratante' : 'Patient, Insurer & Doctor Details' }}
+            </h6>
+
+            <div class="row g-3">
+              <!-- Paciente -->
+              <div class="col-md-4">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Paciente Asegurado *' : 'Insured Patient *' }}</label>
+                <select class="form-select form-select-sm rounded-3" [(ngModel)]="newClaim.patientId" name="patientId" (ngModelChange)="onPatientChanged($event)" required>
+                  <option value="">{{ langService.lang() === 'es' ? '-- Seleccione Paciente --' : '-- Select Patient --' }}</option>
+                  <option *ngFor="let p of patients()" [value]="p.id">
+                    {{ p.User?.firstName }} {{ p.User?.lastName }} (C.I: {{ p.documentId }})
+                  </option>
+                </select>
+              </div>
+
+              <!-- Aseguradora -->
+              <div class="col-md-4">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Empresa Aseguradora *' : 'Insurance Company *' }}</label>
+                <select class="form-select form-select-sm rounded-3" [(ngModel)]="newClaim.insuranceCompanyId" name="insuranceCompanyId" required>
+                  <option value="">{{ langService.lang() === 'es' ? '-- Seleccione Aseguradora --' : '-- Select Insurer --' }}</option>
+                  <option *ngFor="let comp of companies()" [value]="comp.id">
+                    {{ comp.name }} ({{ comp.rif }})
+                  </option>
+                </select>
+              </div>
+
+              <!-- Médico Tratante -->
+              <div class="col-md-4">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Médico Tratante (Opcional)' : 'Attending Doctor' }}</label>
+                <select class="form-select form-select-sm rounded-3" [(ngModel)]="newClaim.doctorId" name="doctorId">
+                  <option value="">{{ langService.lang() === 'es' ? '-- Equipo Médico de la Clínica --' : '-- Clinic Medical Staff --' }}</option>
+                  <option *ngFor="let d of doctors()" [value]="d.id">
+                    Dr(a). {{ d.User?.firstName }} {{ d.User?.lastName }} ({{ d.Specialty?.name || 'Especialista' }})
+                  </option>
+                </select>
+              </div>
+
+              <!-- Nro de Poliza -->
+              <div class="col-md-3">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nro. de Póliza' : 'Policy Number' }}</label>
+                <input type="text" class="form-control form-control-sm rounded-3 font-monospace" [(ngModel)]="newClaim.policyNumber" name="policyNumber" placeholder="Ej. POL-99412">
+              </div>
+
+              <!-- Carta Aval / Clave -->
+              <div class="col-md-3">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Carta Aval / Clave de Autorización' : 'Approval / Aval Code' }}</label>
+                <input type="text" class="form-control form-control-sm rounded-3 font-monospace fw-bold text-primary" [(ngModel)]="newClaim.authorizationCode" name="authorizationCode" placeholder="Ej. AVAL-SC-2026-88">
+              </div>
+
+              <!-- Tipo de Servicio -->
+              <div class="col-md-6">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Tipo de Servicio Médico *' : 'Medical Service Type *' }}</label>
+                <select class="form-select form-select-sm rounded-3" [(ngModel)]="newClaim.serviceType" name="serviceType" required>
+                  <option value="CONSULTATION">{{ langService.lang() === 'es' ? 'Consulta Médica Especializada' : 'Specialist Consultation' }}</option>
+                  <option value="SURGERY">{{ langService.lang() === 'es' ? 'Intervención Quirúrgica (Cirugía)' : 'Surgery' }}</option>
+                  <option value="HOSPITALIZATION">{{ langService.lang() === 'es' ? 'Hospitalización y Cuidados Médicos' : 'Hospitalization' }}</option>
+                  <option value="EMERGENCY">{{ langService.lang() === 'es' ? 'Atención Médica de Emergencia' : 'Emergency Care' }}</option>
+                  <option value="PROCEDURE">{{ langService.lang() === 'es' ? 'Procedimiento Clínico / Ambulatorio' : 'Clinical Procedure' }}</option>
+                  <option value="LAB_IMAGING">{{ langService.lang() === 'es' ? 'Laboratorio Clínico e Imagenología' : 'Lab & Imaging' }}</option>
+                  <option value="OTHER">{{ langService.lang() === 'es' ? 'Otros Servicios Clínicos' : 'Other Clinical Services' }}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 2: Rango de Fechas & Diagnóstico -->
+          <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+            <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+              <i class="bi bi-2-circle-fill text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Período de Atención y Diagnóstico Clínico' : 'Service Period & Clinical Diagnosis' }}
+            </h6>
+
+            <div class="row g-3">
+              <!-- Fecha Inicio -->
+              <div class="col-md-3">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Fecha Inicio de Atención *' : 'Service Start Date *' }}</label>
+                <input type="date" class="form-control form-control-sm rounded-3" [(ngModel)]="newClaim.serviceStartDate" name="serviceStartDate" required>
+              </div>
+
+              <!-- Fecha Fin -->
+              <div class="col-md-3">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Fecha Fin de Atención *' : 'Service End Date *' }}</label>
+                <input type="date" class="form-control form-control-sm rounded-3" [(ngModel)]="newClaim.serviceEndDate" name="serviceEndDate" required>
+              </div>
+
+              <!-- Diagnóstico CIE-11 -->
+              <div class="col-md-6">
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Diagnóstico Clínico (CIE-11 / Motivo de Siniestro)' : 'Clinical Diagnosis (ICD-11 / Reason)' }}</label>
+                <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="newClaim.diagnosis" name="diagnosis" placeholder="Ej. DB10.0 - Apendicitis aguda / Cirugía laparoscópica">
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Desglose Detallado de Gastos Reclamados -->
+          <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+            <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+              <h6 class="fw-bold text-dark mb-0">
+                <i class="bi bi-3-circle-fill text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Desglose de Gastos, Honorarios e Insumos Reclamados' : 'Itemized Expenses, Fees & Supplies' }}
+              </h6>
+              <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold" (click)="addClaimItem()">
+                <i class="bi bi-plus-circle me-1"></i>{{ langService.lang() === 'es' ? 'Agregar Ítem' : 'Add Item' }}
+              </button>
+            </div>
+
+            <div class="table-responsive mb-3">
+              <table class="table table-bordered align-middle mb-0">
+                <thead class="bg-light text-muted x-small text-uppercase">
+                  <tr>
+                    <th style="width: 45%;">{{ langService.lang() === 'es' ? 'Descripción del Servicio / Insumo *' : 'Description *' }}</th>
+                    <th style="width: 15%;">{{ langService.lang() === 'es' ? 'Código / Tipo' : 'Code / Type' }}</th>
+                    <th class="text-center" style="width: 10%;">{{ langService.lang() === 'es' ? 'Cant.' : 'Qty' }}</th>
+                    <th class="text-end" style="width: 15%;">{{ langService.lang() === 'es' ? 'Precio Unit ($)' : 'Unit Price ($)' }}</th>
+                    <th class="text-end" style="width: 15%;">{{ langService.lang() === 'es' ? 'Subtotal ($)' : 'Subtotal ($)' }}</th>
+                    <th style="width: 5%;"></th>
+                  </tr>
+                </thead>
+                <tbody class="small">
+                  <tr *ngFor="let it of newClaim.items; let idx = index">
+                    <td>
+                      <input type="text" class="form-control form-control-sm rounded-2" [(ngModel)]="it.description" [name]="'desc_' + idx" required placeholder="Ej. Honorarios Médicos Quirúrgicos">
+                    </td>
+                    <td>
+                      <input type="text" class="form-control form-control-sm rounded-2 font-monospace" [(ngModel)]="it.code" [name]="'code_' + idx" placeholder="CÓD-01">
+                    </td>
+                    <td>
+                      <input type="number" class="form-control form-control-sm rounded-2 text-center" [(ngModel)]="it.quantity" [name]="'qty_' + idx" (ngModelChange)="updateItemTotal(it)" min="1">
+                    </td>
+                    <td>
+                      <input type="number" class="form-control form-control-sm rounded-2 text-end" [(ngModel)]="it.unitPriceUSD" [name]="'price_' + idx" (ngModelChange)="updateItemTotal(it)" min="0" step="0.01">
+                    </td>
+                    <td class="text-end fw-bold font-monospace text-dark">
+                      $ {{ (it.quantity * it.unitPriceUSD) | number:'1.2-2' }}
+                    </td>
+                    <td class="text-center">
+                      <button type="button" class="btn btn-outline-danger btn-sm border-0 p-1" (click)="removeClaimItem(idx)" [disabled]="newClaim.items.length === 1">
+                        <i class="bi bi-x-lg"></i>
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Financial Totals & Bimoneda Calculations -->
+            <div class="row g-3 justify-content-end">
+              <div class="col-md-6 col-lg-5">
+                <div class="bg-light p-3 rounded-4 border">
+                  <!-- Gross Amount -->
+                  <div class="d-flex justify-content-between py-1 border-bottom small">
+                    <span class="text-muted">{{ langService.lang() === 'es' ? 'Total Bruto Gastos Médicos:' : 'Total Gross Expenses:' }}</span>
+                    <strong class="text-dark font-monospace">$ {{ getGrossAmountUSD() | number:'1.2-2' }}</strong>
+                  </div>
+
+                  <!-- Deductible -->
+                  <div class="d-flex justify-content-between align-items-center py-2 border-bottom small">
+                    <span class="text-danger">{{ langService.lang() === 'es' ? 'Deducible (A cargo paciente):' : 'Deductible (Patient):' }}</span>
+                    <div class="input-group input-group-sm" style="max-width: 140px;">
+                      <span class="input-group-text">$</span>
+                      <input type="number" class="form-control text-end text-danger fw-bold" [(ngModel)]="newClaim.deductibleUSD" name="deductibleUSD" min="0" step="0.01">
+                    </div>
+                  </div>
+
+                  <!-- Net Claimed USD -->
+                  <div class="d-flex justify-content-between py-2 border-bottom">
+                    <span class="fw-bold text-dark fs-6">{{ langService.lang() === 'es' ? 'TOTAL NETO RECLAMADO:' : 'TOTAL NET CLAIMED:' }}</span>
+                    <span class="fw-bold text-primary fs-5 font-monospace">$ {{ getClaimedAmountUSD() | number:'1.2-2' }}</span>
+                  </div>
+
+                  <!-- Net Claimed VES (BCV) -->
+                  <div class="d-flex justify-content-between align-items-center bg-white p-2 rounded-3 border mt-2">
+                    <div>
+                      <span class="x-small text-muted d-block text-uppercase fw-bold">{{ langService.lang() === 'es' ? 'Total en Bolívares (BCV)' : 'Total in VES (BCV)' }}</span>
+                      <span class="x-small text-muted font-monospace">Tasa: {{ currencyService.rate }} Bs/$</span>
+                    </div>
+                    <span class="fw-bold text-success fs-6 font-monospace">
+                      {{ formatVES(getClaimedAmountUSD(), currencyService.rate) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Observaciones -->
+          <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+            <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Observaciones / Notas para la Aseguradora' : 'Observations & Insurance Notes' }}</label>
+            <textarea class="form-control form-control-sm rounded-3" rows="2" [(ngModel)]="newClaim.notes" name="notes" placeholder="Ej. Se anexa copia de informe médico, resultados de patología e historia clínica de ingreso."></textarea>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <button type="button" class="btn btn-light rounded-pill px-4" (click)="showClaimModal = false">
+              {{ langService.lang() === 'es' ? 'Cancelar' : 'Cancel' }}
+            </button>
+            <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+              <i class="bi bi-file-earmark-check-fill me-1"></i>
+              {{ langService.lang() === 'es' ? 'Generar y Emitir Reclamo' : 'Submit & Generate Claim' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: COMPROBANTE OFICIAL DE SINIESTRO   -->
+<!-- ========================================== -->
+<div *ngIf="showVoucherPreviewModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(5px);">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <!-- Modal Toolbar -->
+      <div class="modal-header border-bottom px-4 py-3 bg-light d-print-none">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-file-earmark-medical text-primary fs-4"></i>
+          <div>
+            <h5 class="modal-title fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Comprobante Oficial de Reclamo a Aseguradora' : 'Official Insurance Claim Voucher' }}</h5>
+            <small class="text-muted x-small">Siniestro Ref: {{ selectedClaimForPreview?.claimNumber }}</small>
+          </div>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill px-3" (click)="copyPublicLink(selectedClaimForPreview)">
+            <i class="bi bi-link-45deg me-1"></i>{{ langService.lang() === 'es' ? 'Copiar Enlace' : 'Copy Link' }}
+          </button>
+          <button type="button" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" (click)="printCurrentVoucher()">
+            <i class="bi bi-printer-fill me-1"></i>{{ langService.lang() === 'es' ? 'Imprimir / Guardar PDF' : 'Print / PDF' }}
+          </button>
+          <button type="button" class="btn-close shadow-none ms-2" (click)="showVoucherPreviewModal = false"></button>
+        </div>
+      </div>
+
+      <!-- Printable Voucher Area -->
+      <div class="modal-body p-4 p-md-5 bg-white print-area">
+        <!-- Document Header Bar -->
+        <div class="border-bottom pb-4 mb-4">
+          <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+              <span class="badge bg-primary text-white rounded-pill px-3 py-1 fw-bold text-uppercase x-small mb-2">
+                {{ langService.lang() === 'es' ? 'COMPROBANTE OFICIAL DE RECLAMO DE SINIESTRO MÉDICO' : 'OFFICIAL MEDICAL CLAIM VOUCHER' }}
+              </span>
+              <h3 class="fw-bold mb-1 text-dark">{{ selectedClaimForPreview?.organization?.name || 'CLÍNICA - SAAS INTERNACIONAL' }}</h3>
+              <p class="text-muted small mb-0">
+                RIF: {{ selectedClaimForPreview?.organization?.rif || 'J-40987654-1' }} | {{ selectedClaimForPreview?.organization?.address || 'Centro Médico Hospitalario Caracas, Venezuela' }}
+              </p>
+              <span class="x-small text-muted">Tlf: {{ selectedClaimForPreview?.organization?.phone || '+58 212-555-0100' }} | Email: {{ selectedClaimForPreview?.organization?.email || 'reclamos@clinicasaas.com' }}</span>
+            </div>
+            <div class="text-end">
+              <span class="d-block x-small text-muted text-uppercase fw-bold">{{ langService.lang() === 'es' ? 'Nro. de Siniestro' : 'Claim Number' }}</span>
+              <span class="fs-4 fw-bold text-primary font-monospace">{{ selectedClaimForPreview?.claimNumber }}</span>
+              <div class="mt-1">
+                <span class="badge rounded-pill px-3 py-1" [ngClass]="getStatusBadgeClass(selectedClaimForPreview?.status)">
+                  {{ getStatusLabel(selectedClaimForPreview?.status) }}
+                </span>
+              </div>
+              <span class="d-block x-small text-muted mt-1">{{ langService.lang() === 'es' ? 'Fecha Emisión:' : 'Issued Date:' }} {{ formatDate(selectedClaimForPreview?.createdAt) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2-Column Info: Insurer & Patient -->
+        <div class="row g-4 mb-4">
+          <div class="col-md-6">
+            <div class="p-3 rounded-4 border bg-light bg-opacity-50 h-100">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mb-2">
+                <i class="bi bi-shield-shaded text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Empresa Aseguradora' : 'Insurance Provider' }}
+              </h6>
+              <div class="small">
+                <strong class="d-block text-dark fs-6">{{ selectedClaimForPreview?.insuranceCompany?.name }}</strong>
+                <span class="badge bg-light text-dark border rounded-pill x-small mb-2">{{ selectedClaimForPreview?.insuranceCompany?.rif }}</span>
+                <div class="x-small text-muted">
+                  <div class="mb-1"><strong>{{ langService.lang() === 'es' ? 'Contacto:' : 'Contact:' }}</strong> {{ selectedClaimForPreview?.insuranceCompany?.contactPerson || 'Departamento de Siniestros' }}</div>
+                  <div class="mb-1"><i class="bi bi-envelope me-1"></i>{{ selectedClaimForPreview?.insuranceCompany?.email || 'N/A' }}</div>
+                  <div><i class="bi bi-telephone me-1"></i>{{ selectedClaimForPreview?.insuranceCompany?.phone || 'N/A' }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="p-3 rounded-4 border bg-light bg-opacity-50 h-100">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mb-2">
+                <i class="bi bi-person-vcard text-success me-2"></i>{{ langService.lang() === 'es' ? 'Paciente Asegurado & Póliza' : 'Patient & Policy' }}
+              </h6>
+              <div class="small">
+                <strong class="d-block text-dark fs-6">{{ selectedClaimForPreview?.patient?.User?.firstName }} {{ selectedClaimForPreview?.patient?.User?.lastName }}</strong>
+                <span class="x-small text-muted d-block mb-2">C.I. / DNI: {{ selectedClaimForPreview?.patient?.documentId }}</span>
+                <div class="p-2 bg-white rounded-3 border x-small">
+                  <div class="d-flex justify-content-between mb-1">
+                    <span class="text-muted">{{ langService.lang() === 'es' ? 'Nro. de Póliza:' : 'Policy No.:' }}</span>
+                    <strong class="text-dark font-monospace">{{ selectedClaimForPreview?.policyNumber || 'N/A' }}</strong>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span class="text-muted">{{ langService.lang() === 'es' ? 'Carta Aval / Clave:' : 'Approval Code:' }}</span>
+                    <strong class="text-primary font-monospace">{{ selectedClaimForPreview?.authorizationCode || 'N/A' }}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service Period & Medical Staff -->
+        <div class="card border rounded-4 p-3 bg-light bg-opacity-25 mb-4">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <span class="text-muted x-small text-uppercase fw-bold d-block">{{ langService.lang() === 'es' ? 'Tipo de Servicio' : 'Service Type' }}</span>
+              <span class="badge bg-secondary rounded-pill px-3 py-1 fw-semibold mt-1">{{ getServiceTypeLabel(selectedClaimForPreview?.serviceType) }}</span>
+            </div>
+            <div class="col-md-4">
+              <span class="text-muted x-small text-uppercase fw-bold d-block">{{ langService.lang() === 'es' ? 'Rango de Fecha de Atención' : 'Service Date Range' }}</span>
+              <strong class="text-dark d-block mt-1">
+                <i class="bi bi-calendar3 me-1 text-primary"></i>{{ formatDate(selectedClaimForPreview?.serviceStartDate) }} &rarr; {{ formatDate(selectedClaimForPreview?.serviceEndDate) }}
+              </strong>
+            </div>
+            <div class="col-md-4">
+              <span class="text-muted x-small text-uppercase fw-bold d-block">{{ langService.lang() === 'es' ? 'Médico Tratante' : 'Attending Doctor' }}</span>
+              <strong class="text-dark d-block mt-1">{{ selectedClaimForPreview?.doctor ? ('Dr(a). ' + selectedClaimForPreview?.doctor?.User?.firstName + ' ' + selectedClaimForPreview?.doctor?.User?.lastName) : 'Equipo Médico Hospitalario' }}</strong>
+              <span class="x-small text-muted" *ngIf="selectedClaimForPreview?.doctor">
+                {{ selectedClaimForPreview?.doctor?.Specialty?.name || 'Especialista' }} | MPPS: {{ selectedClaimForPreview?.doctor?.mppsNumber || 'N/A' }}
+              </span>
+            </div>
+            <div class="col-12 pt-2 border-top" *ngIf="selectedClaimForPreview?.diagnosis">
+              <span class="text-muted x-small text-uppercase fw-bold d-block">{{ langService.lang() === 'es' ? 'Diagnóstico Clínico / CIE-11' : 'Clinical Diagnosis / ICD-11' }}</span>
+              <p class="text-dark mb-0 small fst-italic">{{ selectedClaimForPreview?.diagnosis }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Itemized Table -->
+        <div class="mb-4">
+          <h6 class="fw-bold text-dark mb-3">
+            <i class="bi bi-receipt-cutoff me-2 text-primary"></i>{{ langService.lang() === 'es' ? 'Desglose de Gastos Médicos Reclamados' : 'Itemized Medical Expenses' }}
+          </h6>
+          <div class="table-responsive">
+            <table class="table table-bordered align-middle mb-0">
+              <thead class="bg-light text-muted x-small text-uppercase">
+                <tr>
+                  <th class="ps-3" style="width: 45%;">{{ langService.lang() === 'es' ? 'Descripción del Servicio / Insumo' : 'Description' }}</th>
+                  <th class="text-center" style="width: 15%;">{{ langService.lang() === 'es' ? 'Código' : 'Code' }}</th>
+                  <th class="text-center" style="width: 10%;">{{ langService.lang() === 'es' ? 'Cant.' : 'Qty' }}</th>
+                  <th class="text-end" style="width: 15%;">{{ langService.lang() === 'es' ? 'Precio Unit ($)' : 'Unit Price ($)' }}</th>
+                  <th class="text-end pe-3" style="width: 15%;">{{ langService.lang() === 'es' ? 'Subtotal ($)' : 'Subtotal ($)' }}</th>
+                </tr>
+              </thead>
+              <tbody class="small">
+                <tr *ngFor="let it of selectedClaimForPreview?.items">
+                  <td class="ps-3 fw-semibold text-dark">{{ it.description }}</td>
+                  <td class="text-center"><span class="badge bg-light text-muted border rounded-pill x-small">{{ it.code || 'SERV' }}</span></td>
+                  <td class="text-center font-monospace">{{ it.quantity || 1 }}</td>
+                  <td class="text-end font-monospace">$ {{ formatUSD(it.unitPriceUSD).replace('$', '') }}</td>
+                  <td class="text-end pe-3 fw-bold text-dark font-monospace">$ {{ formatUSD(it.totalUSD || (it.quantity * it.unitPriceUSD)).replace('$', '') }}</td>
+                </tr>
+                <tr *ngIf="!selectedClaimForPreview?.items || selectedClaimForPreview?.items.length === 0">
+                  <td class="ps-3 fw-semibold text-dark">{{ getServiceTypeLabel(selectedClaimForPreview?.serviceType) }}</td>
+                  <td class="text-center"><span class="badge bg-light text-muted border rounded-pill x-small">SERV-01</span></td>
+                  <td class="text-center font-monospace">1</td>
+                  <td class="text-end font-monospace">$ {{ formatUSD(selectedClaimForPreview?.grossAmountUSD).replace('$', '') }}</td>
+                  <td class="text-end pe-3 fw-bold text-dark font-monospace">$ {{ formatUSD(selectedClaimForPreview?.grossAmountUSD).replace('$', '') }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Totals in USD & VES (BCV rate) -->
+        <div class="row g-3 justify-content-end mb-4">
+          <div class="col-md-6">
+            <div class="card border-0 bg-light p-3 rounded-4 shadow-sm">
+              <div class="d-flex justify-content-between py-1 border-bottom small">
+                <span class="text-muted">{{ langService.lang() === 'es' ? 'Total Gastos Médicos (Bruto):' : 'Total Medical Expenses (Gross):' }}</span>
+                <strong class="text-dark font-monospace">$ {{ selectedClaimForPreview?.grossAmountUSD }}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-1 border-bottom small text-danger" *ngIf="selectedClaimForPreview?.deductibleUSD > 0">
+                <span>{{ langService.lang() === 'es' ? 'Menos Deducible a cargo paciente:' : 'Less Deductible:' }}</span>
+                <strong class="font-monospace">-$ {{ selectedClaimForPreview?.deductibleUSD }}</strong>
+              </div>
+              <div class="d-flex justify-content-between py-2 border-bottom">
+                <span class="fw-bold text-dark fs-6">{{ langService.lang() === 'es' ? 'TOTAL NETO RECLAMADO (USD):' : 'TOTAL NET CLAIMED (USD):' }}</span>
+                <span class="fw-bold text-primary fs-5 font-monospace">$ {{ selectedClaimForPreview?.claimedAmountUSD }}</span>
+              </div>
+              <div class="d-flex justify-content-between py-2 align-items-center bg-white rounded-3 px-3 mt-2 border">
+                <div>
+                  <span class="x-small text-muted d-block text-uppercase fw-bold">{{ langService.lang() === 'es' ? 'Total en Bolívares (Tasa Oficial BCV)' : 'Total in VES (Official BCV Rate)' }}</span>
+                  <span class="x-small text-muted font-monospace">Tasa: {{ selectedClaimForPreview?.bcvRate }} Bs/$</span>
+                </div>
+                <span class="fw-bold text-success fs-5 font-monospace">Bs. {{ selectedClaimForPreview?.claimedAmountVES }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-4" *ngIf="selectedClaimForPreview?.notes">
+          <div class="p-3 bg-light rounded-4 border">
+            <h6 class="fw-bold text-dark x-small text-uppercase mb-1">{{ langService.lang() === 'es' ? 'Observaciones / Notas Adicionales' : 'Remarks / Notes' }}</h6>
+            <p class="small text-muted mb-0">{{ selectedClaimForPreview?.notes }}</p>
+          </div>
+        </div>
+
+        <!-- Signature Boxes -->
+        <div class="row g-4 pt-4 mt-2 border-top text-center">
+          <div class="col-4">
+            <div class="border-top border-dark pt-2 mx-2">
+              <span class="fw-bold small d-block text-dark">{{ selectedClaimForPreview?.doctor ? ('Dr(a). ' + selectedClaimForPreview?.doctor?.User?.firstName + ' ' + selectedClaimForPreview?.doctor?.User?.lastName) : 'Médico Tratante' }}</span>
+              <span class="x-small text-muted d-block">{{ langService.lang() === 'es' ? 'Firma y Sello Médico' : 'Doctor Stamp & Signature' }}</span>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="border-top border-dark pt-2 mx-2">
+              <span class="fw-bold small d-block text-dark">{{ langService.lang() === 'es' ? 'Auditoría Clínica' : 'Clinic Auditor' }}</span>
+              <span class="x-small text-muted d-block">{{ langService.lang() === 'es' ? 'Firma Autorizada Clínica' : 'Authorized Clinic Stamp' }}</span>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="border-top border-dark pt-2 mx-2">
+              <span class="fw-bold small d-block text-dark">{{ selectedClaimForPreview?.patient?.User?.firstName }} {{ selectedClaimForPreview?.patient?.User?.lastName }}</span>
+              <span class="x-small text-muted d-block">{{ langService.lang() === 'es' ? 'Firma del Asegurado' : 'Insured Signature' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Verification Seal -->
+        <div class="row g-3 align-items-center pt-4 mt-3 border-top x-small text-muted">
+          <div class="col-md-9">
+            <p class="mb-1">
+              <strong>{{ langService.lang() === 'es' ? 'Validez Legal:' : 'Legal Compliance:' }}</strong> 
+              {{ langService.lang() === 'es' ? 'Comprobante emitido según la Ley de la Actividad Aseguradora y normativa SENIAT / MPPS.' : 'Official voucher issued under national insurance and tax regulations.' }}
+            </p>
+            <span class="font-monospace d-block">UUID Token: {{ selectedClaimForPreview?.claimToken }}</span>
+          </div>
+          <div class="col-md-3 text-md-end">
+            <div class="border p-2 rounded-3 d-inline-block bg-light text-center">
+              <i class="bi bi-qr-code fs-3 text-dark d-block"></i>
+              <span class="x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Verificado' : 'Verified' }}</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: REGISTRAR ASEGURADORA               -->
+<!-- ========================================== -->
+<div *ngIf="showCompanyModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-dark">{{ langService.lang() === 'es' ? 'Registrar Empresa Aseguradora' : 'Register Insurance Provider' }}</h5>
+        <button type="button" class="btn-close shadow-none" (click)="showCompanyModal = false"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="saveCompany()">
+          <div class="row g-3">
+            <div class="col-sm-8">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Razón Social / Nombre *' : 'Company Name *' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentCompany.name" name="name" required placeholder="Ej. Seguros Caracas, C.A.">
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'RIF Fiscal *' : 'Tax ID / RIF *' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentCompany.rif" name="rif" required placeholder="J-12345678-0">
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Persona de Contacto' : 'Contact Person' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentCompany.contactPerson" name="contactPerson" placeholder="Lcdo. Juan Pérez">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Teléfono' : 'Phone' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentCompany.phone" name="phone" placeholder="+58 212-0000000">
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Correo de Siniestros / Cartas Aval' : 'Claims / Support Email' }}</label>
+              <input type="email" class="form-control form-control-sm rounded-3" [(ngModel)]="currentCompany.email" name="email" placeholder="salud@aseguradora.com">
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? '% Cobertura' : '% Coverage' }}</label>
+              <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentCompany.defaultCoveragePercent" name="defaultCoveragePercent">
+            </div>
+            <div class="col-sm-3">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Días Plazo' : 'Term Days' }}</label>
+              <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentCompany.paymentTermDays" name="paymentTermDays">
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="showCompanyModal = false">{{ langService.lang() === 'es' ? 'Cancelar' : 'Cancel' }}</button>
+            <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm">{{ langService.lang() === 'es' ? 'Guardar' : 'Save' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: ASIGNAR PÓLIZA A PACIENTE           -->
+<!-- ========================================== -->
+<div *ngIf="showPolicyModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-dark">{{ langService.lang() === 'es' ? 'Asignar Póliza a Paciente' : 'Assign Policy to Patient' }}</h5>
+        <button type="button" class="btn-close shadow-none" (click)="showPolicyModal = false"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="savePolicy()">
+          <div class="row g-3">
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Paciente *' : 'Patient *' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentPolicy.patientId" name="patientId" required>
+                <option value="">{{ langService.lang() === 'es' ? '-- Seleccione Paciente --' : '-- Select Patient --' }}</option>
+                <option *ngFor="let p of patients()" [value]="p.id">{{ p.User?.firstName }} {{ p.User?.lastName }} ({{ p.documentId }})</option>
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Aseguradora *' : 'Insurer *' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentPolicy.insuranceCompanyId" name="insuranceCompanyId" required>
+                <option value="">{{ langService.lang() === 'es' ? '-- Seleccione Aseguradora --' : '-- Select Insurer --' }}</option>
+                <option *ngFor="let c of companies()" [value]="c.id">{{ c.name }}</option>
+              </select>
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nro. de Póliza *' : 'Policy Number *' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3 font-monospace" [(ngModel)]="currentPolicy.policyNumber" name="policyNumber" required placeholder="POL-12345">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nro. Certificado / Carnet' : 'Certificate Number' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3 font-monospace" [(ngModel)]="currentPolicy.certificateNumber" name="certificateNumber" placeholder="CERT-001">
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nombre del Titular' : 'Holder Name' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentPolicy.holderName" name="holderName" placeholder="Nombre completo">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Parentesco' : 'Relationship' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentPolicy.relationship" name="relationship">
+                <option value="Titular">Titular</option>
+                <option value="Cónyuge">Cónyuge</option>
+                <option value="Hijo(a)">Hijo(a)</option>
+                <option value="Padre/Madre">Padre/Madre</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? '% Cobertura' : '% Coverage' }}</label>
+              <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentPolicy.coveragePercent" name="coveragePercent">
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Deducible USD ($)' : 'Deductible USD ($)' }}</label>
+              <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentPolicy.deductibleUSD" name="deductibleUSD">
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="showPolicyModal = false">{{ langService.lang() === 'es' ? 'Cancelar' : 'Cancel' }}</button>
+            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm">{{ langService.lang() === 'es' ? 'Guardar Póliza' : 'Save Policy' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

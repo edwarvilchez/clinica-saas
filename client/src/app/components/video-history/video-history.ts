@@ -197,14 +197,14 @@ export class VideoHistory implements OnInit {
     const doc = new jsPDF();
 
     // Header
-    doc.setFillColor('#10b981'); // MedicalCare Emerald Green
+    doc.setFillColor('#10b981'); // Emerald Green
     doc.rect(0, 0, 210, 40, 'F');
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     doc.text(t('video_history.reportTitle'), 20, 25);
     doc.setFontSize(10);
-    doc.text('MedicalCare 888 — ' + t('video_history.telemedPlatform'), 115, 25);
+    doc.text('Clinica - SaaS — ' + t('video_history.telemedPlatform'), 115, 25);
 
     doc.setTextColor(60, 60, 60);
     doc.setFontSize(10);
@@ -243,8 +243,8 @@ export class VideoHistory implements OnInit {
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.text(`${t('video_history.generatedOn')} / Generated: ${new Date().toLocaleString()}`, 20, pageH - 10);
-    doc.text('MedicalCare888.com', 170, pageH - 10);
+    doc.text('clinicasaas.com', 170, pageH - 10);
 
-    doc.save(`MedicalCare888_Report_${vc.id}.pdf`);
+    doc.save(`ClinicaSaaS_Report_${vc.id}.pdf`);
   }
 }

@@ -103,20 +103,30 @@ export class CurrencyService {
     localStorage.setItem('exchangeRate', rate.toString());
   }
 
-  convert(amount: number, from: Currency, to: Currency): number {
-    if (from === to) return amount;
-    if (from === 'USD' && to === 'VES') return amount * this.exchangeRate();
-    if (from === 'VES' && to === 'USD') return amount / this.exchangeRate();
-    return amount;
+  convert(amount: number | string | any, from: Currency, to: Currency): number {
+    const num = typeof amount === 'number' ? amount : parseFloat(amount || '0');
+    if (from === to) return num;
+    if (from === 'USD' && to === 'VES') return num * this.exchangeRate();
+    if (from === 'VES' && to === 'USD') return num / this.exchangeRate();
+    return num;
   }
 
-  formatAmount(amount: number, currency?: Currency): string {
+  formatAmount(amount: number | string | any, currency?: Currency): string {
+    const num = typeof amount === 'number' ? amount : parseFloat(amount || '0');
     const targetCurrency = currency || this.currentCurrency();
-    const converted = this.convert(amount, 'USD', targetCurrency);
+    const converted = this.convert(num, 'USD', targetCurrency);
     
-    return new Intl.NumberFormat(targetCurrency === 'USD' ? 'en-US' : 'es-VE', {
+    if (targetCurrency === 'VES') {
+      const formatted = new Intl.NumberFormat('es-VE', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(converted);
+      return `Bs. ${formatted}`;
+    }
+
+    return new Intl.NumberFormat('en-US', {
       style: 'currency',
-      currency: targetCurrency,
+      currency: 'USD',
       minimumFractionDigits: 2
     }).format(converted);
   }

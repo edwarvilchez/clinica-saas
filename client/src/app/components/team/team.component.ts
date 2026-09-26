@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TeamService, TeamMember } from '../../services/team.service';
@@ -13,12 +13,12 @@ import Swal from 'sweetalert2';
   imports: [CommonModule, FormsModule, TranslatePipe],
   template: `
     <div class="container-fluid p-4 fade-in">
-      <div class="d-flex justify-content-between align-items-center mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
         <div>
           <h2 class="fw-bold text-dark mb-1">{{ 'team.title' | translate }}</h2>
-          <p class="text-muted">{{ 'team.subtitle' | translate }}</p>
+          <p class="text-muted small mb-0">{{ 'team.subtitle' | translate }}</p>
         </div>
-        <button class="btn btn-primary-premium transition-all" (click)="toggleForm()">
+        <button class="btn btn-primary-premium transition-all shadow-sm" (click)="toggleForm()">
           <i class="bi" [class.bi-plus-lg]="!showForm" [class.bi-x-lg]="showForm"></i>
           {{ showForm ? ('common.cancel' | translate) : ('team.addMember' | translate) }}
         </button>
@@ -76,8 +76,44 @@ import Swal from 'sweetalert2';
         </div>
       </div>
 
-      <!-- Team List -->
-      <div class="card-premium border-0 shadow-sm overflow-hidden animate-fade-in">
+      <!-- Search & View Mode Switcher -->
+      <div class="card-premium border-0 p-3 mb-4">
+        <div class="row g-3 align-items-center">
+          <div class="col-md-6 col-lg-7">
+            <div class="input-group glass-morphism rounded-3 border">
+              <span class="input-group-text bg-transparent border-0"><i class="bi bi-search text-muted"></i></span>
+              <input
+                type="text"
+                class="form-control bg-transparent border-0 py-2 shadow-none"
+                [placeholder]="'common.search' | translate"
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchTerm.set($event)"
+              />
+            </div>
+          </div>
+          <div class="col-md-6 col-lg-5 d-flex align-items-center justify-content-md-end gap-3 flex-wrap">
+            <div class="btn-group bg-light p-1 rounded-pill border shadow-sm" role="group">
+              <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+                [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+                (click)="viewMode.set('list')">
+                <i class="bi bi-list-ul"></i><span class="small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+              </button>
+              <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+                [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+                (click)="viewMode.set('kanban')">
+                <i class="bi bi-kanban-fill"></i><span class="small">Kanban</span>
+              </button>
+            </div>
+
+            <div class="badge bg-light text-dark border p-2">
+              Total: <strong>{{ filteredMembers().length }}</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIST VIEW -->
+      <div *ngIf="viewMode() === 'list'" class="card-premium border-0 shadow-sm overflow-hidden animate-fade-in">
         <div class="card-body p-0">
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
@@ -90,11 +126,11 @@ import Swal from 'sweetalert2';
                 </tr>
               </thead>
               <tbody>
-                <tr *ngFor="let member of teamService.members()">
+                <tr *ngFor="let member of filteredMembers()">
                   <td class="ps-4">
                     <div class="d-flex align-items-center gap-3">
                       <div class="avatar-circle shadow-sm bg-primary bg-opacity-10 text-primary fw-bold transition-all">
-                        {{ member.firstName.charAt(0) }}{{ member.lastName.charAt(0) }}
+                        {{ (member.firstName || 'U').charAt(0) }}{{ (member.lastName || '').charAt(0) }}
                       </div>
                       <div>
                         <div class="fw-bold text-dark">{{ member.firstName }} {{ member.lastName }}</div>
@@ -117,7 +153,7 @@ import Swal from 'sweetalert2';
                     </button>
                   </td>
                 </tr>
-                <tr *ngIf="teamService.members().length === 0">
+                <tr *ngIf="filteredMembers().length === 0">
                   <td colspan="4" class="text-center py-5 text-muted">
                     <div class="py-4">
                       <i class="bi bi-people fs-1 d-block mb-3 opacity-25"></i>
@@ -127,6 +163,145 @@ import Swal from 'sweetalert2';
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- KANBAN VIEW (Odoo ERP Style by Role) -->
+      <div *ngIf="viewMode() === 'kanban'" class="row g-3">
+        <!-- Col 1: Médicos -->
+        <div class="col-md-6 col-xl-3">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-info">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-bold text-info mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-heart-pulse-fill"></i> {{ langService.lang() === 'es' ? 'Médicos' : 'Doctors' }}
+              </h6>
+              <span class="badge bg-info text-white rounded-pill px-2">{{ doctorMembers().length }}</span>
+            </div>
+            <div class="d-flex flex-column gap-2" style="max-height: 600px; overflow-y: auto;">
+              <div *ngFor="let m of doctorMembers()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div class="avatar-circle shadow-sm bg-info bg-opacity-10 text-info fw-bold">
+                    {{ (m.firstName || 'U').charAt(0) }}{{ (m.lastName || '').charAt(0) }}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold text-dark mb-0">{{ m.firstName }} {{ m.lastName }}</h6>
+                    <span class="text-muted x-small">{{ m.email }}</span>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="badge bg-info bg-opacity-10 text-info">{{ m.licenseNumber || 'Médico' }}</span>
+                  <button class="btn btn-xs btn-light rounded-circle text-danger" (click)="removeMember(m.id)" [disabled]="m.id === authService.currentUser()?.id">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div *ngIf="doctorMembers().length === 0" class="text-center py-4 text-muted small">
+                Sin médicos registrados
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Col 2: Enfermería -->
+        <div class="col-md-6 col-xl-3">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-success">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-bold text-success mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-bandaid-fill"></i> {{ langService.lang() === 'es' ? 'Enfermería' : 'Nursing' }}
+              </h6>
+              <span class="badge bg-success rounded-pill px-2">{{ nurseMembers().length }}</span>
+            </div>
+            <div class="d-flex flex-column gap-2" style="max-height: 600px; overflow-y: auto;">
+              <div *ngFor="let m of nurseMembers()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div class="avatar-circle shadow-sm bg-success bg-opacity-10 text-success fw-bold">
+                    {{ (m.firstName || 'U').charAt(0) }}{{ (m.lastName || '').charAt(0) }}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold text-dark mb-0">{{ m.firstName }} {{ m.lastName }}</h6>
+                    <span class="text-muted x-small">{{ m.email }}</span>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="badge bg-success bg-opacity-10 text-success">{{ m.licenseNumber || 'Enfermero/a' }}</span>
+                  <button class="btn btn-xs btn-light rounded-circle text-danger" (click)="removeMember(m.id)" [disabled]="m.id === authService.currentUser()?.id">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div *ngIf="nurseMembers().length === 0" class="text-center py-4 text-muted small">
+                Sin enfermeros/as registrados
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Col 3: Administración -->
+        <div class="col-md-6 col-xl-3">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-warning">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-bold text-warning mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-shield-lock-fill"></i> {{ langService.lang() === 'es' ? 'Administración' : 'Admin & Staff' }}
+              </h6>
+              <span class="badge bg-warning text-dark rounded-pill px-2">{{ adminMembers().length }}</span>
+            </div>
+            <div class="d-flex flex-column gap-2" style="max-height: 600px; overflow-y: auto;">
+              <div *ngFor="let m of adminMembers()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div class="avatar-circle shadow-sm bg-warning bg-opacity-10 text-dark fw-bold">
+                    {{ (m.firstName || 'U').charAt(0) }}{{ (m.lastName || '').charAt(0) }}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold text-dark mb-0">{{ m.firstName }} {{ m.lastName }}</h6>
+                    <span class="text-muted x-small">{{ m.email }}</span>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="badge bg-warning bg-opacity-10 text-dark">{{ m.Role?.name }}</span>
+                  <button class="btn btn-xs btn-light rounded-circle text-danger" (click)="removeMember(m.id)" [disabled]="m.id === authService.currentUser()?.id">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div *ngIf="adminMembers().length === 0" class="text-center py-4 text-muted small">
+                Sin personal administrativo
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Col 4: Otros / Pacientes -->
+        <div class="col-md-6 col-xl-3">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-secondary">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h6 class="fw-bold text-secondary mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-people-fill"></i> {{ langService.lang() === 'es' ? 'Otros Miembros' : 'Other Roles' }}
+              </h6>
+              <span class="badge bg-secondary rounded-pill px-2">{{ otherMembers().length }}</span>
+            </div>
+            <div class="d-flex flex-column gap-2" style="max-height: 600px; overflow-y: auto;">
+              <div *ngFor="let m of otherMembers()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                  <div class="avatar-circle shadow-sm bg-secondary bg-opacity-10 text-secondary fw-bold">
+                    {{ (m.firstName || 'U').charAt(0) }}{{ (m.lastName || '').charAt(0) }}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold text-dark mb-0">{{ m.firstName }} {{ m.lastName }}</h6>
+                    <span class="text-muted x-small">{{ m.email }}</span>
+                  </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="badge bg-light text-muted border">{{ m.Role?.name || 'General' }}</span>
+                  <button class="btn btn-xs btn-light rounded-circle text-danger" (click)="removeMember(m.id)" [disabled]="m.id === authService.currentUser()?.id">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+              <div *ngIf="otherMembers().length === 0" class="text-center py-4 text-muted small">
+                Sin otros miembros
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -145,6 +320,13 @@ import Swal from 'sweetalert2';
     .x-small { font-size: 0.75rem; letter-spacing: 0.5px; }
     .fade-in { animation: fadeIn 0.3s ease-in; }
     .slide-in { animation: slideIn 0.3s ease-out; }
+    .hover-card {
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .hover-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+    }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
   `]
@@ -154,6 +336,23 @@ export class TeamComponent implements OnInit {
   authService = inject(AuthService);
   langService = inject(LanguageService);
   showForm = false;
+  viewMode = signal<'list' | 'kanban'>('list');
+  searchTerm = signal('');
+
+  filteredMembers = computed(() => {
+    const term = this.searchTerm().toLowerCase();
+    return this.teamService.members().filter(m => {
+      const name = `${m.firstName || ''} ${m.lastName || ''}`.toLowerCase();
+      const email = (m.email || '').toLowerCase();
+      const role = (m.Role?.name || '').toLowerCase();
+      return name.includes(term) || email.includes(term) || role.includes(term);
+    });
+  });
+
+  doctorMembers = computed(() => this.filteredMembers().filter(m => m.Role?.name === 'DOCTOR'));
+  nurseMembers = computed(() => this.filteredMembers().filter(m => m.Role?.name === 'NURSE'));
+  adminMembers = computed(() => this.filteredMembers().filter(m => ['SUPERADMIN', 'ADMINISTRATIVE', 'STAFF'].includes(m.Role?.name || '')));
+  otherMembers = computed(() => this.filteredMembers().filter(m => !['DOCTOR', 'NURSE', 'SUPERADMIN', 'ADMINISTRATIVE', 'STAFF'].includes(m.Role?.name || '')));
 
   newMember: any = {
     firstName: '',
@@ -179,10 +378,6 @@ export class TeamComponent implements OnInit {
   }
 
   onSubmit() {
-    // Generate a temporary password if backend expects it, or backend generates it.
-    // My backend code: password: password || 'ClinicaSaaS123'
-    // So distinct input is not needed per user request "invitation".
-
     Swal.fire({
       title: this.langService.translate('team.messages.loading'),
       didOpen: () => Swal.showLoading()

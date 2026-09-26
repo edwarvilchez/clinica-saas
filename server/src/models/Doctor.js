@@ -33,6 +33,64 @@ const Doctor = sequelize.define('Doctor', {
       key: 'id'
     }
   },
+  additionalSpecialties: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
+  },
+  university: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  degreeTitle: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  mppsNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  collegeNumber: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  credentialsIssueDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  credentialsExpiryDate: {
+    type: DataTypes.DATEONLY,
+    allowNull: true
+  },
+  chargesProfessionalFees: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
+  },
+  feeType: {
+    type: DataTypes.STRING,
+    defaultValue: 'PERCENTAGE' // 'PERCENTAGE', 'FIXED_AMOUNT', 'INSURANCE_BAREMO'
+  },
+  doctorPercent: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 70.00
+  },
+  fixedFeeUSD: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 30.00
+  },
+  insuranceDoctorPercent: {
+    type: DataTypes.DECIMAL(5, 2),
+    defaultValue: 65.00
+  },
+  insuranceFixedFeeUSD: {
+    type: DataTypes.DECIMAL(10, 2),
+    defaultValue: 25.00
+  },
+  acceptsInsurance: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  },
   userId: {
     type: DataTypes.UUID,
     allowNull: false,

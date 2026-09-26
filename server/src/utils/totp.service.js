@@ -57,7 +57,7 @@ function verifyTOTP(secret, token, window = 1) {
   return false;
 }
 
-function getQRCodeUrl(email, secret, issuer = 'MedicalCare888') {
+function getQRCodeUrl(email, secret, issuer = 'ClinicaSaaS') {
   const otpauthUrl = `otpauth://totp/${encodeURIComponent(issuer)}:${encodeURIComponent(email)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}`;
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
   return { otpauthUrl, qrImageUrl };

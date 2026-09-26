@@ -21,6 +21,7 @@ import Swal from 'sweetalert2';
 export class Payments implements OnInit {
   payments = signal<any[]>([]);
   searchTerm = signal('');
+  viewMode = signal<'list' | 'kanban'>('list');
 
   updateSearch(event: any) {
     this.searchTerm.set(event.target.value);
@@ -36,6 +37,10 @@ export class Payments implements OnInit {
       (p.Appointment?.reason?.toLowerCase()?.includes(term) || false)
     );
   });
+
+  paidPayments = computed(() => this.filteredPayments().filter(p => (p.status || '').toLowerCase() === 'paid' || (p.status || '').toLowerCase() === 'pagado'));
+  pendingPayments = computed(() => this.filteredPayments().filter(p => (p.status || '').toLowerCase() === 'pending' || (p.status || '').toLowerCase() === 'pendiente'));
+  otherPayments = computed(() => this.filteredPayments().filter(p => !this.paidPayments().includes(p) && !this.pendingPayments().includes(p)));
 
   pendingTotal = computed(() => {
     return this.payments()
@@ -774,10 +779,10 @@ export class Payments implements OnInit {
       cancelButtonColor: '#64748b',
     }).then((result) => {
       const filename = `Reporte_Pagos_ClinicaSaaS_${new Date().toISOString().split('T')[0]}`;
-      const title = 'Listado de Pagos - MedicalCare 888';
+      const title = 'Listado de Pagos - Clinica - SaaS';
       const user = this.authService.currentUser();
       const branding = {
-        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888 Platform'),
+        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clinica - SaaS Platform'),
         professional: user ? `${user.firstName} ${user.lastName}` : undefined,
         tagline: this.langService.translate('payments.subtitle')
       };

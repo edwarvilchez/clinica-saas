@@ -4,12 +4,12 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'MedicalCare 888 API',
+      title: 'Clinica - SaaS API',
       version: '4.3.1',
       description: 'API REST para sistema de gestión de clínica SaaS',
       contact: {
-        name: 'MedicalCare 888',
-        email: 'soporte@medicalcare888.com'
+        name: 'Clinica - SaaS',
+        email: 'soporte@clinicasaas.com'
       }
     },
     servers: [

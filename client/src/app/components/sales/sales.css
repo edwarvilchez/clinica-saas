@@ -1,0 +1,33 @@
+.nav-pills .nav-link {
+  color: #64748b;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.nav-pills .nav-link.active {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.25);
+}
+
+.table th {
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #printableQuote, #printableQuote * {
+    visibility: visible;
+  }
+  #printableQuote {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+}

@@ -30,27 +30,28 @@ exports.register = async (req, res) => {
     let finalRoleName = bodyRole || roleName || 'PATIENT';
     const finalAccountType = accountType || 'PATIENT';
 
-    // ROLES THAT REQUIRE INVITATION
-    const restrictedRoles = ['SUPERADMIN', 'ADMIN', 'ADMINISTRATIVE', 'DOCTOR', 'NURSE'];
+    // ROLES THAT REQUIRE SPECIFIC PROVISIONING OR BUSINESS REGISTRATION
+    const restrictedRoles = ['SUPERADMIN', 'ADMIN', 'ADMINISTRATIVE'];
     const isRestrictedRole = restrictedRoles.includes(finalRoleName);
     
-    // Verify invite token for restricted roles
+    // Non-superadmin public registration:
+    // If registering a new clinic or professional account, the owner becomes ADMIN of their new organization
     if (isRestrictedRole) {
-      const validInviteTokens = {
-        'super-admin-token': 'SUPERADMIN',
-        'admin-token': 'ADMIN',
-        'staff-token': 'ADMINISTRATIVE',
-      };
-      
-      if (!inviteToken || !validInviteTokens[inviteToken]) {
+      if (finalRoleName === 'SUPERADMIN') {
         await t.rollback();
         return res.status(403).json({ 
-          message: 'Registro no autorizado. Se requiere invitación para crear cuentas de personal.' 
+          message: 'Registro de Superadministrador no permitido por vía pública.' 
         });
       }
       
-      // Override role if valid token provided
-      finalRoleName = validInviteTokens[inviteToken];
+      const isBusinessAccount = ['PROFESSIONAL', 'CLINIC', 'HOSPITAL'].includes(finalAccountType);
+      if (!isBusinessAccount) {
+        await t.rollback();
+        return res.status(403).json({ 
+          message: 'Registro administrativo no autorizado. Solo disponible para cuentas profesionales o clínicas.' 
+        });
+      }
+      finalRoleName = 'ADMIN';
     }
 
     // Check if user already exists to give a cleaner error before database constraint
@@ -125,7 +126,7 @@ exports.register = async (req, res) => {
       organizationId,
       gender: patientData?.gender || req.body.gender,
       mustChangePassword: isTemporary,
-      temporaryPassword: isTemporary ? finalPassword : null
+      temporaryPassword: null
     }, { transaction: t });
 
 
@@ -224,8 +225,7 @@ exports.register = async (req, res) => {
         role: role.name,
         gender: user.gender,
         mustChangePassword: true
-      },
-      temporaryPassword: finalPassword
+      }
     });
   } catch (error) {
     await t.rollback();

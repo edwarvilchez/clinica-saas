@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, Output, EventEmitter } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { LanguageService } from '../../../services/language.service';
 import { TranslatePipe } from '../../../services/translate.pipe';
@@ -14,7 +14,9 @@ import { APP_VERSION } from '../../../api-config';
   styleUrl: './sidebar.css',
 })
 export class Sidebar {
+  @Output() closeSidebar = new EventEmitter<void>();
   version = APP_VERSION;
+  
   constructor(
     public langService: LanguageService,
     public authService: AuthService

@@ -250,11 +250,13 @@ exports.endVideoConsultation = async (req, res) => {
 // Listar videoconsultas del doctor
 exports.getDoctorVideoConsultations = async (req, res) => {
   try {
-    const doctorId = req.user.id;
+    const isStaff = ['SUPERADMIN', 'ADMINISTRATIVE', 'PLATFORM_ADMIN', 'RECEPTIONIST'].includes(req.user.role);
+    const where = isStaff ? {} : { doctorId: req.user.id };
 
     const consultations = await VideoConsultation.findAll({
-      where: { doctorId },
+      where,
       include: [
+        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] },
         { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
         { model: Appointment, attributes: ['id', 'date', 'status'] }
       ],
@@ -271,17 +273,14 @@ exports.getDoctorVideoConsultations = async (req, res) => {
 // Listar videoconsultas del paciente
 exports.getPatientVideoConsultations = async (req, res) => {
   try {
-    const patientId = req.user.id;
+    const isStaff = ['SUPERADMIN', 'ADMINISTRATIVE', 'PLATFORM_ADMIN', 'RECEPTIONIST'].includes(req.user.role);
+    const where = isStaff ? {} : { patientId: req.user.id };
 
     const consultations = await VideoConsultation.findAll({
-      where: { patientId },
+      where,
       include: [
-        { 
-          model: User, 
-          as: 'doctor', 
-          attributes: ['id', 'firstName', 'lastName', 'email'],
-          include: [{ model: Doctor, attributes: ['licenseNumber'] }]
-        },
+        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] },
+        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
         { model: Appointment, attributes: ['id', 'date', 'status'] }
       ],
       order: [['createdAt', 'DESC']]

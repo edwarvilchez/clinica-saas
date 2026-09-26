@@ -3,8 +3,8 @@ const nodemailer = require('nodemailer');
 
 const sendEmail = async (options) => {
   const isResendActive = !!process.env.RESEND_API_KEY;
-  const fromName = process.env.FROM_NAME || 'MedicalCare 888';
-  const fromEmail = process.env.FROM_EMAIL || 'no-reply@medicalcare-888.com';
+  const fromName = process.env.FROM_NAME || 'Clinica - SaaS';
+  const fromEmail = process.env.FROM_EMAIL || 'no-reply@clinicasaas.com';
 
   console.log(`📨 Attempting to send email via ${isResendActive ? 'Resend SDK' : 'Nodemailer SMTP'}`);
 

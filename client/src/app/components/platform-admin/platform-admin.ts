@@ -10,7 +10,7 @@ import Swal from 'sweetalert2';
 
 const SUPERADMIN_AUTHORIZED_EMAILS = [
   'edwarvilchez1977@gmail.com',
-  'cgk888digital@gmail.com'
+  'admin@clinicasaas.com'
 ];
 
 @Component({

@@ -1,146 +1,836 @@
-<div class="animate-fade-in">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid py-4 px-3 px-md-4">
+  <!-- Top Header Bar -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
     <div>
-      <h2 class="mb-1">{{ 'patients_list.title' | translate }}</h2>
-      <p class="text-muted">{{ 'patients_list.subtitle' | translate }}</p>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <div class="badge bg-primary bg-opacity-10 text-primary p-2 rounded-3">
+          <i class="bi bi-people-fill fs-4"></i>
+        </div>
+        <div>
+          <h1 class="h3 fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Gestión de Pacientes e Historias Médicas' : 'Patients & Medical Records' }}</h1>
+          <p class="text-muted small mb-0">{{ langService.lang() === 'es' ? 'Registro unificado de historias clínicas generadas por CI, pólizas de seguros, beneficiarios y antecedentes' : 'Unified patient profiles, CI-based medical records, insurance policies and clinical history' }}</p>
+        </div>
+      </div>
     </div>
-    <div class="d-flex gap-2">
-      <button
-        class="btn glass-morphism border-0 px-3 py-1 rounded-3 shadow-sm btn-sm"
-        (click)="exportReport()"
-      >
-        <i class="bi bi-download me-1"></i> {{ 'dashboard.reportBtn' | translate }}
+
+    <!-- Actions -->
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <button class="btn btn-outline-secondary rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 fw-semibold" (click)="exportReport()">
+        <i class="bi bi-download"></i>
+        <span>{{ langService.lang() === 'es' ? 'Exportar' : 'Export' }}</span>
       </button>
-      <button class="btn btn-primary-premium" (click)="createNewPatient()">
-        <i class="bi bi-person-plus-fill me-2"></i> {{ 'patients_list.new' | translate }}
+
+      <button class="btn btn-primary rounded-pill px-4 shadow-sm d-flex align-items-center gap-2 fw-bold" (click)="openNewPatientModal()">
+        <i class="bi bi-person-plus-fill"></i>
+        <span>{{ langService.lang() === 'es' ? 'Nuevo Paciente' : 'New Patient' }}</span>
       </button>
     </div>
   </div>
 
-  <div class="card-premium border-0 p-4 mb-4">
-    <div class="row g-3">
-      <div class="col-md-8">
-        <div class="input-group glass-morphism rounded-3 border">
-          <span class="input-group-text bg-transparent border-0"
-            ><i class="bi bi-search text-muted"></i
-          ></span>
-          <input
-            type="text"
-            class="form-control bg-transparent border-0 py-2 shadow-none"
-            [placeholder]="'patients_list.searchPlaceholder' | translate"
-            [(ngModel)]="searchTerm"
-            [ngModelOptions]="{ standalone: true }"
-          />
+  <!-- Search and Filters Bar -->
+  <div class="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
+    <div class="row g-2 align-items-center">
+      <!-- Search Input -->
+      <div class="col-md-5 col-lg-6">
+        <div class="input-group search-bar rounded-pill overflow-hidden bg-light border">
+          <span class="input-group-text bg-light border-0 ps-3 text-muted">
+            <i class="bi bi-search"></i>
+          </span>
+          <input 
+            type="text" 
+            class="form-control border-0 bg-light py-2 shadow-none small" 
+            [placeholder]="langService.lang() === 'es' ? 'Buscar por N° Historia Médica, Cédula/Pasaporte/RIF o Nombre...' : 'Search by Medical Record #, ID or Name...'"
+            [ngModel]="searchTerm()"
+            (ngModelChange)="searchTerm.set($event)">
         </div>
       </div>
-      <div class="col-md-2">
-        <select
-          class="form-select glass-morphism border rounded-3 py-2"
-          [(ngModel)]="genderFilter"
-          [ngModelOptions]="{ standalone: true }"
-        >
-          <option value="all">{{ 'patients_list.allGenders' | translate }}</option>
-          <option value="Male">{{ 'common.male' | translate }}</option>
-          <option value="Female">{{ 'common.female' | translate }}</option>
-          <option value="Other">{{ 'common.other' | translate }}</option>
+
+      <!-- Gender Filter -->
+      <div class="col-sm-6 col-md-3 col-lg-2">
+        <select class="form-select form-select-sm rounded-pill py-2" [ngModel]="genderFilter()" (ngModelChange)="genderFilter.set($event)">
+          <option value="all">{{ langService.lang() === 'es' ? 'Todos los Géneros' : 'All Genders' }}</option>
+          <option value="Male">{{ langService.lang() === 'es' ? 'Masculino' : 'Male' }}</option>
+          <option value="Female">{{ langService.lang() === 'es' ? 'Femenino' : 'Female' }}</option>
         </select>
       </div>
-      <div class="col-md-2">
-        <button class="btn btn-primary-premium w-100 py-2" (click)="toggleAdvancedFilters()">
-          <i class="bi bi-funnel me-1"></i> {{ 'common.filters' | translate }}
-        </button>
-      </div>
-    </div>
 
-    <!-- Advanced Filters Panel -->
-    <div class="mt-3 p-3 bg-light rounded-3" *ngIf="showAdvancedFilters()">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h6 class="mb-0 fw-bold">{{ 'common.advancedFilters' | translate }}</h6>
-        <button class="btn btn-sm btn-outline-secondary" (click)="clearFilters()">
-          <i class="bi bi-x-circle me-1"></i> {{ 'common.clearFilters' | translate }}
-        </button>
+      <!-- Insurance Filter -->
+      <div class="col-sm-6 col-md-3 col-lg-3">
+        <select class="form-select form-select-sm rounded-pill py-2" [ngModel]="insuranceFilter()" (ngModelChange)="insuranceFilter.set($event)">
+          <option value="all">{{ langService.lang() === 'es' ? 'Todos los Pacientes' : 'All Patients' }}</option>
+          <option value="insured">{{ langService.lang() === 'es' ? '🛡️ Asegurados (Con Póliza)' : '🛡️ Insured Patients' }}</option>
+          <option value="particular">{{ langService.lang() === 'es' ? '👤 Particulares (Sin Seguro)' : '👤 Self-Pay Patients' }}</option>
+        </select>
       </div>
-      <div class="row g-2">
-        <div class="col-md-12">
-          <p class="text-muted small mb-0">
-            <i class="bi bi-info-circle me-1"></i>
-            {{ 'common.resultsOf' | translate:{ count: filteredPatients().length, total: patients().length } }}
-          </p>
+
+      <!-- Clear Filter & View Mode Switcher -->
+      <div class="col-sm-6 col-md-4 col-lg-3 d-flex align-items-center justify-content-end gap-2">
+        <div class="btn-group bg-light p-1 rounded-pill border shadow-sm" role="group">
+          <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+            [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+            (click)="viewMode.set('list')">
+            <i class="bi bi-list-ul"></i><span class="small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+          </button>
+          <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+            [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+            (click)="viewMode.set('kanban')">
+            <i class="bi bi-kanban-fill"></i><span class="small">Kanban</span>
+          </button>
         </div>
+
+        <button class="btn btn-light btn-sm rounded-pill px-3 py-2" (click)="clearFilters()" title="Limpiar filtros">
+          <i class="bi bi-x-circle"></i>
+        </button>
       </div>
     </div>
   </div>
 
-  <div class="card-premium border-0 overflow-hidden">
+  <!-- Loading -->
+  <div *ngIf="loading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <!-- Patients Data Table (LIST VIEW) -->
+  <div *ngIf="!loading() && viewMode() === 'list'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="bg-light">
           <tr>
-            <th class="ps-4 py-3">{{ 'patients_list.table.patient' | translate }}</th>
-            <th>{{ 'patients_list.table.document' | translate }}</th>
-            <th>{{ 'patients_list.table.gender' | translate }}</th>
-            <th>{{ 'patients_list.table.phone' | translate }}</th>
-            <th>{{ 'common.status' | translate }}</th>
-            <th class="text-end pe-4">{{ 'common.actions' | translate }}</th>
+            <th class="ps-3 py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nº HISTORIA MÉDICA' : 'MEDICAL RECORD #' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'PACIENTE' : 'PATIENT' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'DOCUMENTO DE IDENTIDAD' : 'IDENTITY DOCUMENT' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'SEGURO / COBERTURA' : 'INSURANCE / COVERAGE' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'TELÉFONO & UBICACIÓN' : 'PHONE & LOCATION' }}</th>
+            <th class="pe-3 py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? 'ACCIONES' : 'ACTIONS' }}</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="small">
           <tr *ngFor="let p of filteredPatients()">
-            <td class="ps-4">
-              <div class="d-flex align-items-center gap-3">
-                <img
-                  [src]="
-                    'https://ui-avatars.com/api/?name=' + p.User.firstName + '+' + p.User.lastName
-                  "
-                  class="rounded-circle"
-                  width="38"
-                />
+            <!-- Nro Historia Médica -->
+            <td class="ps-3">
+              <span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle rounded-pill font-monospace px-3 py-1 fw-bold fs-6">
+                {{ p.medicalRecordNumber || ('HC-' + p.documentId) }}
+              </span>
+            </td>
+
+            <!-- Paciente -->
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="avatar-circle bg-primary bg-opacity-10 text-primary fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 38px; height: 38px;">
+                  {{ (p.User?.firstName?.charAt(0) || 'P') }}{{ (p.User?.lastName?.charAt(0) || '') }}
+                </div>
                 <div>
-                  <h6 class="mb-0 fw-bold">{{ p.User.firstName }} {{ p.User.lastName }}</h6>
-                  <span class="small text-muted">{{ p.User.email }}</span>
+                  <div class="fw-bold text-dark">{{ p.User?.firstName }} {{ p.User?.lastName }}</div>
+                  <small class="text-muted x-small">{{ p.User?.email }}</small>
                 </div>
               </div>
             </td>
-            <td>{{ p.documentId }}</td>
-            <td>{{ p.gender === 'Male' ? ('common.male' | translate) : p.gender === 'Female' ? ('common.female' | translate) : p.gender }}</td>
-            <td>{{ p.phone }}</td>
+
+            <!-- Documento de Identidad Formateado -->
             <td>
-              <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3">{{
-                'dashboard.active' | translate
-              }}</span>
+              <span class="badge bg-light text-dark border font-monospace px-2 py-1 fs-6">
+                {{ p.documentId }}
+              </span>
+              <span class="x-small text-muted d-block mt-1">
+                {{ p.gender === 'Male' ? 'Masculino' : (p.gender === 'Female' ? 'Femenino' : 'Otro') }} | {{ p.bloodType || 'N/A' }}
+              </span>
             </td>
-            <td class="text-end pe-4">
-              <div class="action-buttons">
-                <button
-                  class="btn btn-sm btn-light border-0 me-1"
-                  [title]="'common.view' | translate"
-                  (click)="viewHistory(p.id)"
-                >
+
+            <!-- Seguro / Particular -->
+            <td>
+              <div *ngIf="p.hasInsurance" class="d-flex flex-column">
+                <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle rounded-pill px-2 py-1 fw-semibold text-start d-inline-block">
+                  <i class="bi bi-shield-check me-1"></i>{{ p.InsuranceCompany?.name || p.insuranceProvider }}
+                </span>
+                <small class="text-muted x-small font-monospace mt-1" *ngIf="p.policyNumber">
+                  Póliza: {{ p.policyNumber }}
+                </small>
+              </div>
+              <div *ngIf="!p.hasInsurance">
+                <span class="badge bg-secondary bg-opacity-10 text-secondary border rounded-pill px-2 py-1">
+                  <i class="bi bi-person me-1"></i>{{ langService.lang() === 'es' ? 'Particular' : 'Self-Pay' }}
+                </span>
+              </div>
+            </td>
+
+            <!-- Teléfono & Ubicación -->
+            <td>
+              <div class="fw-semibold text-dark">{{ p.phone || p.User?.phone || 'N/A' }}</div>
+              <small class="text-muted x-small d-block">{{ p.city || 'Caracas' }}{{ p.state ? ', ' + p.state : '' }}</small>
+            </td>
+
+            <!-- Acciones -->
+            <td class="pe-3 text-center">
+              <div class="d-flex align-items-center justify-content-center gap-1">
+                <!-- Ver Ficha / Editar -->
+                <button class="btn btn-outline-primary btn-sm rounded-circle p-2" [title]="langService.lang() === 'es' ? 'Ver Ficha Completa' : 'View Full Profile'" (click)="openDetailModal(p)">
                   <i class="bi bi-eye"></i>
                 </button>
-                <button
-                  class="btn btn-sm btn-light border-0 me-1"
-                  [title]="'common.edit' | translate"
-                >
+                <button class="btn btn-outline-secondary btn-sm rounded-circle p-2" [title]="langService.lang() === 'es' ? 'Editar Paciente' : 'Edit Patient'" (click)="openEditPatientModal(p)">
                   <i class="bi bi-pencil"></i>
                 </button>
-                <button
-                  class="btn btn-sm btn-light border-0 text-danger"
-                  [title]="'common.delete' | translate"
-                  (click)="deletePatient(p.id)"
-                >
+                <!-- Historial Médico -->
+                <button class="btn btn-outline-success btn-sm rounded-circle p-2" [title]="langService.lang() === 'es' ? 'Historial Clínico' : 'Medical History'" (click)="viewHistory(p.id)">
+                  <i class="bi bi-journal-medical"></i>
+                </button>
+                <!-- Eliminar -->
+                <button class="btn btn-outline-danger btn-sm rounded-circle p-2" [title]="langService.lang() === 'es' ? 'Eliminar Paciente' : 'Delete Patient'" (click)="deletePatient(p.id)">
                   <i class="bi bi-trash"></i>
                 </button>
               </div>
             </td>
           </tr>
+
           <tr *ngIf="filteredPatients().length === 0">
-            <td colspan="6" class="text-center py-4 text-muted">
-              {{ 'common.noResults' | translate }}
+            <td colspan="6" class="text-center py-5 text-muted">
+              <i class="bi bi-person-x display-6 d-block mb-2 text-secondary opacity-50"></i>
+              <p class="mb-2 fw-semibold">{{ langService.lang() === 'es' ? 'No se encontraron pacientes registrados' : 'No patients found' }}</p>
+              <button class="btn btn-primary btn-sm rounded-pill px-3" (click)="openNewPatientModal()">
+                <i class="bi bi-person-plus-fill me-1"></i>{{ langService.lang() === 'es' ? 'Registrar Primer Paciente' : 'Register First Patient' }}
+              </button>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- KANBAN VIEW (Odoo ERP Style by Insurance vs Particular) -->
+  <div *ngIf="!loading() && viewMode() === 'kanban'" class="row g-3">
+    <!-- Columna 1: Asegurados -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-success">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold text-success mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-shield-check"></i> {{ langService.lang() === 'es' ? 'Pacientes Asegurados (Con Póliza)' : 'Insured Patients' }}
+          </h6>
+          <span class="badge bg-success rounded-pill px-2">{{ insuredPatients().length }}</span>
+        </div>
+        <div class="d-flex flex-column gap-2" style="max-height: 700px; overflow-y: auto;">
+          <div *ngFor="let p of insuredPatients()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <span class="badge bg-primary bg-opacity-10 text-primary font-monospace fw-bold">{{ p.medicalRecordNumber || ('HC-' + p.documentId) }}</span>
+              <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle">{{ p.InsuranceCompany?.name || p.insuranceProvider }}</span>
+            </div>
+            <h6 class="fw-bold text-dark mb-1">{{ p.User?.firstName }} {{ p.User?.lastName }}</h6>
+            <div class="text-muted small mb-2"><i class="bi bi-card-text me-1"></i>C.I: {{ p.documentId }} | Tel: {{ p.phone || 'N/A' }}</div>
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+              <span class="text-muted x-small font-monospace">Pol: {{ p.policyNumber || 'N/A' }}</span>
+              <div class="d-flex gap-1">
+                <button class="btn btn-xs btn-light rounded-circle text-primary" (click)="openDetailModal(p)" title="Ver ficha">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-xs btn-light rounded-circle text-success" (click)="viewHistory(p.id)" title="Historia clínica">
+                  <i class="bi bi-journal-medical"></i>
+                </button>
+                <button class="btn btn-xs btn-light rounded-circle text-secondary" (click)="openEditPatientModal(p)" title="Editar">
+                  <i class="bi bi-pencil"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="insuredPatients().length === 0" class="text-center py-4 text-muted small">
+            Sin pacientes asegurados
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Columna 2: Particulares -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-primary">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-person-fill"></i> {{ langService.lang() === 'es' ? 'Pacientes Particulares' : 'Self-Pay Patients' }}
+          </h6>
+          <span class="badge bg-primary rounded-pill px-2">{{ particularPatients().length }}</span>
+        </div>
+        <div class="d-flex flex-column gap-2" style="max-height: 700px; overflow-y: auto;">
+          <div *ngFor="let p of particularPatients()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <span class="badge bg-primary bg-opacity-10 text-primary font-monospace fw-bold">{{ p.medicalRecordNumber || ('HC-' + p.documentId) }}</span>
+              <span class="badge bg-secondary bg-opacity-10 text-secondary border">Particular</span>
+            </div>
+            <h6 class="fw-bold text-dark mb-1">{{ p.User?.firstName }} {{ p.User?.lastName }}</h6>
+            <div class="text-muted small mb-2"><i class="bi bi-card-text me-1"></i>C.I: {{ p.documentId }} | Tel: {{ p.phone || 'N/A' }}</div>
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+              <span class="text-muted x-small">{{ p.bloodType ? ('Grupo: ' + p.bloodType) : '' }}</span>
+              <div class="d-flex gap-1">
+                <button class="btn btn-xs btn-light rounded-circle text-primary" (click)="openDetailModal(p)" title="Ver ficha">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-xs btn-light rounded-circle text-success" (click)="viewHistory(p.id)" title="Historia clínica">
+                  <i class="bi bi-journal-medical"></i>
+                </button>
+                <button class="btn btn-xs btn-light rounded-circle text-secondary" (click)="openEditPatientModal(p)" title="Editar">
+                  <i class="bi bi-pencil"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="particularPatients().length === 0" class="text-center py-4 text-muted small">
+            Sin pacientes particulares
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: REGISTRO / EDICIÓN COMPLETA DEL PACIENTE                -->
+<!-- ============================================================== -->
+<div *ngIf="showPatientModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(5px);">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <!-- Modal Header -->
+      <div class="modal-header border-bottom px-4 py-3 bg-primary text-white">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-person-vcard-fill fs-4"></i>
+          <div>
+            <h5 class="modal-title fw-bold mb-0 text-white">
+              {{ isEditing ? (langService.lang() === 'es' ? 'Editar Ficha del Paciente' : 'Edit Patient Profile') : (langService.lang() === 'es' ? 'Nuevo Registro de Paciente' : 'New Patient Registration') }}
+            </h5>
+            <small class="text-white-50 x-small">{{ langService.lang() === 'es' ? 'Generación de Historia Médica y expediente clínico venezolano' : 'Medical record assignment & Venezuelan clinical profile' }}</small>
+          </div>
+        </div>
+        <button type="button" class="btn-close btn-close-white shadow-none" (click)="showPatientModal = false"></button>
+      </div>
+
+      <!-- Live Medical Record Banner -->
+      <div class="bg-primary bg-opacity-10 border-bottom px-4 py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-fingerprint text-primary fs-5"></i>
+          <span class="small fw-bold text-dark">{{ langService.lang() === 'es' ? 'Nro. de Historia Médica (Generada automáticamente por CI):' : 'Medical Record # (Generated by ID):' }}</span>
+        </div>
+        <span class="badge bg-primary text-white font-monospace fs-6 px-3 py-1 shadow-sm">
+          {{ previewMedicalRecord() }}
+        </span>
+      </div>
+
+      <!-- Modal Tabs Navigation -->
+      <div class="bg-light border-bottom px-4 pt-2">
+        <ul class="nav nav-tabs border-0">
+          <li class="nav-item">
+            <button class="nav-link fw-bold small" [class.active]="activeModalTab === 'basic'" (click)="activeModalTab = 'basic'">
+              <i class="bi bi-person-fill me-1"></i>{{ langService.lang() === 'es' ? '1. Datos Básicos & CI' : '1. Basic Info & ID' }}
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold small" [class.active]="activeModalTab === 'insurance'" (click)="activeModalTab = 'insurance'">
+              <i class="bi bi-shield-check me-1"></i>{{ langService.lang() === 'es' ? '2. Seguro & Póliza' : '2. Insurance' }}
+              <span *ngIf="patientForm.hasInsurance" class="badge bg-success rounded-circle ms-1 p-1"><i class="bi bi-check"></i></span>
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold small" [class.active]="activeModalTab === 'family'" (click)="activeModalTab = 'family'">
+              <i class="bi bi-people me-1"></i>{{ langService.lang() === 'es' ? '3. Familia & Contactos' : '3. Family' }} ({{ patientForm.familyInfo.length }})
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold small" [class.active]="activeModalTab === 'beneficiaries'" (click)="activeModalTab = 'beneficiaries'">
+              <i class="bi bi-person-heart me-1"></i>{{ langService.lang() === 'es' ? '4. Beneficiarios' : '4. Beneficiaries' }} ({{ patientForm.beneficiaries.length }})
+            </button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link fw-bold small" [class.active]="activeModalTab === 'clinical'" (click)="activeModalTab = 'clinical'">
+              <i class="bi bi-heart-pulse me-1"></i>{{ langService.lang() === 'es' ? '5. Enfermedades & Historial' : '5. Clinical History' }} ({{ patientForm.preexistingDiseases.length }})
+            </button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="modal-body p-4 bg-light">
+        <form (ngSubmit)="savePatient()">
+          <!-- TAB 1: DATOS BÁSICOS & DOCUMENTO -->
+          <div *ngIf="activeModalTab === 'basic'">
+            <!-- Document Section Card with strict Venezuelan Validation -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                <i class="bi bi-card-heading text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Tipo y Número de Documento (Validación Estricta)' : 'Identity Document (Strict Format)' }}
+              </h6>
+
+              <div class="row g-3">
+                <!-- Dropdown Tipo de Documento -->
+                <div class="col-md-4">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Tipo de Documento *' : 'Document Type *' }}</label>
+                  <select class="form-select form-select-sm rounded-3 fw-semibold" [ngModel]="patientForm.documentType" (ngModelChange)="onDocumentTypeChange($event)" name="documentType" required>
+                    <option value="CEDULA">Cédula de Identidad (V / E)</option>
+                    <option value="PASAPORTE">Pasaporte (PAS)</option>
+                    <option value="RIF">RIF (J / G / V / E / C / P)</option>
+                  </select>
+                </div>
+
+                <!-- Prefijo dinámico según tipo de documento -->
+                <div class="col-md-3" *ngIf="patientForm.documentType === 'CEDULA'">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Prefijo Cédula *' : 'Prefix *' }}</label>
+                  <select class="form-select form-select-sm rounded-3 font-monospace fw-bold text-primary" [(ngModel)]="patientForm.documentPrefix" name="documentPrefixCedula">
+                    <option value="V">V - Venezolano</option>
+                    <option value="E">E - Extranjero</option>
+                  </select>
+                </div>
+
+                <div class="col-md-3" *ngIf="patientForm.documentType === 'PASAPORTE'">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Prefijo Pasaporte' : 'Prefix' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3 font-monospace fw-bold bg-light" value="PAS" disabled>
+                </div>
+
+                <div class="col-md-3" *ngIf="patientForm.documentType === 'RIF'">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Prefijo RIF *' : 'RIF Prefix *' }}</label>
+                  <select class="form-select form-select-sm rounded-3 font-monospace fw-bold text-primary" [(ngModel)]="patientForm.documentPrefix" name="documentPrefixRif">
+                    <option value="J">J - Persona Jurídica</option>
+                    <option value="G">G - Entes Gubernamentales</option>
+                    <option value="V">V - Persona Natural (Vzla)</option>
+                    <option value="E">E - Persona Natural (Extranjero)</option>
+                    <option value="C">C - Consejos Comunales / Comunas</option>
+                    <option value="P">P - Firma Personal</option>
+                  </select>
+                </div>
+
+                <!-- Número de Documento (Solo dígitos) -->
+                <div class="col-md-5">
+                  <label class="form-label x-small fw-bold text-muted">
+                    {{ langService.lang() === 'es' ? 'Número de Documento (Solo dígitos, sin puntos ni guiones) *' : 'Document Number (Digits only) *' }}
+                  </label>
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text font-monospace fw-bold bg-light">{{ patientForm.documentPrefix }}</span>
+                    <input 
+                      type="text" 
+                      class="form-control rounded-end-3 font-monospace fw-bold" 
+                      [ngModel]="patientForm.documentNumber"
+                      (input)="onDocumentNumberInput($event)"
+                      name="documentNumber" 
+                      required 
+                      placeholder="Ej. 12345678"
+                      maxlength="15">
+                  </div>
+                  <small class="text-muted x-small">{{ langService.lang() === 'es' ? 'Formato final:' : 'Final format:' }} <strong class="font-monospace text-primary">{{ patientForm.documentPrefix }}{{ patientForm.documentNumber }}</strong></small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Demographics Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                <i class="bi bi-person-badge text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Datos Personales y de Contacto' : 'Personal & Contact Details' }}
+              </h6>
+
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nombres *' : 'First Name *' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.firstName" name="firstName" required placeholder="Ej. Carlos Alberto">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Apellidos *' : 'Last Name *' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.lastName" name="lastName" required placeholder="Ej. Rodríguez Mendoza">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Fecha de Nacimiento' : 'Birth Date' }}</label>
+                  <input type="date" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.birthDate" name="birthDate">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Género' : 'Gender' }}</label>
+                  <select class="form-select form-select-sm rounded-3" [(ngModel)]="patientForm.gender" name="gender">
+                    <option value="Male">{{ langService.lang() === 'es' ? 'Masculino' : 'Male' }}</option>
+                    <option value="Female">{{ langService.lang() === 'es' ? 'Femenino' : 'Female' }}</option>
+                    <option value="Other">{{ langService.lang() === 'es' ? 'Otro' : 'Other' }}</option>
+                  </select>
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Grupo Sanguíneo' : 'Blood Type' }}</label>
+                  <select class="form-select form-select-sm rounded-3 font-monospace fw-bold" [(ngModel)]="patientForm.bloodType" name="bloodType">
+                    <option value="O+">O Positivo (O+)</option>
+                    <option value="O-">O Negativo (O-)</option>
+                    <option value="A+">A Positivo (A+)</option>
+                    <option value="A-">A Negativo (A-)</option>
+                    <option value="B+">B Positivo (B+)</option>
+                    <option value="B-">B Negativo (B-)</option>
+                    <option value="AB+">AB Positivo (AB+)</option>
+                    <option value="AB-">AB Negativo (AB-)</option>
+                  </select>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Correo Electrónico (Para Portal del Paciente)' : 'Email' }}</label>
+                  <input type="email" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.email" name="email" placeholder="paciente@correo.com">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Teléfono Móvil / WhatsApp' : 'Phone' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.phone" name="phone" placeholder="+58 412-0000000">
+                </div>
+              </div>
+            </div>
+
+            <!-- Address Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+                <i class="bi bi-geo-alt text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Dirección de Habitación (Venezuela)' : 'Residential Address' }}
+              </h6>
+
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Estado' : 'State' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.state" name="state" placeholder="Ej. Miranda / Distrito Capital">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Ciudad' : 'City' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.city" name="city" placeholder="Ej. Caracas">
+                </div>
+
+                <div class="col-md-4">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Municipio' : 'Municipality' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.municipality" name="municipality" placeholder="Ej. Chacao / Sucre">
+                </div>
+
+                <div class="col-12">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Dirección Detallada (Avenida, Calle, Edificio/Casa)' : 'Full Address' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.address" name="address" placeholder="Av. Francisco de Miranda, Edif. Torre Centro, Apto 4B">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 2: SEGURO & PÓLIZA -->
+          <div *ngIf="activeModalTab === 'insurance'">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-3">
+              <!-- Check "Viene por seguro" -->
+              <div class="form-check form-switch p-3 bg-light rounded-4 border mb-4">
+                <input class="form-check-input ms-0 me-3" type="checkbox" role="switch" id="hasInsuranceCheck" [(ngModel)]="patientForm.hasInsurance" name="hasInsurance" style="width: 2.5em; height: 1.3em;">
+                <label class="form-check-label fw-bold text-dark fs-6" for="hasInsuranceCheck">
+                  {{ langService.lang() === 'es' ? '¿El paciente viene por Seguro Médico Privado / Convenio?' : 'Is the patient covered by Private Health Insurance?' }}
+                </label>
+                <p class="text-muted x-small mb-0 mt-1">
+                  {{ langService.lang() === 'es' ? 'Al marcar este check, el paciente se vinculará a la empresa aseguradora seleccionada para cartas avales y reclamos de siniestros.' : 'Links patient to insurance company for coverage authorization and claims.' }}
+                </p>
+              </div>
+
+              <!-- Conditional Insurance Fields -->
+              <div *ngIf="patientForm.hasInsurance" class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Empresa Aseguradora *' : 'Insurance Company *' }}</label>
+                  <select class="form-select form-select-sm rounded-3" [(ngModel)]="patientForm.insuranceCompanyId" name="insuranceCompanyId">
+                    <option value="">{{ langService.lang() === 'es' ? '-- Seleccione Aseguradora --' : '-- Select Insurer --' }}</option>
+                    <option *ngFor="let comp of insuranceCompanies()" [value]="comp.id">
+                      {{ comp.name }} ({{ comp.rif }})
+                    </option>
+                  </select>
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Número de Póliza / Contrato' : 'Policy Number' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3 font-monospace" [(ngModel)]="patientForm.policyNumber" name="policyNumber" placeholder="Ej. POL-CARACAS-88912">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nombre de Aseguradora (Texto Libre si no está en catálogo)' : 'Custom Insurer Name' }}</label>
+                  <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.insuranceProvider" name="insuranceProvider" placeholder="Ej. Seguros Mercantil">
+                </div>
+
+                <div class="col-md-6">
+                  <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? '% Copago / Deducible a Cargo del Paciente' : 'Copay %' }}</label>
+                  <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.copayPercentage" name="copayPercentage" min="0" max="100">
+                </div>
+              </div>
+
+              <div *ngIf="!patientForm.hasInsurance" class="alert alert-secondary rounded-4 border-0 mb-0 small">
+                <i class="bi bi-info-circle me-2"></i>{{ langService.lang() === 'es' ? 'El paciente está clasificado como Particular (Pago Directo / Cuenta Propia).' : 'Patient is registered as Self-Pay.' }}
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: FAMILIARES & CONTACTOS -->
+          <div *ngIf="activeModalTab === 'family'">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+              <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <div>
+                  <h6 class="fw-bold text-dark mb-0"><i class="bi bi-people-fill text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Familiares y Contactos de Emergencia' : 'Family & Emergency Contacts' }}</h6>
+                  <small class="text-muted x-small">{{ langService.lang() === 'es' ? 'Familiares directos para notificaciones médicas y emergencias hospitalarias' : 'Next of kin and emergency notifications' }}</small>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold" (click)="addFamilyMember()">
+                  <i class="bi bi-plus-circle me-1"></i>{{ langService.lang() === 'es' ? 'Agregar Familiar' : 'Add Family' }}
+                </button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                  <thead class="bg-light text-muted x-small text-uppercase">
+                    <tr>
+                      <th>{{ langService.lang() === 'es' ? 'Nombre Completo *' : 'Full Name *' }}</th>
+                      <th>{{ langService.lang() === 'es' ? 'Parentesco' : 'Relationship' }}</th>
+                      <th>{{ langService.lang() === 'es' ? 'Teléfono' : 'Phone' }}</th>
+                      <th class="text-center">{{ langService.lang() === 'es' ? 'Emergencia' : 'Emergency' }}</th>
+                      <th style="width: 5%;"></th>
+                    </tr>
+                  </thead>
+                  <tbody class="small">
+                    <tr *ngFor="let fam of patientForm.familyInfo; let idx = index">
+                      <td><input type="text" class="form-control form-control-sm rounded-2" [(ngModel)]="fam.fullName" [name]="'fam_name_' + idx" placeholder="Ej. Carmen Mendoza"></td>
+                      <td>
+                        <select class="form-select form-select-sm rounded-2" [(ngModel)]="fam.relationship" [name]="'fam_rel_' + idx">
+                          <option value="Cónyuge">Cónyuge / Esposo(a)</option>
+                          <option value="Padre/Madre">Padre / Madre</option>
+                          <option value="Hijo(a)">Hijo(a)</option>
+                          <option value="Hermano(a)">Hermano(a)</option>
+                          <option value="Tutor Legal">Tutor Legal</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </td>
+                      <td><input type="text" class="form-control form-control-sm rounded-2" [(ngModel)]="fam.phone" [name]="'fam_phone_' + idx" placeholder="+58 412-0000000"></td>
+                      <td class="text-center">
+                        <input class="form-check-input" type="checkbox" [(ngModel)]="fam.isEmergencyContact" [name]="'fam_em_' + idx">
+                      </td>
+                      <td class="text-center">
+                        <button type="button" class="btn btn-outline-danger btn-sm border-0 p-1" (click)="removeFamilyMember(idx)">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr *ngIf="patientForm.familyInfo.length === 0">
+                      <td colspan="5" class="text-center py-3 text-muted x-small">
+                        {{ langService.lang() === 'es' ? 'No hay familiares registrados. Haga clic en "Agregar Familiar".' : 'No family members recorded yet.' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 4: BENEFICIARIOS -->
+          <div *ngIf="activeModalTab === 'beneficiaries'">
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+              <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <div>
+                  <h6 class="fw-bold text-dark mb-0"><i class="bi bi-person-heart text-primary me-2"></i>{{ langService.lang() === 'es' ? 'Beneficiarios Asociados' : 'Associated Beneficiaries' }}</h6>
+                  <small class="text-muted x-small">{{ langService.lang() === 'es' ? 'Cargas familiares y beneficiarios amparados bajo la misma póliza o cuenta' : 'Dependents covered under same policy' }}</small>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold" (click)="addBeneficiary()">
+                  <i class="bi bi-plus-circle me-1"></i>{{ langService.lang() === 'es' ? 'Agregar Beneficiario' : 'Add Beneficiary' }}
+                </button>
+              </div>
+
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                  <thead class="bg-light text-muted x-small text-uppercase">
+                    <tr>
+                      <th>{{ langService.lang() === 'es' ? 'Nombre Beneficiario *' : 'Name *' }}</th>
+                      <th>{{ langService.lang() === 'es' ? 'Documento (CI / Pasaporte)' : 'ID Document' }}</th>
+                      <th>{{ langService.lang() === 'es' ? 'Parentesco' : 'Relationship' }}</th>
+                      <th>{{ langService.lang() === 'es' ? 'Fecha Nacimiento' : 'Birth Date' }}</th>
+                      <th style="width: 5%;"></th>
+                    </tr>
+                  </thead>
+                  <tbody class="small">
+                    <tr *ngFor="let b of patientForm.beneficiaries; let idx = index">
+                      <td><input type="text" class="form-control form-control-sm rounded-2" [(ngModel)]="b.fullName" [name]="'ben_name_' + idx" placeholder="Nombre completo"></td>
+                      <td>
+                        <div class="input-group input-group-sm">
+                          <select class="form-select rounded-start-2 font-monospace" style="max-width: 65px;" [(ngModel)]="b.documentPrefix" [name]="'ben_pref_' + idx">
+                            <option value="V">V</option>
+                            <option value="E">E</option>
+                            <option value="PAS">PAS</option>
+                          </select>
+                          <input type="text" class="form-control rounded-end-2 font-monospace" [(ngModel)]="b.documentNumber" [name]="'ben_num_' + idx" placeholder="Dígitos">
+                        </div>
+                      </td>
+                      <td>
+                        <select class="form-select form-select-sm rounded-2" [(ngModel)]="b.relationship" [name]="'ben_rel_' + idx">
+                          <option value="Hijo(a)">Hijo(a)</option>
+                          <option value="Cónyuge">Cónyuge</option>
+                          <option value="Padre/Madre">Padre / Madre</option>
+                          <option value="Otro">Otro</option>
+                        </select>
+                      </td>
+                      <td><input type="date" class="form-control form-control-sm rounded-2" [(ngModel)]="b.birthDate" [name]="'ben_date_' + idx"></td>
+                      <td class="text-center">
+                        <button type="button" class="btn btn-outline-danger btn-sm border-0 p-1" (click)="removeBeneficiary(idx)">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr *ngIf="patientForm.beneficiaries.length === 0">
+                      <td colspan="5" class="text-center py-3 text-muted x-small">
+                        {{ langService.lang() === 'es' ? 'No hay beneficiarios registrados.' : 'No beneficiaries recorded yet.' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 5: ENFERMEDADES & HISTORIAL -->
+          <div *ngIf="activeModalTab === 'clinical'">
+            <!-- Pre-existing Diseases Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-3 bg-white mb-3">
+              <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                <div>
+                  <h6 class="fw-bold text-dark mb-0"><i class="bi bi-heart-pulse-fill text-danger me-2"></i>{{ langService.lang() === 'es' ? 'Enfermedades Preexistentes & Patologías Crónicas' : 'Pre-existing Diseases & Chronic Conditions' }}</h6>
+                  <small class="text-muted x-small">{{ langService.lang() === 'es' ? 'Hipertensión, Diabetes, Asma, Cardiopatías, etc.' : 'Hypertension, Diabetes, Asthma, etc.' }}</small>
+                </div>
+                <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold" (click)="addDisease()">
+                  <i class="bi bi-plus-circle me-1"></i>{{ langService.lang() === 'es' ? 'Agregar Enfermedad' : 'Add Disease' }}
+                </button>
+              </div>
+
+              <div class="table-responsive mb-3">
+                <table class="table table-bordered align-middle mb-0">
+                  <thead class="bg-light text-muted x-small text-uppercase">
+                    <tr>
+                      <th>{{ langService.lang() === 'es' ? 'Enfermedad / Diagnóstico *' : 'Disease / Diagnosis *' }}</th>
+                      <th>{{ langService.lang() === 'es' ? 'Fecha Diagnóstico' : 'Diagnosis Date' }}</th>
+                      <th>{{ langService.lang() === 'es' ? 'Tratamiento Actual' : 'Current Treatment' }}</th>
+                      <th style="width: 5%;"></th>
+                    </tr>
+                  </thead>
+                  <tbody class="small">
+                    <tr *ngFor="let dis of patientForm.preexistingDiseases; let idx = index">
+                      <td><input type="text" class="form-control form-control-sm rounded-2" [(ngModel)]="dis.diseaseName" [name]="'dis_name_' + idx" placeholder="Ej. Hipertensión Arterial Grado 1"></td>
+                      <td><input type="date" class="form-control form-control-sm rounded-2" [(ngModel)]="dis.diagnosisDate" [name]="'dis_date_' + idx"></td>
+                      <td><input type="text" class="form-control form-control-sm rounded-2" [(ngModel)]="dis.treatment" [name]="'dis_treat_' + idx" placeholder="Ej. Losartán 50mg / día"></td>
+                      <td class="text-center">
+                        <button type="button" class="btn btn-outline-danger btn-sm border-0 p-1" (click)="removeDisease(idx)">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
+                      </td>
+                    </tr>
+                    <tr *ngIf="patientForm.preexistingDiseases.length === 0">
+                      <td colspan="4" class="text-center py-3 text-muted x-small">
+                        {{ langService.lang() === 'es' ? 'Sin enfermedades preexistentes registradas.' : 'No pre-existing diseases recorded.' }}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <!-- Allergies -->
+              <div class="mb-3">
+                <label class="form-label x-small fw-bold text-danger">{{ langService.lang() === 'es' ? 'Alergias Conocidas (Fármacos, Alimentos, etc.)' : 'Known Allergies' }}</label>
+                <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="patientForm.allergies" name="allergies" placeholder="Ej. Alérgico a la Penicilina, AINES y Mariscos">
+              </div>
+
+              <!-- Clinical Summary Text -->
+              <div>
+                <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Resumen de Historial Clínico y Antecedentes Quirúrgicos' : 'Clinical History Summary & Surgical Antecedents' }}</label>
+                <textarea class="form-control form-control-sm rounded-3" rows="3" [(ngModel)]="patientForm.clinicalHistorySummary" name="clinicalHistorySummary" placeholder="Ej. Apendicectomía en 2018. Sin antecedentes de transfusiones. Hábitos psicobiológicos no tabáquicos."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-3">
+            <span class="x-small text-muted font-monospace">
+              {{ langService.lang() === 'es' ? 'Documento Identidad:' : 'Document ID:' }} <strong>{{ patientForm.documentPrefix }}{{ patientForm.documentNumber }}</strong>
+            </span>
+
+            <div class="d-flex gap-2">
+              <button type="button" class="btn btn-light rounded-pill px-4" (click)="showPatientModal = false">
+                {{ langService.lang() === 'es' ? 'Cancelar' : 'Cancel' }}
+              </button>
+              <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold shadow-sm">
+                <i class="bi bi-save me-1"></i>
+                {{ isEditing ? (langService.lang() === 'es' ? 'Guardar Cambios' : 'Save Changes') : (langService.lang() === 'es' ? 'Crear Paciente' : 'Create Patient') }}
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: FICHA DETALLADA / EXPEDIENTE DEL PACIENTE               -->
+<!-- ============================================================== -->
+<div *ngIf="showDetailModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(5px);">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <i class="bi bi-journal-medical text-primary fs-4"></i>
+          <div>
+            <h5 class="modal-title fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Expediente Clínico del Paciente' : 'Patient Clinical File' }}</h5>
+            <span class="badge bg-primary rounded-pill font-monospace x-small">{{ selectedPatientDetail?.medicalRecordNumber || ('HC-' + selectedPatientDetail?.documentId) }}</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close shadow-none" (click)="showDetailModal = false"></button>
+      </div>
+
+      <div class="modal-body p-4 bg-white">
+        <!-- Patient Header Card -->
+        <div class="card border-0 bg-light p-3 rounded-4 mb-3">
+          <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <h4 class="fw-bold text-dark mb-1">{{ selectedPatientDetail?.User?.firstName }} {{ selectedPatientDetail?.User?.lastName }}</h4>
+              <span class="badge bg-light text-dark border font-monospace me-2">{{ selectedPatientDetail?.documentId }}</span>
+              <span class="badge bg-secondary bg-opacity-10 text-secondary">{{ selectedPatientDetail?.gender === 'Male' ? 'Masculino' : 'Femenino' }}</span>
+              <span class="badge bg-danger bg-opacity-10 text-danger ms-1 font-monospace">{{ selectedPatientDetail?.bloodType || 'O+' }}</span>
+            </div>
+            <div class="text-end">
+              <span class="d-block x-small text-muted">{{ langService.lang() === 'es' ? 'Régimen de Atención' : 'Coverage' }}</span>
+              <span *ngIf="selectedPatientDetail?.hasInsurance" class="badge bg-success rounded-pill px-3 py-1">
+                <i class="bi bi-shield-check me-1"></i>{{ selectedPatientDetail?.InsuranceCompany?.name || selectedPatientDetail?.insuranceProvider }}
+              </span>
+              <span *ngIf="!selectedPatientDetail?.hasInsurance" class="badge bg-secondary rounded-pill px-3 py-1">
+                Particular
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Details Grid -->
+        <div class="row g-3 mb-3">
+          <div class="col-sm-6">
+            <div class="p-3 border rounded-3 h-100 bg-light bg-opacity-50">
+              <span class="text-muted x-small fw-bold text-uppercase d-block">{{ langService.lang() === 'es' ? 'Contacto & Teléfono' : 'Contact' }}</span>
+              <strong class="d-block text-dark mt-1">{{ selectedPatientDetail?.phone || selectedPatientDetail?.User?.phone || 'N/A' }}</strong>
+              <small class="text-muted x-small d-block">{{ selectedPatientDetail?.User?.email }}</small>
+            </div>
+          </div>
+          <div class="col-sm-6">
+            <div class="p-3 border rounded-3 h-100 bg-light bg-opacity-50">
+              <span class="text-muted x-small fw-bold text-uppercase d-block">{{ langService.lang() === 'es' ? 'Dirección de Habitación' : 'Address' }}</span>
+              <strong class="d-block text-dark mt-1">{{ selectedPatientDetail?.address || 'N/A' }}</strong>
+              <small class="text-muted x-small d-block">{{ selectedPatientDetail?.city }}, {{ selectedPatientDetail?.state }}</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pre-existing diseases & Allergies -->
+        <div class="card border rounded-4 p-3 mb-3 bg-light bg-opacity-25" *ngIf="selectedPatientDetail?.preexistingDiseases?.length > 0 || selectedPatientDetail?.allergies">
+          <h6 class="fw-bold text-dark x-small text-uppercase mb-2"><i class="bi bi-heart-pulse-fill text-danger me-1"></i>{{ langService.lang() === 'es' ? 'Enfermedades y Alergias' : 'Conditions & Allergies' }}</h6>
+          <div *ngIf="selectedPatientDetail?.allergies" class="mb-2 text-danger small">
+            <strong>Alergias:</strong> {{ selectedPatientDetail?.allergies }}
+          </div>
+          <ul class="list-unstyled mb-0 small" *ngIf="selectedPatientDetail?.preexistingDiseases?.length > 0">
+            <li *ngFor="let d of selectedPatientDetail?.preexistingDiseases" class="mb-1">
+              <i class="bi bi-dot text-primary"></i><strong>{{ d.diseaseName }}</strong> (Tratamiento: {{ d.treatment || 'N/A' }})
+            </li>
+          </ul>
+        </div>
+
+        <!-- Clinical History Summary -->
+        <div class="card border rounded-4 p-3 bg-light bg-opacity-25" *ngIf="selectedPatientDetail?.clinicalHistorySummary">
+          <h6 class="fw-bold text-dark x-small text-uppercase mb-2"><i class="bi bi-file-medical-fill text-primary me-1"></i>{{ langService.lang() === 'es' ? 'Resumen Clínico' : 'Clinical Summary' }}</h6>
+          <p class="small text-muted mb-0">{{ selectedPatientDetail?.clinicalHistorySummary }}</p>
+        </div>
+      </div>
+
+      <div class="modal-footer border-top px-4 py-3 bg-light d-flex justify-content-between">
+        <button type="button" class="btn btn-outline-primary btn-sm rounded-pill px-3" (click)="showDetailModal = false; openEditPatientModal(selectedPatientDetail)">
+          <i class="bi bi-pencil me-1"></i>{{ langService.lang() === 'es' ? 'Editar Datos' : 'Edit Info' }}
+        </button>
+        <button type="button" class="btn btn-secondary btn-sm rounded-pill px-4" (click)="showDetailModal = false">
+          {{ langService.lang() === 'es' ? 'Cerrar' : 'Close' }}
+        </button>
+      </div>
     </div>
   </div>
 </div>

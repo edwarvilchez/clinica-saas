@@ -69,9 +69,16 @@ exports.getStats = async (req, res) => {
     
     // Filter appointments by organization for admin roles
     if (!isSuperAdmin && organizationId) {
-      baseWhere.doctorId = {
-        [Op.in]: sequelize.literal(`(SELECT id FROM "Doctors" WHERE "userId" IN (SELECT id FROM "Users" WHERE "organizationId" = '${organizationId}'))`)
-      };
+      const orgDoctors = await Doctor.findAll({
+        attributes: ['id'],
+        include: [{
+          model: User,
+          where: { organizationId },
+          attributes: []
+        }]
+      });
+      const orgDoctorIds = orgDoctors.map(d => d.id);
+      baseWhere.doctorId = { [Op.in]: orgDoctorIds.length > 0 ? orgDoctorIds : ['00000000-0000-0000-0000-000000000000'] };
     }
 
     responseData.appointmentsToday = await Appointment.count({ 

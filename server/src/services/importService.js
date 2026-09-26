@@ -32,9 +32,15 @@ function validateRecord(type, record, rowIndex = 1) {
   } else if (type === 'medical_history') {
     if (!record.patientDocumentId && !record.patientEmail) errors.push({ row: rowIndex, field: 'patientDocumentId', message: 'Se requiere cédula o email del paciente' });
     if (!record.diagnosis && !record.symptoms) errors.push({ row: rowIndex, field: 'diagnosis', message: 'Se requieren síntomas o diagnóstico' });
-  } else if (type === 'pharmacy_inventory') {
-    if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre comercial del medicamento' });
-    if (!record.stock || isNaN(parseInt(record.stock))) errors.push({ row: rowIndex, field: 'stock', message: 'Cantidad de stock requerida' });
+  } else if (type === 'pharmacy_inventory' || type === 'inventory') {
+    if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre del producto o insumo' });
+    if (record.priceUSD && isNaN(parseFloat(record.priceUSD))) errors.push({ row: rowIndex, field: 'priceUSD', message: 'El precio debe ser un número válido' });
+  } else if (type === 'insurance_companies') {
+    if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre o razón social de la empresa aseguradora' });
+    if (!record.rif) errors.push({ row: rowIndex, field: 'rif', message: 'Falta el RIF de la aseguradora' });
+  } else if (type === 'baremos') {
+    if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre del servicio médico o baremo' });
+    if (!record.priceUSD || isNaN(parseFloat(record.priceUSD))) errors.push({ row: rowIndex, field: 'priceUSD', message: 'Precio de honorario/servicio obligatorio y numérico' });
   }
   return errors;
 }

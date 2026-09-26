@@ -20,6 +20,7 @@ export class Nurses implements OnInit {
   searchTerm = signal('');
   shiftFilter = signal('all');
   showAdvancedFilters = signal(false);
+  viewMode = signal<'list' | 'kanban'>('list');
 
   filteredNurses = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -27,15 +28,53 @@ export class Nurses implements OnInit {
     
     return this.nurses().filter(n => {
       const matchesSearch = 
-        n.User.firstName.toLowerCase().includes(term) || 
-        n.User.lastName.toLowerCase().includes(term) ||
-        n.specialization.toLowerCase().includes(term);
+        (n.User?.firstName || '').toLowerCase().includes(term) || 
+        (n.User?.lastName || '').toLowerCase().includes(term) ||
+        (n.specialization || '').toLowerCase().includes(term);
       
-      const matchesShift = shift === 'all' || n.shift === shift;
+      const nShift = (n.shift || '').toLowerCase();
+      const matchesShift = shift === 'all' || 
+        (shift === 'Mañana' && (nShift.includes('mañana') || nShift.includes('morning'))) ||
+        (shift === 'Tarde' && (nShift.includes('tarde') || nShift.includes('afternoon'))) ||
+        (shift === 'Noche' && (nShift.includes('noche') || nShift.includes('night'))) ||
+        (shift === 'Rotativo' && (nShift.includes('rotativo') || nShift.includes('rotating'))) ||
+        n.shift === shift;
       
       return matchesSearch && matchesShift;
     });
   });
+
+  morningNurses = computed(() => this.filteredNurses().filter(n => {
+    const s = (n.shift || '').toLowerCase();
+    return s.includes('mañana') || s.includes('morning');
+  }));
+
+  afternoonNurses = computed(() => this.filteredNurses().filter(n => {
+    const s = (n.shift || '').toLowerCase();
+    return s.includes('tarde') || s.includes('afternoon');
+  }));
+
+  nightNurses = computed(() => this.filteredNurses().filter(n => {
+    const s = (n.shift || '').toLowerCase();
+    return s.includes('noche') || s.includes('night');
+  }));
+
+  rotatingNurses = computed(() => this.filteredNurses().filter(n => {
+    const s = (n.shift || '').toLowerCase();
+    return !s.includes('mañana') && !s.includes('morning') &&
+           !s.includes('tarde') && !s.includes('afternoon') &&
+           !s.includes('noche') && !s.includes('night');
+  }));
+
+  getShiftLabel(shift: string): string {
+    if (!shift) return '';
+    const s = shift.toLowerCase();
+    if (s.includes('mañana') || s.includes('morning')) return this.langService.translate('nurses.shifts.morning');
+    if (s.includes('tarde') || s.includes('afternoon')) return this.langService.translate('nurses.shifts.afternoon');
+    if (s.includes('noche') || s.includes('night')) return this.langService.translate('nurses.shifts.night');
+    if (s.includes('rotativo') || s.includes('rotating')) return this.langService.translate('nurses.shifts.rotating');
+    return shift;
+  }
 
   constructor(
     private http: HttpClient,

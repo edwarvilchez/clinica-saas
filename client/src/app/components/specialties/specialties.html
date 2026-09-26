@@ -1,0 +1,218 @@
+<div class="container-fluid py-4 px-3 px-md-4">
+  <!-- Header Title -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <div class="badge bg-primary bg-opacity-10 text-primary p-2 rounded-3">
+          <i class="bi bi-award fs-5"></i>
+        </div>
+        <h1 class="h3 fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Especialidades Médicas' : 'Medical Specialties' }}</h1>
+      </div>
+      <p class="text-muted small mb-0">{{ langService.lang() === 'es' ? 'Gestión de especialidades clínicas, aranceles base y vinculación médica' : 'Management of clinical specialties, base fees and doctor assignments' }}</p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <button class="btn btn-primary rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 fw-semibold" (click)="openCreateModal()">
+        <i class="bi bi-plus-circle"></i>
+        <span>{{ langService.lang() === 'es' ? 'Nueva Especialidad' : 'New Specialty' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Search & View Mode Bar -->
+  <div class="row g-3 mb-4 align-items-center">
+    <div class="col-md-5 col-lg-6">
+      <div class="input-group search-bar shadow-sm rounded-pill overflow-hidden bg-white border">
+        <span class="input-group-text bg-white border-0 ps-3 text-muted">
+          <i class="bi bi-search"></i>
+        </span>
+        <input 
+          type="text" 
+          class="form-control border-0 py-2 shadow-none" 
+          [placeholder]="langService.lang() === 'es' ? 'Buscar por nombre, código o departamento...' : 'Search by name, code or department...'"
+          [ngModel]="searchTerm()"
+          (ngModelChange)="searchTerm.set($event)">
+      </div>
+    </div>
+    <div class="col-md-7 col-lg-6 d-flex align-items-center justify-content-md-end gap-3 flex-wrap">
+      <!-- View Mode Switcher -->
+      <div class="btn-group bg-light p-1 rounded-pill border shadow-sm" role="group">
+        <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+          [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+          (click)="viewMode.set('list')">
+          <i class="bi bi-list-ul"></i><span class="small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+        </button>
+        <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+          [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+          (click)="viewMode.set('kanban')">
+          <i class="bi bi-grid-fill"></i><span class="small">Kanban</span>
+        </button>
+      </div>
+
+      <div class="card border-0 shadow-sm rounded-4 p-2 px-3 bg-white text-center">
+        <span class="text-muted x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Total' : 'Total' }}</span>
+        <span class="fs-6 fw-bold text-primary">{{ specialties().length }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2 small">{{ langService.lang() === 'es' ? 'Cargando catálogo...' : 'Loading catalog...' }}</p>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading() && filteredSpecialties().length === 0" class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+    <i class="bi bi-journal-medical display-4 text-muted opacity-50 mb-3"></i>
+    <h5 class="fw-bold text-dark">{{ langService.lang() === 'es' ? 'No se encontraron especialidades' : 'No specialties found' }}</h5>
+    <p class="text-muted small mb-0">{{ langService.lang() === 'es' ? 'Intenta con otro término de búsqueda o crea una nueva especialidad.' : 'Try another search term or create a new specialty.' }}</p>
+  </div>
+
+  <!-- LIST VIEW -->
+  <div *ngIf="!loading() && viewMode() === 'list' && filteredSpecialties().length > 0" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden mb-4">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-4 py-3">{{ langService.lang() === 'es' ? 'CÓDIGO' : 'CODE' }}</th>
+            <th>{{ langService.lang() === 'es' ? 'ESPECIALIDAD' : 'SPECIALTY' }}</th>
+            <th>{{ langService.lang() === 'es' ? 'DESCRIPCIÓN' : 'DESCRIPTION' }}</th>
+            <th>{{ langService.lang() === 'es' ? 'ARANCEL BASE (USD)' : 'BASE FEE (USD)' }}</th>
+            <th>{{ langService.lang() === 'es' ? 'MÉDICOS ASIGNADOS' : 'ASSIGNED DOCTORS' }}</th>
+            <th class="text-end pe-4">{{ langService.lang() === 'es' ? 'ACCIONES' : 'ACTIONS' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of filteredSpecialties()">
+            <td class="ps-4">
+              <span class="badge bg-light text-secondary border rounded-pill font-monospace">{{ s.code || 'ESP' }}</span>
+            </td>
+            <td>
+              <div class="fw-bold text-dark">{{ langService.lang() === 'es' ? s.name : (s.nameEn || s.name) }}</div>
+            </td>
+            <td>
+              <span class="text-muted small">{{ s.description || 'N/A' }}</span>
+            </td>
+            <td>
+              <span class="fw-bold text-success">${{ s.baseFeeUSD }}</span>
+              <span class="text-muted x-small ms-1">({{ currencyService.formatAmount(s.baseFeeUSD, 'VES') }})</span>
+            </td>
+            <td>
+              <span class="badge rounded-pill bg-info bg-opacity-10 text-info px-2 py-1">
+                <i class="bi bi-person-badge me-1"></i>{{ s.Doctors ? s.Doctors.length : 0 }} {{ langService.lang() === 'es' ? 'Médicos' : 'Doctors' }}
+              </span>
+            </td>
+            <td class="text-end pe-4">
+              <button class="btn btn-sm btn-light border-0 me-1" (click)="openEditModal(s)">
+                <i class="bi bi-pencil-square text-primary"></i>
+              </button>
+              <button class="btn btn-sm btn-light border-0 text-danger" (click)="deleteSpecialty(s)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- KANBAN / GRID VIEW -->
+  <div *ngIf="!loading() && viewMode() === 'kanban' && filteredSpecialties().length > 0" class="row g-3">
+    <div *ngFor="let s of filteredSpecialties()" class="col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm rounded-4 h-100 hover-card bg-white transition p-3">
+        <div class="d-flex align-items-start justify-content-between mb-2">
+          <div class="d-flex align-items-center gap-2">
+            <div class="specialty-icon bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+              <i class="bi bi-heart-pulse fs-5"></i>
+            </div>
+            <div>
+              <span class="badge bg-light text-secondary border rounded-pill x-small px-2 mb-1">{{ s.code || 'ESP' }}</span>
+              <h6 class="fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? s.name : (s.nameEn || s.name) }}</h6>
+            </div>
+          </div>
+          <div>
+            <button class="btn btn-light btn-sm rounded-circle p-1" (click)="openEditModal(s)">
+              <i class="bi bi-pencil-square text-primary"></i>
+            </button>
+            <button class="btn btn-light btn-sm rounded-circle p-1 ms-1" (click)="deleteSpecialty(s)">
+              <i class="bi bi-trash text-danger"></i>
+            </button>
+          </div>
+        </div>
+
+        <p class="text-muted x-small mb-3 text-truncate-2" style="min-height: 2.2rem">
+          {{ s.description || (langService.lang() === 'es' ? 'Sin descripción clínica registrada.' : 'No clinical description recorded.') }}
+        </p>
+
+        <div class="border-top pt-2 mt-auto d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small d-block">{{ langService.lang() === 'es' ? 'Arancel Base' : 'Base Fee' }}</span>
+            <span class="fw-bold text-success fs-6">${{ s.baseFeeUSD }}</span>
+            <span class="text-muted x-small ms-1">({{ currencyService.formatAmount(s.baseFeeUSD, 'VES') }})</span>
+          </div>
+
+          <div class="text-end">
+            <span class="badge rounded-pill bg-info bg-opacity-10 text-info px-2 py-1 x-small">
+              <i class="bi bi-person-badge me-1"></i>{{ s.Doctors ? s.Doctors.length : 0 }} {{ langService.lang() === 'es' ? 'Médicos' : 'Doctors' }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Crear / Editar -->
+<div *ngIf="showModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-dark">
+          {{ isEditing ? (langService.lang() === 'es' ? 'Editar Especialidad' : 'Edit Specialty') : (langService.lang() === 'es' ? 'Nueva Especialidad Médica' : 'New Medical Specialty') }}
+        </h5>
+        <button type="button" class="btn-close shadow-none" (click)="closeModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="saveSpecialty()">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Código' : 'Code' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentSpecialty.code" name="code" placeholder="ESP-01">
+            </div>
+            <div class="col-sm-8">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nombre (Español) *' : 'Name (Spanish) *' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentSpecialty.name" name="name" required placeholder="Ej. Cardiología">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Nombre (Inglés)' : 'Name (English)' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentSpecialty.nameEn" name="nameEn" placeholder="Ej. Cardiology">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Arancel Base de Consulta (USD $)' : 'Base Consultation Fee (USD $)' }}</label>
+              <div class="input-group input-group-sm">
+                <span class="input-group-text">$</span>
+                <input type="number" step="0.01" class="form-control rounded-end-3" [(ngModel)]="currentSpecialty.baseFeeUSD" name="baseFeeUSD" required>
+              </div>
+              <small class="text-muted x-small mt-1 d-block">
+                ≈ {{ currencyService.formatAmount(currentSpecialty.baseFeeUSD || 0, 'VES') }} (Tasa BCV)
+              </small>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Descripción Clínica' : 'Clinical Description' }}</label>
+              <textarea class="form-control form-control-sm rounded-3" rows="3" [(ngModel)]="currentSpecialty.description" name="description" placeholder="Detalles de la especialidad..."></textarea>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-2 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="closeModal()">{{ langService.lang() === 'es' ? 'Cancelar' : 'Cancel' }}</button>
+            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm">{{ langService.lang() === 'es' ? 'Guardar' : 'Save' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

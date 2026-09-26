@@ -142,7 +142,7 @@ const check24hAppointmentReminders = async () => {
                 console.log(`📧 [Fallback] Enviando recordatorio 24h por Email a ${patientEmail}`);
                 await sendEmail({
                     email: patientEmail,
-                    subject: `Recordatorio de Cita Médica para Mañana - MedicalCare 888`,
+                    subject: `Recordatorio de Cita Médica para Mañana - Clinica - SaaS`,
                     message: `Hola ${patientName},\n\nTe recordamos que tienes una cita médica programada para mañana (${apptDate} a las ${apptTime}) con el Dr. ${doctorName}.\n\nPor favor asiste puntualmente.`
                 });
                 sendSuccess = true;

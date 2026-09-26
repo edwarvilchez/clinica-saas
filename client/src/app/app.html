@@ -1,14 +1,18 @@
 <app-call-notification></app-call-notification>
 <div class="app-container">
   <!-- Navbar visible except on login/register -->
-  <app-navbar *ngIf="!isAuthPage()" (toggleSidebar)="toggleSidebar()"></app-navbar>
+  <app-navbar 
+    *ngIf="!isAuthPage()" 
+    (toggleSidebar)="toggleSidebar()" 
+    [isSidebarCollapsed]="isSidebarCollapsed">
+  </app-navbar>
 
-  <div class="app-body" [class.sidebar-open]="isSidebarOpen">
+  <div class="app-body" [class.sidebar-open]="isSidebarOpen" [class.sidebar-collapsed]="isSidebarCollapsed">
     <!-- Overlay for mobile closing -->
     <div *ngIf="isSidebarOpen" class="sidebar-overlay" (click)="closeSidebar()"></div>
 
     <!-- Sidebar visible except on login/register -->
-    <app-sidebar *ngIf="!isAuthPage()"></app-sidebar>
+    <app-sidebar *ngIf="!isAuthPage()" (closeSidebar)="closeSidebar()"></app-sidebar>
 
     <main class="main-content d-flex flex-column h-100">
       <div class="flex-grow-1">
@@ -16,12 +20,12 @@
       </div>
 
       <!-- Global Footer for Modules -->
-      <footer *ngIf="!isAuthPage()" class="p-3 pb-5 mt-auto">
+      <footer *ngIf="!isAuthPage()" class="p-3 pb-4 mt-auto">
         <div class="text-center">
           <div class="brand-footer-wrapper">
             <span class="brand-footer-version">v{{ version }}</span>
-            <span class="mx-2 text-dark">|</span>
-            <span class="brand-footer-copyright">CGK888Digital &copy; 2026</span>
+            <span class="mx-2 text-muted">|</span>
+            <span class="brand-footer-copyright">Clinica - SaaS &copy; 2026</span>
           </div>
         </div>
       </footer>
