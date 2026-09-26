@@ -24,6 +24,18 @@ const LabResult = sequelize.define('LabResult', {
     type: DataTypes.ENUM('Pending', 'Completed'),
     defaultValue: 'Completed'
   },
+  sampleStatus: {
+    type: DataTypes.ENUM('ORDERED', 'SAMPLE_COLLECTED', 'IN_PROCESSING', 'COMPLETED', 'REJECTED'),
+    defaultValue: 'ORDERED'
+  },
+  sampleBarcode: {
+    type: DataTypes.STRING,
+    allowNull: true
+  },
+  collectionDate: {
+    type: DataTypes.DATE,
+    allowNull: true
+  },
   deletedAt: {
     type: DataTypes.DATE,
     allowNull: true

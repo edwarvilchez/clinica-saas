@@ -1,0 +1,881 @@
+<div class="container-fluid py-4 px-3 px-md-4">
+  <!-- Header -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <div class="badge bg-primary bg-opacity-10 text-primary p-2 rounded-3">
+          <i class="bi bi-box-seam-fill fs-5"></i>
+        </div>
+        <h1 class="h3 fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Módulo de Inventario, Productos & Servicios' : 'Inventory, Products & Services Module' }}</h1>
+      </div>
+      <p class="text-muted small mb-0">{{ langService.lang() === 'es' ? 'Control de existencias, insumos médicos, servicios clínicos y vinculación de honorarios a profesionales' : 'Stock control, medical supplies, clinical services and doctor fee associations' }}</p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <button class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm fw-semibold" (click)="loadAllData()">
+        <i class="bi bi-arrow-clockwise me-1"></i> {{ langService.lang() === 'es' ? 'Actualizar' : 'Refresh' }}
+      </button>
+      <button class="btn btn-outline-success btn-sm rounded-pill px-3 shadow-sm fw-semibold" (click)="openMovementModal()">
+        <i class="bi bi-arrow-left-right me-1"></i> {{ langService.lang() === 'es' ? 'Registrar Movimiento / Consumo' : 'Register Movement' }}
+      </button>
+      <button class="btn btn-primary-premium btn-sm rounded-pill px-3 shadow-sm fw-semibold" (click)="openCreateItemModal('PRODUCT')">
+        <i class="bi bi-plus-circle me-1"></i> {{ langService.lang() === 'es' ? 'Nuevo Producto / Insumo' : 'New Product' }}
+      </button>
+      <button class="btn btn-info text-white btn-sm rounded-pill px-3 shadow-sm fw-semibold" (click)="openCreateItemModal('SERVICE')">
+        <i class="bi bi-heart-pulse me-1"></i> {{ langService.lang() === 'es' ? 'Nuevo Servicio Clínico' : 'New Service' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Metrics Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-primary h-100 cursor-pointer" (click)="activeTab.set('products')">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Productos e Insumos' : 'Products & Supplies' }}</span>
+            <h4 class="fw-bold text-dark mb-0 mt-1">{{ productItems().length }}</h4>
+            <small class="text-muted x-small">Valuación: ${{ totalStockValuationUSD().toFixed(2) }}</small>
+          </div>
+          <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+            <i class="bi bi-boxes fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-info h-100 cursor-pointer" (click)="activeTab.set('services')">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Servicios Clínicos' : 'Clinical Services' }}</span>
+            <h4 class="fw-bold text-info mb-0 mt-1">{{ serviceItems().length }}</h4>
+            <small class="text-muted x-small">Con Honorarios Médicos</small>
+          </div>
+          <div class="bg-info bg-opacity-10 text-info p-3 rounded-circle">
+            <i class="bi bi-clipboard2-pulse fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-warning h-100 cursor-pointer" (click)="activeTab.set('alerts')">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Alertas Stock Bajo' : 'Low Stock Alerts' }}</span>
+            <h4 class="fw-bold text-warning mb-0 mt-1">{{ alerts()?.lowStockCount || 0 }}</h4>
+            <small class="text-muted x-small">Reabastecimiento requerido</small>
+          </div>
+          <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
+            <i class="bi bi-exclamation-triangle-fill fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-danger h-100 cursor-pointer" (click)="activeTab.set('alerts')">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Lotes por Vencer / Vencidos' : 'Expiring / Expired' }}</span>
+            <h4 class="fw-bold text-danger mb-0 mt-1">{{ (alerts()?.expiringCount || 0) + (alerts()?.expiredCount || 0) }}</h4>
+            <small class="text-muted x-small">Control de Caducidad</small>
+          </div>
+          <div class="bg-danger bg-opacity-10 text-danger p-3 rounded-circle">
+            <i class="bi bi-calendar-x fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs & Search -->
+  <div class="card border-0 shadow-sm rounded-4 bg-white p-2 mb-4">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+      <ul class="nav nav-pills gap-1 flex-fill">
+        <li class="nav-item">
+          <button 
+            class="nav-link rounded-pill px-4 py-2 fw-semibold d-flex align-items-center gap-2" 
+            [class.active]="activeTab() === 'products'"
+            (click)="activeTab.set('products')">
+            <i class="bi bi-box-seam"></i>
+            <span>{{ langService.lang() === 'es' ? 'Productos & Insumos' : 'Products & Supplies' }}</span>
+            <span class="badge rounded-pill bg-light text-dark border">{{ productItems().length }}</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button 
+            class="nav-link rounded-pill px-4 py-2 fw-semibold d-flex align-items-center gap-2" 
+            [class.active]="activeTab() === 'services'"
+            (click)="activeTab.set('services')">
+            <i class="bi bi-heart-pulse"></i>
+            <span>{{ langService.lang() === 'es' ? 'Servicios & Honorarios' : 'Services & Fees' }}</span>
+            <span class="badge rounded-pill bg-info text-white">{{ serviceItems().length }}</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button 
+            class="nav-link rounded-pill px-4 py-2 fw-semibold d-flex align-items-center gap-2" 
+            [class.active]="activeTab() === 'kardex'"
+            (click)="activeTab.set('kardex')">
+            <i class="bi bi-arrow-down-up"></i>
+            <span>{{ langService.lang() === 'es' ? 'Kardex / Movimientos' : 'Kardex / Movements' }}</span>
+            <span class="badge rounded-pill bg-secondary text-white">{{ movements().length }}</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button 
+            class="nav-link rounded-pill px-4 py-2 fw-semibold d-flex align-items-center gap-2" 
+            [class.active]="activeTab() === 'alerts'"
+            (click)="activeTab.set('alerts')">
+            <i class="bi bi-bell"></i>
+            <span>{{ langService.lang() === 'es' ? 'Alertas de Stock' : 'Stock Alerts' }}</span>
+            <span *ngIf="(alerts()?.lowStockCount || 0) > 0" class="badge rounded-pill bg-danger">{{ alerts()?.lowStockCount }}</span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Search & Category Filters & View Mode Toggle -->
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <select *ngIf="activeTab() === 'products'" class="form-select form-select-sm rounded-pill border" [ngModel]="categoryFilter()" (ngModelChange)="categoryFilter.set($event)">
+          <option value="ALL">{{ langService.lang() === 'es' ? 'Todas las Categorías' : 'All Categories' }}</option>
+          <option value="MEDICINE">Medicamentos</option>
+          <option value="SURGICAL_MATERIAL">Material Quirúrgico</option>
+          <option value="DISPOSABLE">Descartables</option>
+          <option value="HOSPITAL_SUPPLY">Insumos Hospitalarios</option>
+          <option value="EQUIPMENT">Equipos</option>
+        </select>
+
+        <div class="input-group search-bar rounded-pill overflow-hidden bg-light border" style="min-width: 220px;">
+          <span class="input-group-text bg-transparent border-0 ps-3 text-muted">
+            <i class="bi bi-search"></i>
+          </span>
+          <input 
+            type="text" 
+            class="form-control bg-transparent border-0 py-2 shadow-none small" 
+            [placeholder]="langService.lang() === 'es' ? 'Buscar SKU, nombre...' : 'Search SKU, name...'"
+            [ngModel]="searchTerm()"
+            (ngModelChange)="searchTerm.set($event)">
+        </div>
+
+        <!-- View Mode Toggle (Odoo style) -->
+        <div class="btn-group bg-light p-1 rounded-pill border shadow-sm" role="group">
+          <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+            [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+            (click)="viewMode.set('list')">
+            <i class="bi bi-list-ul"></i><span class="x-small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+          </button>
+          <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+            [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+            (click)="viewMode.set('kanban')">
+            <i class="bi bi-kanban-fill"></i><span class="x-small">Kanban</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 1: PRODUCTOS, MEDICAMENTOS & INSUMOS   -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab() === 'products'">
+    <div *ngIf="loading()" class="text-center py-5">
+      <div class="spinner-border text-primary" role="status"></div>
+    </div>
+
+    <!-- LIST VIEW -->
+    <div *ngIf="!loading() && viewMode() === 'list'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="bg-light">
+            <tr>
+              <th class="ps-3 py-3 x-small fw-bold text-muted text-nowrap">SKU / CÓDIGO</th>
+              <th class="py-3 x-small fw-bold text-muted text-nowrap">DESCRIPCIÓN DEL PRODUCTO</th>
+              <th class="py-3 x-small fw-bold text-muted text-nowrap">CATEGORÍA / UNIDAD</th>
+              <th class="py-3 x-small fw-bold text-muted text-end text-nowrap">COSTO ($)</th>
+              <th class="py-3 x-small fw-bold text-muted text-end text-nowrap">PRECIO VENTA ($ / Bs)</th>
+              <th class="py-3 x-small fw-bold text-muted text-center text-nowrap">STOCK ACTUAL</th>
+              <th class="py-3 x-small fw-bold text-muted text-nowrap">LOTE / VENCIMIENTO</th>
+              <th class="pe-3 py-3 x-small fw-bold text-muted text-center text-nowrap">ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let it of productItems()">
+              <td class="ps-3">
+                <span class="badge bg-light text-primary border font-monospace">{{ it.code }}</span>
+              </td>
+              <td>
+                <strong class="d-block text-dark">{{ it.name }}</strong>
+                <small class="text-muted x-small">{{ it.location || 'Almacén General' }}</small>
+              </td>
+              <td>
+                <span class="badge rounded-pill me-1" [ngClass]="it.itemType === 'MEDICATION' ? 'badge-medication' : 'badge-product'">
+                  {{ it.category }}
+                </span>
+                <small class="text-muted font-monospace x-small">{{ it.unit }}</small>
+              </td>
+              <td class="text-end fw-semibold text-muted">${{ it.costUSD }}</td>
+              <td class="text-end">
+                <div class="fw-bold text-dark fs-6">${{ it.priceUSD }}</div>
+                <small class="text-muted x-small">{{ currencyService.formatAmount(it.priceUSD, 'VES') }}</small>
+              </td>
+              <td class="text-center">
+                <span class="badge rounded-pill px-3 py-2 fw-bold fs-6" 
+                  [ngClass]="it.stockCurrent <= 0 ? 'bg-danger text-white' : (it.stockCurrent <= it.stockMin ? 'bg-warning text-dark' : 'bg-success text-white')">
+                  {{ it.stockCurrent }} {{ it.unit }}
+                </span>
+                <small *ngIf="it.stockCurrent <= it.stockMin" class="d-block text-danger x-small mt-1">Min: {{ it.stockMin }}</small>
+              </td>
+              <td>
+                <span *ngIf="it.batchNumber" class="d-block x-small font-monospace">Lote: {{ it.batchNumber }}</span>
+                <span *ngIf="it.expiryDate" class="badge rounded-pill bg-light text-secondary border x-small">
+                  Vence: {{ formatDate(it.expiryDate) }}
+                </span>
+              </td>
+              <td class="pe-3 text-center">
+                <div class="d-flex justify-content-center gap-1">
+                  <button class="btn btn-sm btn-outline-success rounded-circle p-1" [title]="langService.lang() === 'es' ? 'Registrar Consumo / Salida' : 'Register Consumption'" (click)="openMovementModal(it)">
+                    <i class="bi bi-box-arrow-right"></i>
+                  </button>
+                  <button class="btn btn-sm btn-light rounded-circle p-1 text-primary" [title]="langService.lang() === 'es' ? 'Editar Ítem' : 'Edit Item'" (click)="openEditItemModal(it)">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button class="btn btn-sm btn-light rounded-circle p-1 text-danger" (click)="deleteItem(it)">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="productItems().length === 0">
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i class="bi bi-boxes display-5 text-muted opacity-50 d-block mb-2"></i>
+                <h6>No se encontraron productos en el inventario.</h6>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- KANBAN VIEW (Odoo ERP Style) -->
+    <div *ngIf="!loading() && viewMode() === 'kanban'" class="row g-3">
+      <!-- Column 1: Stock Óptimo -->
+      <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-success">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-success mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-check-circle-fill"></i> {{ langService.lang() === 'es' ? 'Stock Óptimo' : 'Optimal Stock' }}
+            </h6>
+            <span class="badge bg-success rounded-pill px-2">{{ optimalProducts().length }}</span>
+          </div>
+          <div class="d-flex flex-column gap-2" style="max-height: 650px; overflow-y: auto;">
+            <div *ngFor="let it of optimalProducts()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-light text-primary font-monospace">{{ it.code }}</span>
+                <span class="badge bg-success bg-opacity-10 text-success fw-bold">{{ it.stockCurrent }} {{ it.unit }}</span>
+              </div>
+              <h6 class="fw-bold text-dark mb-1">{{ it.name }}</h6>
+              <div class="d-flex justify-content-between align-items-center text-muted x-small mt-2">
+                <span>PVP: <strong class="text-dark">${{ it.priceUSD }}</strong></span>
+                <span>Costo: ${{ it.costUSD }}</span>
+              </div>
+              <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
+                <button class="btn btn-xs btn-outline-success rounded-pill px-2 py-0" (click)="openMovementModal(it)">
+                  <i class="bi bi-arrow-right-short"></i> Salida
+                </button>
+                <button class="btn btn-xs btn-light rounded-pill px-2 py-0 text-primary" (click)="openEditItemModal(it)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+              </div>
+            </div>
+            <div *ngIf="optimalProducts().length === 0" class="text-center py-4 text-muted small">
+              Sin ítems en este estado
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 2: Stock Bajo -->
+      <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-warning">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-warning mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-exclamation-triangle-fill"></i> {{ langService.lang() === 'es' ? 'Stock Bajo (Reorden)' : 'Low Stock (Reorder)' }}
+            </h6>
+            <span class="badge bg-warning text-dark rounded-pill px-2">{{ lowStockProducts().length }}</span>
+          </div>
+          <div class="d-flex flex-column gap-2" style="max-height: 650px; overflow-y: auto;">
+            <div *ngFor="let it of lowStockProducts()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card border-start border-3 border-warning">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-light text-warning border border-warning font-monospace">{{ it.code }}</span>
+                <span class="badge bg-warning text-dark fw-bold">{{ it.stockCurrent }} / Min: {{ it.stockMin }}</span>
+              </div>
+              <h6 class="fw-bold text-dark mb-1">{{ it.name }}</h6>
+              <div class="d-flex justify-content-between align-items-center text-muted x-small mt-2">
+                <span>PVP: <strong class="text-dark">${{ it.priceUSD }}</strong></span>
+                <span class="text-danger">Reponer pronto</span>
+              </div>
+              <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
+                <button class="btn btn-xs btn-outline-warning rounded-pill px-2 py-0 text-dark" (click)="openMovementModal(it)">
+                  <i class="bi bi-plus"></i> Entrada
+                </button>
+                <button class="btn btn-xs btn-light rounded-pill px-2 py-0 text-primary" (click)="openEditItemModal(it)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+              </div>
+            </div>
+            <div *ngIf="lowStockProducts().length === 0" class="text-center py-4 text-muted small">
+              Sin alertas de stock bajo
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 3: Agotado / Crítico -->
+      <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-danger">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-danger mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-x-circle-fill"></i> {{ langService.lang() === 'es' ? 'Agotado / Crítico' : 'Out of Stock' }}
+            </h6>
+            <span class="badge bg-danger rounded-pill px-2">{{ outOfStockProducts().length }}</span>
+          </div>
+          <div class="d-flex flex-column gap-2" style="max-height: 650px; overflow-y: auto;">
+            <div *ngFor="let it of outOfStockProducts()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card border-start border-3 border-danger">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-danger bg-opacity-10 text-danger font-monospace">{{ it.code }}</span>
+                <span class="badge bg-danger text-white fw-bold">0 {{ it.unit }}</span>
+              </div>
+              <h6 class="fw-bold text-dark mb-1">{{ it.name }}</h6>
+              <div class="d-flex justify-content-between align-items-center text-muted x-small mt-2">
+                <span class="text-danger fw-bold">EXISTENCIA CERO</span>
+                <span>Min: {{ it.stockMin }}</span>
+              </div>
+              <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
+                <button class="btn btn-xs btn-danger rounded-pill px-2 py-0 text-white" (click)="openMovementModal(it)">
+                  <i class="bi bi-box-arrow-in-down"></i> Reabastecer
+                </button>
+              </div>
+            </div>
+            <div *ngIf="outOfStockProducts().length === 0" class="text-center py-4 text-muted small">
+              No hay productos agotados
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 4: Lotes y Vencimientos -->
+      <div class="col-md-6 col-xl-3">
+        <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-info">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-info mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-calendar-check-fill"></i> {{ langService.lang() === 'es' ? 'Control de Vencimiento' : 'Expiry Tracking' }}
+            </h6>
+            <span class="badge bg-info text-white rounded-pill px-2">{{ expiringProducts().length }}</span>
+          </div>
+          <div class="d-flex flex-column gap-2" style="max-height: 650px; overflow-y: auto;">
+            <div *ngFor="let it of expiringProducts()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-light text-dark font-monospace">{{ it.code }}</span>
+                <span class="badge bg-info bg-opacity-10 text-info">{{ it.category }}</span>
+              </div>
+              <h6 class="fw-bold text-dark mb-1">{{ it.name }}</h6>
+              <div class="x-small text-muted mt-1">
+                <div>Lote: <strong class="text-dark">{{ it.batchNumber || 'N/A' }}</strong></div>
+                <div>Vence: <strong class="text-danger">{{ formatDate(it.expiryDate) }}</strong></div>
+              </div>
+              <div class="d-flex justify-content-end gap-1 mt-2 pt-2 border-top">
+                <button class="btn btn-xs btn-outline-info rounded-pill px-2 py-0" (click)="openEditItemModal(it)">
+                  <i class="bi bi-clock-history"></i> Ajustar
+                </button>
+              </div>
+            </div>
+            <div *ngIf="expiringProducts().length === 0" class="text-center py-4 text-muted small">
+              Sin lotes próximos a vencer
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 2: SERVICIOS CLÍNICOS & HONORARIOS    -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab() === 'services'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between">
+      <div>
+        <h6 class="fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Catálogo de Servicios Clínicos y Vinculación Médica' : 'Clinical Services & Doctor Fee Associations' }}</h6>
+        <span class="text-muted x-small">{{ langService.lang() === 'es' ? 'Cada servicio genera automáticamente honorarios profesionales en Cuentas por Pagar al ejecutarse' : 'Services trigger automatic AP professional fee records upon consumption' }}</span>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-3 py-3 x-small fw-bold text-muted">CÓDIGO</th>
+            <th class="py-3 x-small fw-bold text-muted">SERVICIO CLÍNICO</th>
+            <th class="py-3 x-small fw-bold text-muted">ESPECIALIDAD</th>
+            <th class="py-3 x-small fw-bold text-muted">MÉDICO ASOCIADO / PRESTADOR</th>
+            <th class="py-3 x-small fw-bold text-end">TARIFA PACIENTE ($ / Bs)</th>
+            <th class="py-3 x-small fw-bold text-center">ESQUEMA DE HONORARIOS</th>
+            <th class="pe-3 py-3 x-small fw-bold text-center">ACCIONES</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of serviceItems()">
+            <td class="ps-3">
+              <span class="badge bg-light text-info border font-monospace">{{ s.code }}</span>
+            </td>
+            <td>
+              <strong class="d-block text-dark">{{ s.name }}</strong>
+              <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill x-small">{{ s.category }}</span>
+            </td>
+            <td>
+              <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1 x-small fw-semibold">
+                {{ s.Specialty?.name || 'General' }}
+              </span>
+            </td>
+            <td>
+              <div *ngIf="s.Doctor" class="fw-bold text-dark">
+                Dr. {{ s.Doctor.User?.firstName }} {{ s.Doctor.User?.lastName }}
+              </div>
+              <span *ngIf="!s.Doctor" class="badge bg-light text-muted border rounded-pill x-small">
+                {{ langService.lang() === 'es' ? 'Cualquier Médico Disponible' : 'Any Available Doctor' }}
+              </span>
+            </td>
+            <td class="text-end">
+              <div class="fw-bold text-primary fs-6">${{ s.priceUSD }}</div>
+              <small class="text-muted x-small">{{ currencyService.formatAmount(s.priceUSD, 'VES') }}</small>
+            </td>
+            <td class="text-center">
+              <div *ngIf="s.doctorFeeFixedUSD > 0">
+                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1 fw-bold">
+                  Monto Fijo: ${{ s.doctorFeeFixedUSD }}
+                </span>
+              </div>
+              <div *ngIf="!s.doctorFeeFixedUSD || s.doctorFeeFixedUSD == 0">
+                <span class="badge bg-info bg-opacity-10 text-info rounded-pill px-2 py-1 fw-bold">
+                  {{ s.doctorFeePercent }}% Médico / {{ 100 - s.doctorFeePercent }}% Clínica
+                </span>
+              </div>
+              <small class="text-muted x-small d-block mt-1">Ret. ISLR: 3% SENIAT</small>
+            </td>
+            <td class="pe-3 text-center">
+              <div class="d-flex justify-content-center gap-1">
+                <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" (click)="openMovementModal(s)">
+                  <i class="bi bi-play-circle me-1"></i>{{ langService.lang() === 'es' ? 'Prestar Servicio' : 'Execute' }}
+                </button>
+                <button class="btn btn-sm btn-light rounded-circle p-1 text-primary" (click)="openEditItemModal(s)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-light rounded-circle p-1 text-danger" (click)="deleteItem(s)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="serviceItems().length === 0">
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="bi bi-clipboard2-pulse display-5 text-muted opacity-50 d-block mb-2"></i>
+              <h6>No se encontraron servicios clínicos registrados.</h6>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 3: KARDEX & MOVIMIENTOS               -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab() === 'kardex'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="p-3 bg-light border-bottom">
+      <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-arrow-down-up text-primary"></i>
+        <span>{{ langService.lang() === 'es' ? 'Libro Kardex de Movimientos, Consumos Clínicos y Honorarios' : 'Kardex Ledger & Clinical Consumption' }}</span>
+      </h6>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-3 py-3 x-small fw-bold text-muted">FECHA Y HORA</th>
+            <th class="py-3 x-small fw-bold text-muted">DOC / REFERENCIA</th>
+            <th class="py-3 x-small fw-bold text-muted">TIPO DE MOVIMIENTO</th>
+            <th class="py-3 x-small fw-bold text-muted">PRODUCTO / SERVICIO</th>
+            <th class="py-3 x-small fw-bold text-center">CANTIDAD</th>
+            <th class="py-3 x-small fw-bold text-end">MONTO TOTAL ($ / Bs)</th>
+            <th class="py-3 x-small fw-bold text-muted">PACIENTE / MÉDICO</th>
+            <th class="pe-3 py-3 x-small fw-bold text-center">HONORARIO CXP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let m of movements()">
+            <td class="ps-3">
+              <strong class="text-dark small d-block">{{ formatDateTime(m.movementDate) }}</strong>
+            </td>
+            <td>
+              <span class="badge bg-light text-secondary border font-monospace">{{ m.documentRef || 'MOV' }}</span>
+            </td>
+            <td>
+              <span *ngIf="m.movementType === 'ENTRY'" class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-2 py-1">
+                <i class="bi bi-box-arrow-in-down me-1"></i>Entrada Stock
+              </span>
+              <span *ngIf="m.movementType === 'CLINICAL_CONSUMPTION'" class="badge bg-primary bg-opacity-10 text-primary border border-primary rounded-pill px-2 py-1">
+                <i class="bi bi-heart-pulse me-1"></i>Consumo Clínico
+              </span>
+              <span *ngIf="m.movementType === 'EXIT'" class="badge bg-danger bg-opacity-10 text-danger border border-danger rounded-pill px-2 py-1">
+                <i class="bi bi-box-arrow-up me-1"></i>Salida Almacén
+              </span>
+            </td>
+            <td>
+              <strong class="text-dark">{{ m.InventoryItem?.name }}</strong>
+              <small class="text-muted x-small d-block font-monospace">{{ m.InventoryItem?.code }}</small>
+            </td>
+            <td class="text-center fw-bold fs-6">
+              {{ m.quantity }} {{ m.InventoryItem?.unit }}
+            </td>
+            <td class="text-end">
+              <div class="fw-bold text-dark">${{ m.totalAmountUSD }}</div>
+              <small class="text-muted x-small">{{ currencyService.formatAmount(m.totalAmountUSD, 'VES') }}</small>
+            </td>
+            <td>
+              <div *ngIf="m.Doctor" class="small fw-semibold text-dark">
+                Dr. {{ m.Doctor.User?.firstName }} {{ m.Doctor.User?.lastName }}
+              </div>
+              <small *ngIf="m.Patient" class="text-muted x-small d-block">
+                Pac: {{ m.Patient.User?.firstName }} {{ m.Patient.User?.lastName }}
+              </small>
+            </td>
+            <td class="pe-3 text-center">
+              <div *ngIf="m.DoctorFee">
+                <a routerLink="/doctor-fees" class="badge rounded-pill bg-warning text-dark border p-2 text-decoration-none">
+                  <i class="bi bi-cash-coin me-1"></i>${{ m.DoctorFee.netPayableUSD }} ({{ m.DoctorFee.status }})
+                </a>
+              </div>
+              <span *ngIf="!m.DoctorFee" class="text-muted x-small">-</span>
+            </td>
+          </tr>
+          <tr *ngIf="movements().length === 0">
+            <td colspan="8" class="text-center py-5 text-muted">
+              No hay movimientos de inventario registrados.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 4: ALERTAS DE STOCK & CADUCIDAD       -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab() === 'alerts'" class="row g-4">
+    <!-- Low Stock Alert Box -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm rounded-4 bg-white p-4 h-100">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="badge bg-warning bg-opacity-10 text-warning p-2 rounded-3">
+            <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+          </div>
+          <h5 class="fw-bold text-dark mb-0">Ítems con Stock Crítico o Agotado</h5>
+        </div>
+        <p class="text-muted x-small mb-3">Productos que han alcanzado o descendido por debajo del stock mínimo de seguridad.</p>
+
+        <div *ngFor="let it of alerts()?.lowStockItems" class="p-3 rounded-3 border bg-light mb-2 d-flex justify-content-between align-items-center">
+          <div>
+            <strong class="text-dark d-block">{{ it.name }}</strong>
+            <small class="text-muted font-monospace">{{ it.code }} | Ubicación: {{ it.location }}</small>
+          </div>
+          <div class="text-end">
+            <span class="badge rounded-pill bg-danger fs-6">{{ it.stockCurrent }} {{ it.unit }}</span>
+            <small class="text-muted x-small d-block">Mínimo: {{ it.stockMin }}</small>
+          </div>
+        </div>
+
+        <div *ngIf="(alerts()?.lowStockItems || []).length === 0" class="text-center py-4 text-muted">
+          <i class="bi bi-check-circle-fill text-success fs-3 d-block mb-2"></i>
+          <span class="small">Todos los productos tienen niveles de stock óptimos.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expiry Alert Box -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm rounded-4 bg-white p-4 h-100">
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <div class="badge bg-danger bg-opacity-10 text-danger p-2 rounded-3">
+            <i class="bi bi-calendar-x-fill fs-5"></i>
+          </div>
+          <h5 class="fw-bold text-dark mb-0">Lotes por Vencer o Vencidos</h5>
+        </div>
+        <p class="text-muted x-small mb-3">Fármacos y material descartable que vencen en los próximos 30 días o han caducado.</p>
+
+        <div *ngFor="let it of alerts()?.expiringItems" class="p-3 rounded-3 border border-warning bg-warning bg-opacity-10 mb-2 d-flex justify-content-between align-items-center">
+          <div>
+            <strong class="text-dark d-block">{{ it.name }}</strong>
+            <small class="text-muted font-monospace">Lote: {{ it.batchNumber }}</small>
+          </div>
+          <div class="text-end">
+            <span class="badge rounded-pill bg-warning text-dark">Vence: {{ formatDate(it.expiryDate) }}</span>
+            <small class="text-muted x-small d-block">Stock: {{ it.stockCurrent }}</small>
+          </div>
+        </div>
+
+        <div *ngFor="let it of alerts()?.expiredItems" class="p-3 rounded-3 border border-danger bg-danger bg-opacity-10 mb-2 d-flex justify-content-between align-items-center">
+          <div>
+            <strong class="text-dark d-block">{{ it.name }}</strong>
+            <small class="text-muted font-monospace">Lote: {{ it.batchNumber }}</small>
+          </div>
+          <div class="text-end">
+            <span class="badge rounded-pill bg-danger text-white">¡VENCIDO! {{ formatDate(it.expiryDate) }}</span>
+            <small class="text-danger x-small d-block font-bold">Retirar de inventario</small>
+          </div>
+        </div>
+
+        <div *ngIf="(alerts()?.expiringItems || []).length === 0 && (alerts()?.expiredItems || []).length === 0" class="text-center py-4 text-muted">
+          <i class="bi bi-shield-check text-success fs-3 d-block mb-2"></i>
+          <span class="small">No hay lotes con alertas de vencimiento próximas.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: CREAR / EDITAR PRODUCTO O SERVICIO -->
+<!-- ========================================== -->
+<div *ngIf="showItemModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-dark">
+          {{ isEditing ? 'Editar Ítem' : (currentItem.itemType === 'SERVICE' ? 'Nuevo Servicio Clínico con Honorarios' : 'Nuevo Producto / Insumo Médico') }}
+        </h5>
+        <button type="button" class="btn-close shadow-none" (click)="showItemModal = false"></button>
+      </div>
+
+      <div class="modal-body p-4" style="max-height: 75vh; overflow-y: auto;">
+        <form (ngSubmit)="saveItem()">
+          <div class="row g-3">
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">Código SKU / Barra *</label>
+              <input type="text" class="form-control form-control-sm rounded-3 font-monospace" [(ngModel)]="currentItem.code" name="code" required [disabled]="isEditing">
+            </div>
+            <div class="col-sm-8">
+              <label class="form-label x-small fw-bold text-muted">Nombre del Producto / Servicio *</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentItem.name" name="name" required placeholder="Ej. Ecocardiograma / Ceftriaxona 1g">
+            </div>
+
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">Tipo de Ítem *</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentItem.itemType" name="itemType">
+                <option value="PRODUCT">Producto Físico</option>
+                <option value="MEDICATION">Medicamento / Fármaco</option>
+                <option value="SUPPLY">Insumo / Descartable</option>
+                <option value="SERVICE">Servicio Clínico</option>
+              </select>
+            </div>
+            <div class="col-sm-6">
+              <label class="form-label x-small fw-bold text-muted">Categoría</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentItem.category" name="category">
+                <option value="MEDICINE">Medicamento</option>
+                <option value="SURGICAL_MATERIAL">Material Quirúrgico</option>
+                <option value="DISPOSABLE">Descartable</option>
+                <option value="HOSPITAL_SUPPLY">Insumo Hospitalario</option>
+                <option value="CONSULTATION">Consulta Médica</option>
+                <option value="SURGERY">Cirugía</option>
+                <option value="PROCEDURE">Procedimiento</option>
+                <option value="IMAGING">Imagenología / Rayos X</option>
+                <option value="LABORATORY">Laboratorio</option>
+                <option value="EQUIPMENT">Equipo</option>
+              </select>
+            </div>
+
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">Unidad de Medida</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentItem.unit" name="unit" placeholder="UNIDAD, AMPOLLA, SERVICIO...">
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">Costo Base / Compra ($)</label>
+              <input type="number" step="0.01" class="form-control form-control-sm rounded-3" [(ngModel)]="currentItem.costUSD" name="costUSD">
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">Precio de Venta al Paciente ($) *</label>
+              <input type="number" step="0.01" class="form-control form-control-sm rounded-3 fw-bold text-primary" [(ngModel)]="currentItem.priceUSD" name="priceUSD" required>
+            </div>
+
+            <!-- Physical Stock Fields (only for non-services) -->
+            <ng-container *ngIf="currentItem.itemType !== 'SERVICE'">
+              <div class="col-sm-4" *ngIf="!isEditing">
+                <label class="form-label x-small fw-bold text-muted">Stock Inicial</label>
+                <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentItem.stockCurrent" name="stockCurrent">
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label x-small fw-bold text-muted">Stock Mínimo de Alerta</label>
+                <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentItem.stockMin" name="stockMin">
+              </div>
+              <div class="col-sm-4">
+                <label class="form-label x-small fw-bold text-muted">Ubicación / Almacén</label>
+                <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentItem.location" name="location">
+              </div>
+
+              <div class="col-sm-6">
+                <label class="form-label x-small fw-bold text-muted">Número de Lote</label>
+                <input type="text" class="form-control form-control-sm rounded-3 font-monospace" [(ngModel)]="currentItem.batchNumber" name="batchNumber" placeholder="LOT-2026-X">
+              </div>
+              <div class="col-sm-6">
+                <label class="form-label x-small fw-bold text-muted">Fecha de Vencimiento</label>
+                <input type="date" class="form-control form-control-sm rounded-3" [(ngModel)]="currentItem.expiryDate" name="expiryDate">
+              </div>
+            </ng-container>
+
+            <!-- DOCTOR FEE CONFIGURATION LINK -->
+            <div class="col-12 border-top pt-3">
+              <h6 class="fw-bold text-primary small mb-2 d-flex align-items-center gap-2">
+                <i class="bi bi-person-badge-fill"></i>
+                <span>Vinculación con Médico y Honorarios Profesionales</span>
+              </h6>
+
+              <div class="card border rounded-3 p-3 bg-light bg-opacity-50">
+                <div class="form-check form-switch mb-3">
+                  <input class="form-check-input" type="checkbox" id="reqDocCheck" [(ngModel)]="currentItem.requiresDoctor" name="requiresDoctor">
+                  <label class="form-check-label fw-bold text-dark small" for="reqDocCheck">
+                    Generar Honorario Profesional al Facturarse o Consumirse
+                  </label>
+                </div>
+
+                <div *ngIf="currentItem.requiresDoctor" class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label x-small fw-bold text-muted">Médico Prestador Asociado (opcional)</label>
+                    <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentItem.doctorId" name="doctorId">
+                      <option value="">Cualquier médico de la clínica</option>
+                      <option *ngFor="let d of doctors()" [value]="d.id">
+                        Dr. {{ d.User?.firstName }} {{ d.User?.lastName }} ({{ d.Specialty?.name || 'General' }})
+                      </option>
+                    </select>
+                  </div>
+
+                  <div class="col-md-6">
+                    <label class="form-label x-small fw-bold text-muted">Especialidad Médica</label>
+                    <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentItem.specialtyId" name="specialtyId">
+                      <option value="">General / Todas</option>
+                      <option *ngFor="let sp of specialties()" [value]="sp.id">
+                        {{ sp.name }}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div class="col-sm-6">
+                    <label class="form-label x-small fw-bold text-muted">% Honorario Médico Pactado</label>
+                    <div class="input-group input-group-sm">
+                      <input type="number" class="form-control" [(ngModel)]="currentItem.doctorFeePercent" name="doctorFeePercent">
+                      <span class="input-group-text">%</span>
+                    </div>
+                  </div>
+
+                  <div class="col-sm-6">
+                    <label class="form-label x-small fw-bold text-muted">O Monto Fijo de Honorario ($)</label>
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text">$</span>
+                      <input type="number" step="0.01" class="form-control" [(ngModel)]="currentItem.doctorFeeFixedUSD" name="doctorFeeFixedUSD">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="showItemModal = false">Cancelar</button>
+            <button type="submit" class="btn btn-primary-premium btn-sm rounded-pill px-4 fw-bold shadow-sm">Guardar Ítem</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: REGISTRAR MOVIMIENTO / CONSUMO     -->
+<!-- ========================================== -->
+<div *ngIf="showMovementModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-dark">Registrar Movimiento de Inventario / Consumo Clínico</h5>
+        <button type="button" class="btn-close shadow-none" (click)="showMovementModal = false"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="saveMovement()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label x-small fw-bold text-muted">Producto / Insumo / Servicio *</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentMovement.itemId" name="itemId" (change)="onMovementItemChange()" required>
+                <option *ngFor="let it of items()" [value]="it.id">
+                  {{ it.name }} ({{ it.code }}) - Stock: {{ it.stockCurrent }} {{ it.unit }}
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label x-small fw-bold text-muted">Tipo de Movimiento *</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentMovement.movementType" name="movementType" required>
+                <option value="CLINICAL_CONSUMPTION">Consumo Clínico a Paciente (Genera CXP)</option>
+                <option value="ENTRY">Entrada / Compra de Mercancía</option>
+                <option value="EXIT">Salida de Almacén / Merma</option>
+                <option value="ADJUSTMENT">Ajuste de Conteo Físico</option>
+              </select>
+            </div>
+
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">Cantidad *</label>
+              <input type="number" step="0.01" class="form-control form-control-sm rounded-3" [(ngModel)]="currentMovement.quantity" name="quantity" required>
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">Precio Unitario ($)</label>
+              <input type="number" step="0.01" class="form-control form-control-sm rounded-3" [(ngModel)]="currentMovement.unitPriceUSD" name="unitPriceUSD">
+            </div>
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">Documento / Referencia</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentMovement.documentRef" name="documentRef" placeholder="Ej. ORD-0042 / QUIROFANO-1">
+            </div>
+
+            <div class="col-md-6" *ngIf="currentMovement.movementType === 'CLINICAL_CONSUMPTION'">
+              <label class="form-label x-small fw-bold text-muted">Paciente Atendido</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentMovement.patientId" name="patientId">
+                <option value="">Paciente General / Sin asignar</option>
+                <option *ngFor="let p of patients()" [value]="p.id">
+                  {{ p.User?.firstName }} {{ p.User?.lastName }} ({{ p.documentId || 'Cédula N/A' }})
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-6" *ngIf="currentMovement.movementType === 'CLINICAL_CONSUMPTION'">
+              <label class="form-label x-small fw-bold text-muted">Médico Tratante / Beneficiario Honorario</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentMovement.doctorId" name="doctorId">
+                <option value="">Sin médico asignado</option>
+                <option *ngFor="let d of doctors()" [value]="d.id">
+                  Dr. {{ d.User?.firstName }} {{ d.User?.lastName }} ({{ d.Specialty?.name || 'General' }})
+                </option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label x-small fw-bold text-muted">Motivo / Observación Clínica</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentMovement.reason" name="reason" placeholder="Ej. Administración de antibiótico pre-quirúrgico...">
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="showMovementModal = false">Cancelar</button>
+            <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm">Confirmar Movimiento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

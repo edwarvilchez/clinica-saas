@@ -16,46 +16,97 @@
           <label class="form-label small fw-bold text-muted text-uppercase"
             >{{ 'bulk_import.step1' | translate }}</label
           >
-          <div class="d-flex flex-wrap gap-2">
-            <button
-              type="button"
-              (click)="setImportType('patients')"
-              class="btn flex-fill py-3 border-2"
-              [ngClass]="
-                importType() === 'patients'
-                  ? 'btn-primary-premium shadow-sm'
-                  : 'btn-outline-primary'
-              "
-            >
-              <i class="bi bi-people-fill d-block fs-4 mb-1"></i>
-              {{ 'bulk_import.patients' | translate }}
-            </button>
-            <button
-              type="button"
-              (click)="setImportType('doctors')"
-              class="btn flex-fill py-3 border-2"
-              [ngClass]="
-                importType() === 'doctors'
-                  ? 'btn-primary-premium shadow-sm'
-                  : 'btn-outline-primary'
-              "
-            >
-              <i class="bi bi-person-badge-fill d-block fs-4 mb-1"></i>
-              {{ 'bulk_import.doctors' | translate }}
-            </button>
-            <button
-              type="button"
-              (click)="setImportType('lab_catalog')"
-              class="btn flex-fill py-3 border-2"
-              [ngClass]="
-                importType() === 'lab_catalog'
-                  ? 'btn-primary-premium shadow-sm'
-                  : 'btn-outline-primary'
-              "
-            >
-              <i class="bi bi-clipboard2-pulse-fill d-block fs-4 mb-1"></i>
-              {{ 'bulk_import.lab_catalog' | translate }}
-            </button>
+          <div class="row g-2">
+            <div class="col-6 col-md-4">
+              <button
+                type="button"
+                (click)="setImportType('patients')"
+                class="btn w-100 py-3 border-2 d-flex flex-column align-items-center justify-content-center h-100"
+                [ngClass]="
+                  importType() === 'patients'
+                    ? 'btn-primary-premium shadow-sm'
+                    : 'btn-outline-primary'
+                "
+              >
+                <i class="bi bi-people-fill fs-4 mb-1"></i>
+                <span class="x-small fw-bold">{{ 'bulk_import.patients' | translate }}</span>
+              </button>
+            </div>
+            <div class="col-6 col-md-4">
+              <button
+                type="button"
+                (click)="setImportType('doctors')"
+                class="btn w-100 py-3 border-2 d-flex flex-column align-items-center justify-content-center h-100"
+                [ngClass]="
+                  importType() === 'doctors'
+                    ? 'btn-primary-premium shadow-sm'
+                    : 'btn-outline-primary'
+                "
+              >
+                <i class="bi bi-person-badge-fill fs-4 mb-1"></i>
+                <span class="x-small fw-bold">{{ 'bulk_import.doctors' | translate }}</span>
+              </button>
+            </div>
+            <div class="col-6 col-md-4">
+              <button
+                type="button"
+                (click)="setImportType('lab_catalog')"
+                class="btn w-100 py-3 border-2 d-flex flex-column align-items-center justify-content-center h-100"
+                [ngClass]="
+                  importType() === 'lab_catalog'
+                    ? 'btn-primary-premium shadow-sm'
+                    : 'btn-outline-primary'
+                "
+              >
+                <i class="bi bi-clipboard2-pulse-fill fs-4 mb-1"></i>
+                <span class="x-small fw-bold">{{ 'bulk_import.lab_catalog' | translate }}</span>
+              </button>
+            </div>
+            <div class="col-6 col-md-4">
+              <button
+                type="button"
+                (click)="setImportType('insurance_companies')"
+                class="btn w-100 py-3 border-2 d-flex flex-column align-items-center justify-content-center h-100"
+                [ngClass]="
+                  importType() === 'insurance_companies'
+                    ? 'btn-primary-premium shadow-sm'
+                    : 'btn-outline-success'
+                "
+              >
+                <i class="bi bi-shield-check fs-4 mb-1"></i>
+                <span class="x-small fw-bold">{{ 'bulk_import.insurance_companies' | translate }}</span>
+              </button>
+            </div>
+            <div class="col-6 col-md-4">
+              <button
+                type="button"
+                (click)="setImportType('inventory')"
+                class="btn w-100 py-3 border-2 d-flex flex-column align-items-center justify-content-center h-100"
+                [ngClass]="
+                  importType() === 'inventory'
+                    ? 'btn-primary-premium shadow-sm'
+                    : 'btn-outline-info'
+                "
+              >
+                <i class="bi bi-boxes fs-4 mb-1"></i>
+                <span class="x-small fw-bold">{{ 'bulk_import.inventory' | translate }}</span>
+              </button>
+            </div>
+            <div class="col-6 col-md-4">
+              <button
+                type="button"
+                (click)="setImportType('baremos')"
+                class="btn w-100 py-3 border-2 d-flex flex-column align-items-center justify-content-center h-100"
+                [ngClass]="
+                  importType() === 'baremos'
+                    ? 'btn-primary-premium shadow-sm'
+                    : 'btn-outline-warning'
+                "
+              >
+                <i class="bi bi-cash-coin fs-4 mb-1"></i>
+                <span class="x-small fw-bold">{{ 'bulk_import.baremos' | translate }}</span>
+              </button>
+            </div>
           </div>
         </div>
 

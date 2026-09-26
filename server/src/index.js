@@ -168,9 +168,20 @@ const loadFullApp = async (req, res, next) => {
     app.use('/api/stats', protectedRoutes, require('./routes/stats.routes'));
     app.use('/api/team', protectedRoutes, require('./routes/team.routes'));
     app.use('/api/prescriptions', protectedRoutes, require('./routes/prescription.routes'));
+    app.use('/api/insurance', protectedRoutes, require('./routes/insurance.routes'));
+    app.use('/api/doctor-fees', protectedRoutes, require('./routes/doctorFee.routes'));
+    app.use('/api/accounting', protectedRoutes, require('./routes/accounting.routes'));
+    app.use('/api/sales', protectedRoutes, require('./routes/sales.routes'));
+    app.use('/api/inventory', protectedRoutes, require('./routes/inventory.routes'));
+    app.use('/api/employees', protectedRoutes, require('./routes/employee.routes'));
+    app.use('/api/hospital', protectedRoutes, require('./routes/hospital.routes'));
     app.use('/api/bulk', protectedRoutes, require('./routes/bulk.routes'));
     app.use('/api/public', require('./routes/public.routes'));
     app.use('/api/admin', [...protectedRoutes, roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN'])], require('./routes/admin.routes'));
+
+    // 🚀 Dynamic Module Loader (Odoo Addons Framework Engine)
+    const moduleLoader = require('./engine/moduleLoader');
+    await moduleLoader.loadAllModules(app, sequelize);
 
     // Final 404 handler for API
     app.use('/api/*', (req, res) => {
@@ -218,7 +229,7 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
   const PORT = process.env.PORT || 5000;
   server.listen(PORT, () => {
     console.log(`\n🚀 Server running on port ${PORT} (Unified Mode)`);
-    console.log(`🏥 MedicalCare 888 Backend - v4.3.1\n`);
+    console.log(`🏥 Clinica - SaaS Backend - v4.3.1\n`);
   });
 }
 

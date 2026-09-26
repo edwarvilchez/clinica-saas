@@ -97,7 +97,7 @@ Hola ${patientName}, te recordamos que tienes una cita agendada para mañana:
 📅 *Fecha:* ${date}
 ⏰ *Hora:* ${time}
 👨‍⚕️ *Doctor:* ${doctorName} ${specialtyName ? `(${specialtyName})` : ''}
-🏥 *MedicalCare 888*
+🏥 *Clinica - SaaS*
 
 📅 *Añadir a Google Calendar:*
 ${calendarLink}

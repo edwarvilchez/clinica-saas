@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
@@ -10,6 +10,30 @@ import { AuthService } from '../../services/auth.service';
 import { API_URL } from '../../api-config';
 import { TranslatePipe } from '../../services/translate.pipe';
 
+interface FamilyMember {
+  fullName: string;
+  relationship: string;
+  phone: string;
+  isEmergencyContact: boolean;
+}
+
+interface Beneficiary {
+  fullName: string;
+  documentType: string;
+  documentPrefix: string;
+  documentNumber: string;
+  relationship: string;
+  birthDate: string;
+  phone: string;
+}
+
+interface DiseaseItem {
+  diseaseName: string;
+  diagnosisDate: string;
+  treatment: string;
+  notes: string;
+}
+
 @Component({
   selector: 'app-patients',
   standalone: true,
@@ -18,37 +42,92 @@ import { TranslatePipe } from '../../services/translate.pipe';
   styleUrl: './patients.css',
 })
 export class Patients implements OnInit {
+  private http = inject(HttpClient);
+  private router = inject(Router);
+  public langService = inject(LanguageService);
+  private exportService = inject(ExportService);
+  public authService = inject(AuthService);
+
   patients = signal<any[]>([]);
+  insuranceCompanies = signal<any[]>([]);
+  loading = signal<boolean>(true);
   searchTerm = signal('');
   genderFilter = signal('all');
+  insuranceFilter = signal('all');
   showAdvancedFilters = signal(false);
-  
+  viewMode = signal<'list' | 'kanban'>('list');
+
+  // Modal State
+  showPatientModal = false;
+  showDetailModal = false;
+  selectedPatientDetail: any = null;
+  activeModalTab: 'basic' | 'insurance' | 'family' | 'beneficiaries' | 'clinical' = 'basic';
+  isEditing = false;
+  editingPatientId: string | null = null;
+
+  // Patient Form Model
+  patientForm = {
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    documentType: 'CEDULA' as 'CEDULA' | 'PASAPORTE' | 'RIF',
+    documentPrefix: 'V',
+    documentNumber: '',
+    birthDate: '',
+    gender: 'Male',
+    phone: '',
+    state: 'Distrito Capital',
+    city: 'Caracas',
+    municipality: 'Libertador',
+    address: '',
+    bloodType: 'O+',
+    allergies: '',
+    hasInsurance: false,
+    insuranceCompanyId: '',
+    insuranceProvider: 'Particular',
+    policyNumber: '',
+    copayPercentage: 0,
+    familyInfo: [] as FamilyMember[],
+    beneficiaries: [] as Beneficiary[],
+    preexistingDiseases: [] as DiseaseItem[],
+    clinicalHistorySummary: ''
+  };
+
+  // Computed live medical record number preview
+  previewMedicalRecord = computed(() => {
+    const pref = this.patientForm.documentPrefix || 'V';
+    const num = this.patientForm.documentNumber || '00000000';
+    return `HC-${pref}${num}`;
+  });
+
   filteredPatients = computed(() => {
     const term = this.searchTerm().toLowerCase();
     const gender = this.genderFilter();
+    const insFilter = this.insuranceFilter();
     
     return this.patients().filter(p => {
-      const matchesSearch = 
-        p.User.firstName.toLowerCase().includes(term) || 
-        p.User.lastName.toLowerCase().includes(term) ||
-        p.documentId.toLowerCase().includes(term);
+      const name = `${p.User?.firstName || ''} ${p.User?.lastName || ''}`.toLowerCase();
+      const doc = (p.documentId || '').toLowerCase();
+      const medRec = (p.medicalRecordNumber || '').toLowerCase();
+      const phone = (p.phone || '').toLowerCase();
       
+      const matchesSearch = !term || name.includes(term) || doc.includes(term) || medRec.includes(term) || phone.includes(term);
       const matchesGender = gender === 'all' || p.gender === gender;
+      const matchesInsurance = insFilter === 'all' || 
+        (insFilter === 'insured' && p.hasInsurance) ||
+        (insFilter === 'particular' && !p.hasInsurance);
       
-      return matchesSearch && matchesGender;
+      return matchesSearch && matchesGender && matchesInsurance;
     });
   });
 
-  constructor(
-    private http: HttpClient,
-    private router: Router,
-    public langService: LanguageService,
-    private exportService: ExportService,
-    public authService: AuthService
-  ) {}
+  insuredPatients = computed(() => this.filteredPatients().filter(p => p.hasInsurance));
+  particularPatients = computed(() => this.filteredPatients().filter(p => !p.hasInsurance));
 
   ngOnInit() {
     this.loadPatients();
+    this.loadInsuranceCompanies();
   }
 
   getHeaders() {
@@ -56,11 +135,245 @@ export class Patients implements OnInit {
   }
 
   loadPatients() {
+    this.loading.set(true);
     this.http.get<any>(`${API_URL}/patients`, { headers: this.getHeaders() })
-      .subscribe(data => {
-        const list = Array.isArray(data) ? data : (data.patients || []);
-        this.patients.set(list);
+      .subscribe({
+        next: (data) => {
+          const list = Array.isArray(data) ? data : (data.patients || []);
+          this.patients.set(list);
+          this.loading.set(false);
+        },
+        error: () => this.loading.set(false)
       });
+  }
+
+  loadInsuranceCompanies() {
+    this.http.get<any[]>(`${API_URL}/insurance/companies`, { headers: this.getHeaders() })
+      .subscribe({
+        next: (data) => this.insuranceCompanies.set(data || [])
+      });
+  }
+
+  // ── Document Number Sanitation (Strictly digits only) ──
+  onDocumentNumberInput(event: any) {
+    const rawValue = event.target.value || '';
+    const cleanValue = rawValue.replace(/[^0-9]/g, '');
+    this.patientForm.documentNumber = cleanValue;
+  }
+
+  onDocumentTypeChange(newType: 'CEDULA' | 'PASAPORTE' | 'RIF') {
+    this.patientForm.documentType = newType;
+    if (newType === 'CEDULA') {
+      this.patientForm.documentPrefix = 'V';
+    } else if (newType === 'PASAPORTE') {
+      this.patientForm.documentPrefix = 'PAS';
+    } else if (newType === 'RIF') {
+      this.patientForm.documentPrefix = 'J';
+    }
+  }
+
+  // ── Modals & Actions ──
+  openNewPatientModal() {
+    this.isEditing = false;
+    this.editingPatientId = null;
+    this.activeModalTab = 'basic';
+    this.patientForm = {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      documentType: 'CEDULA',
+      documentPrefix: 'V',
+      documentNumber: '',
+      birthDate: '',
+      gender: 'Male',
+      phone: '',
+      state: 'Distrito Capital',
+      city: 'Caracas',
+      municipality: 'Libertador',
+      address: '',
+      bloodType: 'O+',
+      allergies: '',
+      hasInsurance: false,
+      insuranceCompanyId: '',
+      insuranceProvider: 'Particular',
+      policyNumber: '',
+      copayPercentage: 0,
+      familyInfo: [],
+      beneficiaries: [],
+      preexistingDiseases: [],
+      clinicalHistorySummary: ''
+    };
+    this.showPatientModal = true;
+  }
+
+  openEditPatientModal(patient: any) {
+    this.isEditing = true;
+    this.editingPatientId = patient.id;
+    this.activeModalTab = 'basic';
+    
+    // Extract prefix and number
+    let pref = patient.documentPrefix || 'V';
+    let num = patient.documentNumber;
+    if (!num && patient.documentId) {
+      num = patient.documentId.replace(/[^0-9]/g, '');
+      if (patient.documentId.startsWith('PAS')) pref = 'PAS';
+      else if (patient.documentId.startsWith('E')) pref = 'E';
+      else if (patient.documentId.startsWith('J')) pref = 'J';
+      else if (patient.documentId.startsWith('G')) pref = 'G';
+      else if (patient.documentId.startsWith('C')) pref = 'C';
+      else if (patient.documentId.startsWith('P')) pref = 'P';
+      else pref = 'V';
+    }
+
+    this.patientForm = {
+      firstName: patient.User?.firstName || '',
+      lastName: patient.User?.lastName || '',
+      email: patient.User?.email || '',
+      password: '',
+      documentType: patient.documentType || (pref === 'PAS' ? 'PASAPORTE' : (['J', 'G', 'C', 'P'].includes(pref) ? 'RIF' : 'CEDULA')),
+      documentPrefix: pref,
+      documentNumber: num || '',
+      birthDate: patient.birthDate || '',
+      gender: patient.gender || 'Male',
+      phone: patient.phone || patient.User?.phone || '',
+      state: patient.state || 'Distrito Capital',
+      city: patient.city || 'Caracas',
+      municipality: patient.municipality || 'Libertador',
+      address: patient.address || '',
+      bloodType: patient.bloodType || 'O+',
+      allergies: patient.allergies || '',
+      hasInsurance: !!patient.hasInsurance,
+      insuranceCompanyId: patient.insuranceCompanyId || '',
+      insuranceProvider: patient.insuranceProvider || 'Particular',
+      policyNumber: patient.policyNumber || '',
+      copayPercentage: patient.copayPercentage || 0,
+      familyInfo: Array.isArray(patient.familyInfo) ? [...patient.familyInfo] : [],
+      beneficiaries: Array.isArray(patient.beneficiaries) ? [...patient.beneficiaries] : [],
+      preexistingDiseases: Array.isArray(patient.preexistingDiseases) ? [...patient.preexistingDiseases] : [],
+      clinicalHistorySummary: patient.clinicalHistorySummary || ''
+    };
+
+    this.showPatientModal = true;
+  }
+
+  openDetailModal(patient: any) {
+    this.selectedPatientDetail = patient;
+    this.showDetailModal = true;
+  }
+
+  // ── Dynamic Rows Helpers ──
+  addFamilyMember() {
+    this.patientForm.familyInfo.push({
+      fullName: '',
+      relationship: 'Cónyuge',
+      phone: '',
+      isEmergencyContact: true
+    });
+  }
+
+  removeFamilyMember(index: number) {
+    this.patientForm.familyInfo.splice(index, 1);
+  }
+
+  addBeneficiary() {
+    this.patientForm.beneficiaries.push({
+      fullName: '',
+      documentType: 'CEDULA',
+      documentPrefix: 'V',
+      documentNumber: '',
+      relationship: 'Hijo(a)',
+      birthDate: '',
+      phone: ''
+    });
+  }
+
+  removeBeneficiary(index: number) {
+    this.patientForm.beneficiaries.splice(index, 1);
+  }
+
+  addDisease() {
+    this.patientForm.preexistingDiseases.push({
+      diseaseName: '',
+      diagnosisDate: '',
+      treatment: '',
+      notes: ''
+    });
+  }
+
+  removeDisease(index: number) {
+    this.patientForm.preexistingDiseases.splice(index, 1);
+  }
+
+  // ── Save / Update Patient ──
+  savePatient() {
+    if (!this.patientForm.firstName || !this.patientForm.lastName || !this.patientForm.documentNumber) {
+      Swal.fire('Atención', 'Nombres, apellidos y número de documento son obligatorios.', 'warning');
+      return;
+    }
+
+    const payload = {
+      ...this.patientForm,
+      documentNumber: this.patientForm.documentNumber.replace(/[^0-9]/g, ''),
+      documentId: `${this.patientForm.documentPrefix}${this.patientForm.documentNumber.replace(/[^0-9]/g, '')}`
+    };
+
+    if (this.isEditing && this.editingPatientId) {
+      this.http.put(`${API_URL}/patients/${this.editingPatientId}`, payload, { headers: this.getHeaders() })
+        .subscribe({
+          next: () => {
+            Swal.fire('¡Éxito!', 'Paciente actualizado correctamente.', 'success');
+            this.showPatientModal = false;
+            this.loadPatients();
+          },
+          error: (err) => {
+            Swal.fire('Error', err.error?.message || 'No se pudo actualizar el paciente.', 'error');
+          }
+        });
+    } else {
+      this.http.post(`${API_URL}/patients`, payload, { headers: this.getHeaders() })
+        .subscribe({
+          next: () => {
+            Swal.fire({
+              icon: 'success',
+              title: '¡Paciente Registrado con Éxito!',
+              text: `Historia Médica asignada: ${this.previewMedicalRecord()}`,
+              confirmButtonColor: '#10b981'
+            });
+            this.showPatientModal = false;
+            this.loadPatients();
+          },
+          error: (err) => {
+            Swal.fire('Error al Registrar', err.error?.message || 'Verifica los datos ingresados.', 'error');
+          }
+        });
+    }
+  }
+
+  deletePatient(id: string) {
+    Swal.fire({
+      title: '¿Estás seguro?',
+      text: "Esta acción eliminará al paciente y todos sus registros clínicos asociados.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Sí, eliminar',
+      cancelButtonText: 'Cancelar'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        this.http.delete(`${API_URL}/patients/${id}`, { headers: this.getHeaders() })
+          .subscribe({
+            next: () => {
+              this.loadPatients();
+              Swal.fire('Eliminado', 'El paciente ha sido borrado del sistema.', 'success');
+            },
+            error: () => {
+              Swal.fire('Error', 'No se pudo eliminar al paciente', 'error');
+            }
+          });
+      }
+    });
   }
 
   viewHistory(id: string) {
@@ -74,147 +387,7 @@ export class Patients implements OnInit {
   clearFilters() {
     this.searchTerm.set('');
     this.genderFilter.set('all');
-    Swal.fire({
-      title: 'Filtros Limpiados',
-      text: 'Se han restablecido todos los filtros',
-      icon: 'success',
-      timer: 1500,
-      showConfirmButton: false
-    });
-  }
-
-  deletePatient(id: string) {
-    Swal.fire({
-      title: '¿Estás seguro?',
-      text: "Esta acción eliminará al paciente y todos sus registros asociados.",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#64748b',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
-    }).then((result) => {
-      if (result.isConfirmed) {
-        this.http.delete(`${API_URL}/patients/${id}`, { headers: this.getHeaders() })
-          .subscribe({
-            next: () => {
-              this.loadPatients();
-              Swal.fire({
-                title: 'Eliminado',
-                text: 'El paciente ha sido borrado del sistema.',
-                icon: 'success',
-                confirmButtonColor: '#10b981'
-              });
-            },
-            error: () => {
-              Swal.fire('Error', 'No se pudo eliminar al paciente', 'error');
-            }
-          });
-      }
-    });
-  }
-
-  createNewPatient() {
-    Swal.fire({
-      title: 'Nuevo Paciente',
-      html: `
-        <div class="text-start">
-          <div class="row g-2">
-            <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Nombre</label>
-              <input id="firstName" class="form-control form-control-sm" placeholder="Juan">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Apellido</label>
-              <input id="lastName" class="form-control form-control-sm" placeholder="Pérez">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Documento ID</label>
-              <input id="documentId" class="form-control form-control-sm" placeholder="V-12345678">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Teléfono</label>
-              <input id="phone" class="form-control form-control-sm" placeholder="+58412-1234567">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Email</label>
-              <input id="email" type="email" class="form-control form-control-sm" placeholder="juan@email.com">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label small fw-bold mb-1">Género</label>
-              <select id="gender" class="form-select form-select-sm">
-                <option value="Male">Masculino</option>
-                <option value="Female">Femenino</option>
-                <option value="Other">Otro</option>
-              </select>
-            </div>
-            <div class="col-12">
-              <label class="form-label small fw-bold mb-1">Contraseña</label>
-              <input id="password" type="password" class="form-control form-control-sm" placeholder="Mínimo 6 caracteres">
-            </div>
-          </div>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Crear Paciente',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#10b981',
-      cancelButtonColor: '#64748b',
-      width: '600px',
-      customClass: {
-        popup: 'swal-no-overflow'
-      },
-      preConfirm: () => {
-        const firstName = (document.getElementById('firstName') as HTMLInputElement).value;
-        const lastName = (document.getElementById('lastName') as HTMLInputElement).value;
-        const documentId = (document.getElementById('documentId') as HTMLInputElement).value;
-        const email = (document.getElementById('email') as HTMLInputElement).value;
-        const phone = (document.getElementById('phone') as HTMLInputElement).value;
-        const gender = (document.getElementById('gender') as HTMLSelectElement).value;
-        const password = (document.getElementById('password') as HTMLInputElement).value;
-
-        if (!firstName || !lastName || !documentId || !email || !phone || !password) {
-          Swal.showValidationMessage('Por favor completa todos los campos obligatorios');
-          return false;
-        }
-
-        return { firstName, lastName, documentId, email, phone, gender, password };
-      }
-    }).then((result) => {
-      if (result.isConfirmed && result.value) {
-        const patientData = {
-          username: result.value.email.split('@')[0],
-          email: result.value.email,
-          password: result.value.password,
-          firstName: result.value.firstName,
-          lastName: result.value.lastName,
-          documentId: result.value.documentId,
-          phone: result.value.phone,
-          gender: result.value.gender
-        };
-
-        this.http.post(`${API_URL}/patients`, patientData, { headers: this.getHeaders() })
-          .subscribe({
-            next: () => {
-              this.loadPatients();
-              Swal.fire({
-                title: '¡Paciente Creado!',
-                text: 'El paciente ha sido registrado exitosamente en el sistema.',
-                icon: 'success',
-                confirmButtonColor: '#10b981'
-              });
-            },
-            error: (err) => {
-              Swal.fire({
-                title: 'Error',
-                text: err.error?.message || 'No se pudo crear el paciente. Verifica los datos.',
-                icon: 'error',
-                confirmButtonColor: '#ef4444'
-              });
-            }
-          });
-      }
-    });
+    this.insuranceFilter.set('all');
   }
 
   exportReport() {
@@ -223,13 +396,14 @@ export class Patients implements OnInit {
       return;
     }
 
-    const headers = ['Paciente', 'Email', 'Documento ID', 'Género', 'Teléfono'];
+    const headers = ['Nº Historia Médica', 'Paciente', 'C.I. / Documento', 'Seguro', 'Teléfono', 'Género'];
     const rows = this.filteredPatients().map(p => [
-      `${p.User.firstName} ${p.User.lastName}`,
-      p.User.email,
+      p.medicalRecordNumber || `HC-${p.documentId}`,
+      `${p.User?.firstName} ${p.User?.lastName}`,
       p.documentId,
-      p.gender,
-      p.phone
+      p.hasInsurance ? (p.InsuranceCompany?.name || p.insuranceProvider) : 'Particular',
+      p.phone || p.User?.phone || 'N/A',
+      p.gender === 'Male' ? 'Masculino' : (p.gender === 'Female' ? 'Femenino' : 'Otro')
     ]);
 
     Swal.fire({
@@ -246,12 +420,12 @@ export class Patients implements OnInit {
       cancelButtonColor: '#64748b',
     }).then((result) => {
       const filename = `Listado_Pacientes_ClinicaSaaS_${new Date().toISOString().split('T')[0]}`;
-      const title = 'Listado de Pacientes - MedicalCare 888';
+      const title = 'Listado Oficial de Pacientes e Historias Médicas';
       const user = this.authService.currentUser();
       const branding = {
-        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888 Platform'),
+        name: user?.businessName || 'Clínica SaaS Internacional',
         professional: user ? `${user.firstName} ${user.lastName}` : undefined,
-        tagline: this.langService.translate('patients_list.subtitle')
+        tagline: 'Sistema Médico Hospitalario y Control de Historias Clínicas'
       };
       
       if (result.isConfirmed) {

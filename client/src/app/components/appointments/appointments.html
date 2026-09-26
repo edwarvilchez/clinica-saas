@@ -9,7 +9,7 @@
         class="btn glass-morphism border-0 px-3 py-1 rounded-3 shadow-sm btn-sm"
         (click)="exportReport()"
       >
-        <i class="bi bi-download me-1"></i> {{ langService.translate('dashboard.report') }}
+        <i class="bi bi-download me-1"></i> {{ langService.translate('dashboard.reportBtn') }}
       </button>
       <button class="btn btn-primary-premium shadow-sm" (click)="openNewAppointmentModal()">
         <i class="bi bi-plus-circle-fill me-2"></i>
@@ -70,6 +70,18 @@
             <span class="text-muted x-small d-none d-md-block">
               ({{ filteredAppointments().length }}/{{ appointments().length }})
             </span>
+            <div class="btn-group bg-white p-1 rounded-pill border shadow-sm" role="group">
+              <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+                [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+                (click)="viewMode.set('list')">
+                <i class="bi bi-list-ul"></i><span class="x-small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+              </button>
+              <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+                [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+                (click)="viewMode.set('kanban')">
+                <i class="bi bi-kanban-fill"></i><span class="x-small">Kanban</span>
+              </button>
+            </div>
             <div class="btn-group glass-morphism border rounded-3 overflow-hidden">
               <button
                 class="btn btn-light border-0"
@@ -96,7 +108,8 @@
           </div>
         </div>
 
-        <div class="timeline" *ngIf="filteredAppointments().length > 0; else noAppointments">
+        <!-- LIST VIEW -->
+        <div class="timeline" *ngIf="viewMode() === 'list' && filteredAppointments().length > 0">
           <div
             class="appointment-row d-flex gap-3 py-3 border-bottom animate-fade-in"
             *ngFor="let appt of filteredAppointments()"
@@ -165,18 +178,136 @@
           </div>
         </div>
 
-        <ng-template #noAppointments>
-          <div class="text-center py-5">
-            <i class="bi bi-calendar-x text-muted mb-3" style="font-size: 3rem"></i>
-            <p class="text-muted">{{ langService.translate('common.noResults') }}</p>
-            <button
-              class="btn btn-outline-primary btn-sm rounded-pill px-4"
-              (click)="openNewAppointmentModal()"
-            >
-              {{ langService.translate('appointments_list.new') }}
-            </button>
+        <!-- KANBAN VIEW (Odoo ERP Style) -->
+        <div *ngIf="viewMode() === 'kanban'" class="row g-3">
+          <!-- Column 1: Pendientes / Por Confirmar -->
+          <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-warning">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold text-warning mb-0 d-flex align-items-center gap-2">
+                  <i class="bi bi-clock-history"></i> {{ langService.lang() === 'es' ? 'Por Confirmar' : 'Pending' }}
+                </h6>
+                <span class="badge bg-warning text-dark rounded-pill px-2">{{ pendingAppointments().length }}</span>
+              </div>
+              <div class="d-flex flex-column gap-2" style="max-height: 550px; overflow-y: auto;">
+                <div *ngFor="let appt of pendingAppointments()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-primary font-monospace">{{ appt.date | date:'shortTime' }}</span>
+                    <span class="badge bg-warning bg-opacity-10 text-warning">{{ appt.type }}</span>
+                  </div>
+                  <h6 class="fw-bold text-dark mb-1">{{ appt.Patient?.User?.firstName }} {{ appt.Patient?.User?.lastName }}</h6>
+                  <p class="text-muted x-small mb-2">{{ appt.reason }}</p>
+                  <div class="d-flex justify-content-between align-items-center text-muted x-small pt-2 border-top">
+                    <span>Dr. {{ appt.Doctor?.User?.lastName }}</span>
+                    <span class="badge bg-light text-secondary">{{ appt.Doctor?.Specialty?.name }}</span>
+                  </div>
+                </div>
+                <div *ngIf="pendingAppointments().length === 0" class="text-center py-4 text-muted small">
+                  Sin citas pendientes
+                </div>
+              </div>
+            </div>
           </div>
-        </ng-template>
+
+          <!-- Column 2: Confirmadas -->
+          <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-primary">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-2">
+                  <i class="bi bi-check2-circle"></i> {{ langService.lang() === 'es' ? 'Confirmadas' : 'Confirmed' }}
+                </h6>
+                <span class="badge bg-primary rounded-pill px-2">{{ confirmedAppointments().length }}</span>
+              </div>
+              <div class="d-flex flex-column gap-2" style="max-height: 550px; overflow-y: auto;">
+                <div *ngFor="let appt of confirmedAppointments()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card border-start border-3 border-primary">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-primary bg-opacity-10 text-primary font-monospace">{{ appt.date | date:'shortTime' }}</span>
+                    <span class="badge bg-success bg-opacity-10 text-success"><i class="bi bi-whatsapp me-1"></i>Aviso OK</span>
+                  </div>
+                  <h6 class="fw-bold text-dark mb-1">{{ appt.Patient?.User?.firstName }} {{ appt.Patient?.User?.lastName }}</h6>
+                  <p class="text-muted x-small mb-2">{{ appt.reason }}</p>
+                  <div class="d-flex justify-content-between align-items-center text-muted x-small pt-2 border-top">
+                    <span>Dr. {{ appt.Doctor?.User?.lastName }}</span>
+                    <button *ngIf="canStartVideoCall(appt)" class="btn btn-xs btn-primary rounded-pill px-2 py-0" (click)="startVideoCall(appt)">
+                      <i class="bi bi-camera-video"></i> Video
+                    </button>
+                  </div>
+                </div>
+                <div *ngIf="confirmedAppointments().length === 0" class="text-center py-4 text-muted small">
+                  Sin citas confirmadas
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3: Realizadas / Completadas -->
+          <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-success">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold text-success mb-0 d-flex align-items-center gap-2">
+                  <i class="bi bi-clipboard2-check-fill"></i> {{ langService.lang() === 'es' ? 'Completadas' : 'Completed' }}
+                </h6>
+                <span class="badge bg-success rounded-pill px-2">{{ completedAppointments().length }}</span>
+              </div>
+              <div class="d-flex flex-column gap-2" style="max-height: 550px; overflow-y: auto;">
+                <div *ngFor="let appt of completedAppointments()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-success font-monospace">{{ appt.date | date:'shortDate' }}</span>
+                    <span class="badge bg-success bg-opacity-10 text-success">Atendido</span>
+                  </div>
+                  <h6 class="fw-bold text-dark mb-1">{{ appt.Patient?.User?.firstName }} {{ appt.Patient?.User?.lastName }}</h6>
+                  <p class="text-muted x-small mb-2">{{ appt.reason }}</p>
+                  <div class="d-flex justify-content-between align-items-center text-muted x-small pt-2 border-top">
+                    <span>Dr. {{ appt.Doctor?.User?.lastName }}</span>
+                    <span class="badge bg-light text-muted">{{ appt.type }}</span>
+                  </div>
+                </div>
+                <div *ngIf="completedAppointments().length === 0" class="text-center py-4 text-muted small">
+                  Sin citas completadas
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 4: Canceladas -->
+          <div class="col-md-6 col-xl-3">
+            <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-danger">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold text-danger mb-0 d-flex align-items-center gap-2">
+                  <i class="bi bi-x-circle-fill"></i> {{ langService.lang() === 'es' ? 'Canceladas' : 'Cancelled' }}
+                </h6>
+                <span class="badge bg-danger rounded-pill px-2">{{ cancelledAppointments().length }}</span>
+              </div>
+              <div class="d-flex flex-column gap-2" style="max-height: 550px; overflow-y: auto;">
+                <div *ngFor="let appt of cancelledAppointments()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card opacity-75">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="badge bg-light text-danger font-monospace">{{ appt.date | date:'shortTime' }}</span>
+                    <span class="badge bg-danger bg-opacity-10 text-danger">Cancelada</span>
+                  </div>
+                  <h6 class="fw-bold text-dark mb-1 text-decoration-line-through">{{ appt.Patient?.User?.firstName }} {{ appt.Patient?.User?.lastName }}</h6>
+                  <p class="text-muted x-small mb-2">{{ appt.reason }}</p>
+                  <div class="d-flex justify-content-between align-items-center text-muted x-small pt-2 border-top">
+                    <span>Dr. {{ appt.Doctor?.User?.lastName }}</span>
+                  </div>
+                </div>
+                <div *ngIf="cancelledAppointments().length === 0" class="text-center py-4 text-muted small">
+                  No hay citas canceladas
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="viewMode() === 'list' && filteredAppointments().length === 0" class="text-center py-5">
+          <i class="bi bi-calendar-x text-muted mb-3" style="font-size: 3rem"></i>
+          <p class="text-muted">{{ langService.translate('common.noResults') }}</p>
+          <button
+            class="btn btn-outline-primary btn-sm rounded-pill px-4"
+            (click)="openNewAppointmentModal()"
+          >
+            {{ langService.translate('appointments_list.new') }}
+          </button>
+        </div>
       </div>
     </div>
   </div>

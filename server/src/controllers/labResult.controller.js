@@ -70,3 +70,78 @@ exports.getAllLabs = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/**
+ * Express Lab Order Creation: Generates medical order and assigns sample barcode
+ */
+exports.createExpressOrder = async (req, res) => {
+  try {
+    const { patientId, testName, referenceRange, price } = req.body;
+    if (!patientId || !testName) {
+      return res.status(400).json({ message: 'El ID del paciente y el nombre de la prueba son obligatorios' });
+    }
+
+    const year = new Date().getFullYear();
+    const randomCode = Math.floor(100000 + Math.random() * 900000);
+    const sampleBarcode = `LAB-${year}-${randomCode}`;
+
+    const labOrder = await LabResult.create({
+      patientId,
+      testName,
+      referenceRange: referenceRange || 'Normal',
+      price: price ? parseFloat(price) : 0.00,
+      status: 'Pending',
+      sampleStatus: 'ORDERED',
+      sampleBarcode
+    });
+
+    res.status(201).json({
+      message: '✅ Orden de laboratorio express creada exitosamente',
+      sampleBarcode,
+      labOrder
+    });
+  } catch (error) {
+    console.error('Error in createExpressOrder:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Update Lab Sample Traceability Status: Transitions sample status (ORDERED -> SAMPLE_COLLECTED -> IN_PROCESSING -> COMPLETED)
+ */
+exports.updateSampleStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sampleStatus, resultValue, fileUrl } = req.body;
+
+    const validStatuses = ['ORDERED', 'SAMPLE_COLLECTED', 'IN_PROCESSING', 'COMPLETED', 'REJECTED'];
+    if (!sampleStatus || !validStatuses.includes(sampleStatus)) {
+      return res.status(400).json({ message: `Estado de muestra inválido. Valores permitidos: ${validStatuses.join(', ')}` });
+    }
+
+    const labOrder = await LabResult.findByPk(id);
+    if (!labOrder) return res.status(404).json({ message: 'Orden de laboratorio no encontrada' });
+
+    const updateData = { sampleStatus };
+
+    if (sampleStatus === 'SAMPLE_COLLECTED' && !labOrder.collectionDate) {
+      updateData.collectionDate = new Date();
+    }
+
+    if (sampleStatus === 'COMPLETED') {
+      updateData.status = 'Completed';
+      if (resultValue) updateData.resultValue = resultValue;
+      if (fileUrl) updateData.fileUrl = fileUrl;
+    }
+
+    await labOrder.update(updateData);
+
+    res.json({
+      message: `✅ Estado de muestra actualizado a ${sampleStatus}`,
+      labOrder
+    });
+  } catch (error) {
+    console.error('Error in updateSampleStatus:', error);
+    res.status(500).json({ error: error.message });
+  }
+};

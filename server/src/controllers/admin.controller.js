@@ -7,7 +7,7 @@ const { Organization, User, Role } = require('../models');
 // Emails autorizados para crear nuevos SUPERADMIN - Cargados desde variables de entorno
 const ALLOWED_MASTER_EMAILS = process.env.ALLOWED_MASTER_EMAILS 
   ? process.env.ALLOWED_MASTER_EMAILS.split(',') 
-  : ['edwarvilchez1977@gmail.com', 'edwarvilchez@gmail.com', 'cgk888digital@gmail.com'];
+  : ['edwarvilchez1977@gmail.com', 'admin@clinicasaas.com'];
 
 // List ALL organizations in the platform with stats
 exports.getAllOrganizations = async (req, res) => {
@@ -247,4 +247,54 @@ exports.createPlatformAdmin = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+};
+
+// Provision a new Tenant database via PostgreSQL TEMPLATE
+const tenantOrchestrator = require('../services/tenantOrchestrator.service');
+
+exports.provisionTenant = async (req, res) => {
+  try {
+    const { tenantName, ownerEmail, planType, templateDbName } = req.body;
+    if (!tenantName) {
+      return res.status(400).json({ message: 'El nombre del tenant o clínica es obligatorio' });
+    }
+
+    const result = await tenantOrchestrator.provisionTenantDatabase({
+      tenantName,
+      ownerEmail,
+      planType,
+      templateDbName
+    });
+
+    res.status(201).json({
+      message: '✅ Base de datos de tenant aprovisionada exitosamente por TEMPLATE Postgres',
+      tenant: result
+    });
+  } catch (error) {
+    console.error('Error provisioning tenant DB:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// CrewAI Autonomous Agents (Medicusve Dev & Security Auditor)
+const crewaiCopilot = require('../utils/crewaiCopilot.service');
+
+exports.scaffoldModuleCrewAI = async (req, res) => {
+  try {
+    const { moduleSlug, moduleName, summary, depends } = req.body;
+    const result = await crewaiCopilot.generateModuleScaffold(moduleSlug, moduleName, summary, depends);
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.auditSecurityCrewAI = async (req, res) => {
+  try {
+    const { manifest, permissionsMatrix } = req.body;
+    const report = await crewaiCopilot.auditSecurityMatrix(manifest, permissionsMatrix);
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };

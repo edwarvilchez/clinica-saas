@@ -234,7 +234,7 @@ export class Subscription implements OnInit {
             <p class="mb-0"><strong>${isEs ? 'Datos de Pago:' : 'Payment Details:'}</strong></p>
             <p class="mb-0">Banesco: 0134-XXXX-XX-XXXXXXXXXX</p>
             <p class="mb-0">Pago Móvil: 0412-XXXXXXX / J-12345678</p>
-            <p class="mb-0">Zelle: cgk888digital@gmail.com</p>
+            <p class="mb-0">Zelle: pagos@clinicasaas.com</p>
           </div>
 
           <div class="mb-3">

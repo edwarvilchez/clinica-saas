@@ -1,19 +1,49 @@
+:host {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
+  z-index: 1020;
+}
+
+.navbar {
+  background: #ffffff !important;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 4px 0 rgba(0, 0, 0, 0.04);
+}
+
+.sidebar-toggle-btn {
+  width: 36px;
+  height: 36px;
+  transition: all 0.2s ease;
+  background-color: #f8fafc;
+  border-color: #e2e8f0 !important;
+}
+
+.sidebar-toggle-btn:hover {
+  background-color: #e2e8f0;
+  color: #0f172a;
+}
+
 .active-lang {
-    background-color: var(--primary) !important;
-    color: white !important;
-    box-shadow: 0 2px 4px rgba(56, 189, 248, 0.3);
+  background-color: var(--primary) !important;
+  color: white !important;
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.3);
 }
 
 .btn-xs {
-    padding: 0.1rem 0.25rem;
-    font-size: 0.75rem;
-    line-height: 1;
+  padding: 0.1rem 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1;
 }
 
 .transition {
-    transition: all 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .rotate-180 {
-    transform: rotate(180deg);
+  transform: rotate(180deg);
+}
+
+.hover-shadow:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08) !important;
 }

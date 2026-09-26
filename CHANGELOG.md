@@ -5,6 +5,36 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.4.0] — 2026-09-25
+
+### 🏥 Flujo Clínico, Admisiones, Ventas & Vistas Odoo
+
+- **Gestión de Pacientes e Historias Médicas (`HC-CI`)**:
+  - Selector exclusivo de tipo de documento (Cédula, Pasaporte, RIF) con formateo y sanitización a solo números.
+  - Generación automática e inmutable de la Historia Médica basada en el número de CI (`HC-CI`).
+  - Despliegue condicional para seguros (Aseguradora, Póliza, Plan, Cobertura, Clave, Carta Aval y Siniestro).
+  - Carga estructurada de familiares, beneficiarios y antecedentes patológicos.
+  - Prevención estricta de duplicados en pacientes, médicos, enfermería y empleados.
+
+- **Admisiones y Flujo Hospitalario**:
+  - Vinculación directa con el paciente mediante Historia Médica y números secuenciales de episodio (`ADM`/`EP`).
+  - Registro estructurado de Titular y Garante de Pago.
+  - Bloqueo de admisiones activas simultáneas para un mismo paciente.
+  - Cintillo verde superior derecho de **ADMITIDO** e indicador de **ALTA MÉDICA Y ADM. (INMUTABLE)**.
+  - Trazabilidad y auditoría completa de cambios de área (Triaje, Pabellón, Recuperación, UCI, Hospitalización).
+  - Modal y proceso formal de Alta Médica y Administrativa con epicrisis y liberación automática de camas.
+
+- **Presupuestos y Cotizaciones (`sales`)**:
+  - Modificación manual de precios unitarios y porcentajes de descuento en línea por ítem.
+  - Recálculo en tiempo real con conversión dual a Bolívares (VES) usando la tasa oficial del BCV.
+  - Catálogo y carga instantánea de Combos y Plantillas Clínicas (`ClinicalPackage`).
+
+- **Experiencia de Usuario & Vistas Duales (Estilo Odoo)**:
+  - Vistas conmutables de **Lista** y **Tablero Kanban** en Pacientes, Admisiones, Cotizaciones, Pagos, Personal, Equipo, Enfermería y Especialidades.
+  - Menú lateral (Sidebar) colapsable con diseño limpio, botones modernos y secciones organizadas.
+
+---
+
 ## [4.3.13] — 2026-05-06
 
 ### 🔧 Production Connectivity Fixes
@@ -73,7 +103,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - **Rol `PLATFORM_ADMIN` (Vendedor)** — Nuevo perfil de acceso a la Consola Maestro (`/platform-admin`) orientado al equipo de ventas:
   - Puede gestionar organizaciones (cambio de estado de suscripción) y usuarios (bloqueo/activación).
   - **Restricciones:** No puede eliminar usuarios ni crear cuentas `SUPERADMIN`.
-  - Solo los emails `edwarvilchez1977@gmail.com` y `cgk888digital@gmail.com` están autorizados para crear nuevos `SUPERADMIN` (validación a nivel de backend y UI).
+  - Solo los emails `edwarvilchez1977@gmail.com` y `admin@clinicasaas.com` están autorizados para crear nuevos `SUPERADMIN` (validación a nivel de backend y UI).
 
 ### 🔒 Security
 

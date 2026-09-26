@@ -51,7 +51,7 @@ El sistema incluye una consola de administración avanzada para el dueño de la 
 - **Control de Usuarios:** Listado global de todos los usuarios registrados con opción de bloqueo/activación inmediata (bypass de acceso).
 - **Roles de Plataforma:**
   - `SUPERADMIN` — Acceso total. Puede crear `PLATFORM_ADMIN` y `SUPERADMIN`.
-  - `PLATFORM_ADMIN` — Perfil vendedor con acceso completo a la consola maestro, excepto: no puede eliminar usuarios ni crear `SUPERADMIN`. Solo los emails `edwarvilchez1977@gmail.com` y `cgk888digital@gmail.com` pueden crear nuevos `SUPERADMIN`.
+  - `PLATFORM_ADMIN` — Perfil vendedor con acceso completo a la consola maestro, excepto: no puede eliminar usuarios ni crear `SUPERADMIN`. Solo los emails `edwarvilchez1977@gmail.com` y `admin@clinicasaas.com` pueden crear nuevos `SUPERADMIN`.
 - **Auditoría Inmutable (v4.3.0):** Implementación automática de registros para cumplimiento **ISO 27001**, capturando cada creación, edición o borrado de datos médicos y financieros.
 
 ## 🏗️ Arquitectura Unificada
@@ -60,10 +60,40 @@ Desde la v4.3.0, el sistema utiliza un **Núcleo de Fuente Única**:
 - **Seguridad Nativa:** Rate limiting y CSP integrados directamente en el servidor central.
 - **Despliegue Serverless:** Puente nativo via `api/server.js` para máxima compatibilidad con Vercel.
 
+## ✨ Funcionalidades Principales & Flujos Clínicos Integrales (v4.4.0)
+
+### 🏥 1. Gestión de Pacientes & Historias Médicas
+- **Identificación Estricta:** Selección exclusiva entre Cédula, Pasaporte o RIF. Formateo y limpieza automática a solo números (sin caracteres especiales ni espacios).
+- **Historia Médica Inmutable:** Generación automática basada en la Cédula del paciente (`HC-CI`).
+- **Seguros & Pólizas:** Opción condicional *"¿Viene por seguro?"* con captura de Aseguradora, Número de Póliza, Plan, Tipo de Titular/Beneficiario, Monto de Cobertura, Clave, Carta Aval y Número de Siniestro.
+- **Historial Familiar y Clínico:** Registro de beneficiarios, antecedentes patológicos y núcleo familiar.
+- **Prevención de Duplicados:** Validación estricta que previene duplicidad de registros en pacientes, médicos, enfermería y empleados.
+
+### 🛏️ 2. Admisiones & Operaciones Hospitalarias
+- **Vinculación por Historia Médica:** Asociación directa con el paciente mediante su `HC-CI` y generación de episodios secuenciales (`ADM-YYYY-XXXXX` / `EP-YYYY-XXXXX`).
+- **Garante y Titular de Pago:** Captura estructurada del responsable financiero con documento formateado y compromiso de pago.
+- **Restricción de Admisión Activa:** Un paciente con un episodio activo no puede tener otra admisión abierta simultáneamente.
+- **Cintillo de Estado:** Indicador visual verde **ADMITIDO** durante la estancia activa y **ALTA MÉDICA Y ADM. (INMUTABLE)** tras el egreso.
+- **Trazabilidad de Movimientos:** Auditoría completa de cada cambio de área (Triaje, Quirófano, UCI, Hospitalización) con registro de fecha, personal actuante y médico autorizante.
+- **Alta Médica y Administrativa:** Cierre de episodio clínico con registro de epicrisis y liberación automática de camas hospitalarias.
+
+### 💼 3. Presupuestos, Cotizaciones & Combos Clínicos (`sales`)
+- **Modificación Manual de Precios en Línea:** Edición directa de cantidad, precio unitario en USD y porcentaje de descuento por ítem, con recálculo dinámico de subtotales.
+- **Doble Moneda con Tasa BCV:** Conversión en tiempo real de subtotales y totales a Bolívares (VES) sincronizado con la tasa oficial del Banco Central de Venezuela.
+- **Combos y Plantillas Predeterminadas:** Catálogo de paquetes quirúrgicos y diagnósticos precargados (Parto/Cesárea, Apendicectomía, Colecistectomía, Cirugía Menor, Perfil 20, Triaje) con carga instantánea y desglose personalizable.
+
+### 📊 4. Vistas Duales Odoo (Lista & Tablero Kanban)
+- Alternancia con un clic entre **Vista Lista** (tablas detalladas con ordenamiento y filtros) y **Tablero Kanban** (tarjetas por etapas operativas o turnos) disponible en Pacientes, Admisiones, Cotizaciones, Pagos, Personal, Equipo, Enfermería y Especialidades.
+
+### 📐 5. Interfaz Moderna & Sidebar Colapsable
+- Menú lateral colapsable (0px a 275px en desktop / offcanvas en móvil) con agrupación limpia por áreas: *Clínica*, *Operaciones*, *Administración*, *Facturación* y *Configuración*.
+
+---
+
 ## 📦 Gestión de Ramas (Git Flow)
 1. **`develop`**: Desarrollo y correcciones.
 2. **`staging`**: Pruebas de integración.
 3. **`master`**: Rama productiva sincronizada con Vercel.
 
 ---
-© 2026 MedicalCare 888. Desarrollado por CGK888Digital.
+© 2026 Clinica - SaaS. Todos los derechos reservados.

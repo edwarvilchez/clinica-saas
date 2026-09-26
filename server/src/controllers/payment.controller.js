@@ -233,3 +233,86 @@ exports.updatePayment = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/**
+ * Doctor Fee Reconciliation: Atomically splits payment revenue between doctor and clinic
+ */
+exports.reconcileDoctorFees = async (req, res) => {
+  try {
+    const { paymentId, doctorFeePercentage } = req.body;
+    if (!paymentId) return res.status(400).json({ message: 'El ID del pago es obligatorio' });
+
+    const payment = await Payment.findByPk(paymentId);
+    if (!payment) return res.status(404).json({ message: 'Registro de pago no encontrado' });
+
+    const splitPercent = parseFloat(doctorFeePercentage || payment.doctorFeePercentage || 70.00);
+    const totalAmount = parseFloat(payment.amount || 0);
+
+    const doctorFeeAmount = (totalAmount * (splitPercent / 100)).toFixed(2);
+    const clinicFeeAmount = (totalAmount - doctorFeeAmount).toFixed(2);
+
+    await payment.update({
+      doctorFeePercentage: splitPercent,
+      doctorFeeAmount,
+      clinicFeeAmount,
+      reconciliationStatus: 'RECONCILED'
+    });
+
+    res.json({
+      message: '✅ Reconciliación de honorarios médicos completada exitosamente',
+      paymentId: payment.id,
+      reconciliation: {
+        totalAmount: totalAmount.toFixed(2),
+        doctorFeePercentage: `${splitPercent}%`,
+        doctorFeeAmount,
+        clinicFeeAmount,
+        reconciliationStatus: 'RECONCILED'
+      }
+    });
+  } catch (error) {
+    console.error('Error in reconcileDoctorFees:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Apply Direct Pharmacy Discount to Payment
+ */
+exports.applyPharmacyDiscount = async (req, res) => {
+  try {
+    const { paymentId, discountAmount } = req.body;
+    const discount = parseFloat(discountAmount || 0);
+
+    if (!paymentId || discount <= 0) {
+      return res.status(400).json({ message: 'ID de pago y monto de descuento válido son obligatorios' });
+    }
+
+    const payment = await Payment.findByPk(paymentId);
+    if (!payment) return res.status(404).json({ message: 'Registro de pago no encontrado' });
+
+    const originalAmount = parseFloat(payment.amount);
+    if (discount >= originalAmount) {
+      return res.status(400).json({ message: 'El descuento no puede ser mayor o igual al monto total del pago' });
+    }
+
+    const finalAmount = (originalAmount - discount).toFixed(2);
+
+    await payment.update({
+      pharmacyDiscount: discount,
+      amount: finalAmount
+    });
+
+    res.json({
+      message: '✅ Descuento de farmacia aplicado exitosamente',
+      paymentId: payment.id,
+      discountBreakdown: {
+        originalAmount: originalAmount.toFixed(2),
+        pharmacyDiscountApplied: discount.toFixed(2),
+        finalAdjustedAmount: finalAmount
+      }
+    });
+  } catch (error) {
+    console.error('Error in applyPharmacyDiscount:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
