@@ -16,7 +16,7 @@ module.exports = (allowedRoles) => {
     // 3. ROOT & GLOBAL MGT Bypasses (Architect's requirement)
     // SUPERADMIN = Total System Root
     // PLATFORM_ADMIN = Global Demo & Platform Management
-    if (userRole === 'SUPERADMIN' || userRole === 'SUPERADMIN' || userRole === 'PLATFORM_ADMIN') {
+    if (userRole === 'SUPERADMIN' || userRole === 'PLATFORM_ADMIN') {
       return next();
     }
 

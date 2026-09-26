@@ -79,13 +79,23 @@ exports.getPatients = async (req, res) => {
 exports.getPatientById = async (req, res) => {
   try {
     const { id } = req.params;
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+
     const patient = await Patient.findByPk(id, {
       include: [
-        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'isActive'] },
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'organizationId', 'isActive'] },
         { model: InsuranceCompany }
       ]
     });
     if (!patient) return res.status(404).json({ message: 'Paciente no encontrado' });
+
+    if (!isSuperAdmin && organizationId) {
+      if (patient.organizationId && patient.organizationId !== organizationId && patient.User?.organizationId && patient.User.organizationId !== organizationId) {
+        return res.status(403).json({ message: 'No tienes permisos para acceder a los datos de este paciente' });
+      }
+    }
+
     res.json(patient);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -95,6 +105,9 @@ exports.getPatientById = async (req, res) => {
 exports.getPatientByMedicalRecord = async (req, res) => {
   try {
     const { recordNumber } = req.params;
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+
     const patient = await Patient.findOne({
       where: {
         [Op.or]: [
@@ -103,11 +116,18 @@ exports.getPatientByMedicalRecord = async (req, res) => {
         ]
       },
       include: [
-        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone'] },
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'organizationId'] },
         { model: InsuranceCompany }
       ]
     });
     if (!patient) return res.status(404).json({ message: 'Paciente no encontrado con esa Historia Médica o Documento' });
+
+    if (!isSuperAdmin && organizationId) {
+      if (patient.organizationId && patient.organizationId !== organizationId && patient.User?.organizationId && patient.User.organizationId !== organizationId) {
+        return res.status(403).json({ message: 'No tienes permisos para acceder a los datos de este paciente' });
+      }
+    }
+
     res.json(patient);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -117,14 +137,24 @@ exports.getPatientByMedicalRecord = async (req, res) => {
 exports.getPatientByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+
     const patient = await Patient.findOne({
       where: { userId },
       include: [
-        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'isActive'] },
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'organizationId', 'isActive'] },
         { model: InsuranceCompany }
       ]
     });
     if (!patient) return res.status(404).json({ message: 'Paciente no encontrado para este usuario' });
+
+    if (!isSuperAdmin && organizationId) {
+      if (patient.organizationId && patient.organizationId !== organizationId && patient.User?.organizationId && patient.User.organizationId !== organizationId) {
+        return res.status(403).json({ message: 'No tienes permisos para acceder a los datos de este paciente' });
+      }
+    }
+
     res.json(patient);
   } catch (error) {
     console.error('Error fetching patient by userId:', error);
@@ -278,10 +308,20 @@ exports.updatePatient = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { id } = req.params;
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+
     const patient = await Patient.findByPk(id, { include: [User] });
     if (!patient) {
       await t.rollback();
       return res.status(404).json({ message: 'Paciente no encontrado' });
+    }
+
+    if (!isSuperAdmin && organizationId) {
+      if (patient.organizationId && patient.organizationId !== organizationId && patient.User?.organizationId && patient.User.organizationId !== organizationId) {
+        await t.rollback();
+        return res.status(403).json({ message: 'No tienes permisos para modificar este paciente de otra clínica' });
+      }
     }
 
     const {
@@ -405,9 +445,18 @@ exports.updatePatient = async (req, res) => {
 exports.deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
-    const patient = await Patient.findByPk(id);
+    const { organizationId, role } = req.user;
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+
+    const patient = await Patient.findByPk(id, { include: [User] });
     if (!patient) return res.status(404).json({ message: 'Paciente no encontrado' });
     
+    if (!isSuperAdmin && organizationId) {
+      if (patient.organizationId && patient.organizationId !== organizationId && patient.User?.organizationId && patient.User.organizationId !== organizationId) {
+        return res.status(403).json({ message: 'No tienes permisos para eliminar este paciente de otra clínica' });
+      }
+    }
+
     await User.destroy({ where: { id: patient.userId } });
     await patient.destroy();
     res.json({ message: 'Paciente eliminado correctamente' });

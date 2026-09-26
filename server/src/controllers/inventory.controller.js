@@ -4,14 +4,23 @@ const {
 } = require('../models');
 const { Op } = require('sequelize');
 
+const getOrgId = (req) => req.user?.organizationId || req.organizationId || null;
+const isPlatformAdmin = (req) => req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+
 // List products, medications, supplies, and services
 exports.getItems = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
     const { itemType, category, doctorId, specialtyId, stockAlert, search } = req.query;
 
     const where = {};
-    if (orgId) where.organizationId = orgId;
+    if (!isSuperAdmin && orgId) {
+      where[Op.or] = [
+        { organizationId: orgId },
+        { organizationId: null }
+      ];
+    }
     if (itemType) where.itemType = itemType;
     if (category) where.category = category;
     if (doctorId) where.doctorId = doctorId;
@@ -54,6 +63,9 @@ exports.getItems = async (req, res) => {
 exports.getItemById = async (req, res) => {
   try {
     const { id } = req.params;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+
     const item = await InventoryItem.findByPk(id, {
       include: [
         {
@@ -81,6 +93,10 @@ exports.getItemById = async (req, res) => {
       return res.status(404).json({ message: 'Ítem de inventario no encontrado.' });
     }
 
+    if (!isSuperAdmin && orgId && item.organizationId && item.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes acceso a los ítems de inventario de otra clínica' });
+    }
+
     res.json(item);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -90,7 +106,7 @@ exports.getItemById = async (req, res) => {
 // Create new Product / Supply / Medication or Clinical Service
 exports.createItem = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       code,
       name,
@@ -118,9 +134,11 @@ exports.createItem = async (req, res) => {
       return res.status(400).json({ message: 'El código (SKU) y el nombre son obligatorios.' });
     }
 
-    const existing = await InventoryItem.findOne({ where: { code } });
+    const existing = await InventoryItem.findOne({ 
+      where: orgId ? { code, organizationId: orgId } : { code } 
+    });
     if (existing) {
-      return res.status(400).json({ message: 'Ya existe un producto o servicio con este código SKU.' });
+      return res.status(400).json({ message: 'Ya existe un producto o servicio con este código SKU en tu clínica.' });
     }
 
     const item = await InventoryItem.create({
@@ -178,6 +196,12 @@ exports.updateItem = async (req, res) => {
       return res.status(404).json({ message: 'Ítem no encontrado.' });
     }
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && item.organizationId && item.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este ítem de otra clínica' });
+    }
+
     const {
       name,
       nameEn,
@@ -232,7 +256,7 @@ exports.updateItem = async (req, res) => {
 exports.registerMovement = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const userId = req.user?.id || null;
     const {
       itemId,
@@ -257,6 +281,12 @@ exports.registerMovement = async (req, res) => {
     if (!item) {
       await t.rollback();
       return res.status(404).json({ message: 'Ítem de inventario no encontrado.' });
+    }
+
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && item.organizationId && item.organizationId !== orgId) {
+      await t.rollback();
+      return res.status(403).json({ message: 'No tienes permisos para registrar movimientos en ítems de otra clínica' });
     }
 
     const qty = parseFloat(quantity);
@@ -364,11 +394,12 @@ exports.registerMovement = async (req, res) => {
 // Get Movement History / Kardex
 exports.getMovements = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
     const { itemId, movementType, patientId, doctorId, startDate, endDate } = req.query;
 
     const where = {};
-    if (orgId) where.organizationId = orgId;
+    if (!isSuperAdmin && orgId) where.organizationId = orgId;
     if (itemId) where.itemId = itemId;
     if (movementType) where.movementType = movementType;
     if (patientId) where.patientId = patientId;
@@ -398,9 +429,10 @@ exports.getMovements = async (req, res) => {
 // Summary & Stock Alerts
 exports.getInventoryAlerts = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
     const where = { isActive: true, itemType: { [Op.ne]: 'SERVICE' } };
-    if (orgId) where.organizationId = orgId;
+    if (!isSuperAdmin && orgId) where.organizationId = orgId;
 
     const items = await InventoryItem.findAll({ where });
     const today = new Date();
@@ -469,6 +501,12 @@ exports.deleteItem = async (req, res) => {
     const item = await InventoryItem.findByPk(id);
     if (!item) {
       return res.status(404).json({ message: 'Ítem no encontrado.' });
+    }
+
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && item.organizationId && item.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para eliminar este ítem de otra clínica' });
     }
 
     await item.destroy();

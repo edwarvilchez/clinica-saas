@@ -1,14 +1,11 @@
 -- ============================================================================
 -- ARQUITECTURA DE BASE DE DATOS: CLINICA - SAAS (POSTGRESQL DDL)
--- Para importar y visualizar en https://database.build/
+-- Optimizado para https://database.build/ (Usa gen_random_uuid nativo)
 -- ============================================================================
 
--- 1. EXTENSIONES
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
--- 2. DOMINIO CORE & MULTI-TENANT
+-- 1. DOMINIO CORE & MULTI-TENANT
 CREATE TABLE "Organizations" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "name" VARCHAR(255) NOT NULL,
     "slug" VARCHAR(255) UNIQUE NOT NULL,
     "rif" VARCHAR(50),
@@ -35,7 +32,7 @@ CREATE TABLE "Roles" (
 );
 
 CREATE TABLE "Users" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "roleId" INTEGER REFERENCES "Roles"("id"),
     "username" VARCHAR(100) UNIQUE NOT NULL,
@@ -55,7 +52,7 @@ CREATE TABLE "Users" (
 );
 
 CREATE TABLE "AuditLogs" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "userId" UUID REFERENCES "Users"("id"),
     "action" VARCHAR(100) NOT NULL,
@@ -68,7 +65,7 @@ CREATE TABLE "AuditLogs" (
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. DEPARTAMENTOS, ESPECIALIDADES Y PERSONAL CLÍNICO
+-- 2. DEPARTAMENTOS, ESPECIALIDADES Y PERSONAL CLÍNICO
 CREATE TABLE "Departments" (
     "id" SERIAL PRIMARY KEY,
     "name" VARCHAR(150) NOT NULL,
@@ -89,7 +86,7 @@ CREATE TABLE "Specialties" (
 );
 
 CREATE TABLE "Doctors" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "userId" UUID UNIQUE NOT NULL REFERENCES "Users"("id") ON DELETE CASCADE,
     "specialtyId" INTEGER REFERENCES "Specialties"("id") ON DELETE SET NULL,
@@ -105,7 +102,7 @@ CREATE TABLE "Doctors" (
 );
 
 CREATE TABLE "Nurses" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "userId" UUID UNIQUE NOT NULL REFERENCES "Users"("id") ON DELETE CASCADE,
     "licenseNumber" VARCHAR(100),
@@ -117,7 +114,7 @@ CREATE TABLE "Nurses" (
 );
 
 CREATE TABLE "Staff" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "userId" UUID UNIQUE NOT NULL REFERENCES "Users"("id") ON DELETE CASCADE,
     "position" VARCHAR(100) NOT NULL,
@@ -128,7 +125,7 @@ CREATE TABLE "Staff" (
 );
 
 CREATE TABLE "Employees" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "userId" UUID REFERENCES "Users"("id") ON DELETE SET NULL,
     "doctorId" UUID REFERENCES "Doctors"("id") ON DELETE SET NULL,
@@ -147,9 +144,9 @@ CREATE TABLE "Employees" (
     "deletedAt" TIMESTAMP WITH TIME ZONE
 );
 
--- 4. SEGUROS Y BAREMOS
+-- 3. SEGUROS Y BAREMOS
 CREATE TABLE "InsuranceCompanies" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "name" VARCHAR(200) NOT NULL,
     "rif" VARCHAR(50) NOT NULL,
@@ -163,7 +160,7 @@ CREATE TABLE "InsuranceCompanies" (
 );
 
 CREATE TABLE "InsurancePolicies" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "insuranceCompanyId" UUID NOT NULL REFERENCES "InsuranceCompanies"("id") ON DELETE CASCADE,
     "patientId" UUID,
     "policyNumber" VARCHAR(100) NOT NULL,
@@ -176,13 +173,13 @@ CREATE TABLE "InsurancePolicies" (
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. PACIENTES E HISTORIAS MÉDICAS
+-- 4. PACIENTES E HISTORIAS MÉDICAS
 CREATE TABLE "Patients" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "userId" UUID REFERENCES "Users"("id") ON DELETE SET NULL,
     "insuranceCompanyId" UUID REFERENCES "InsuranceCompanies"("id") ON DELETE SET NULL,
-    "medicalRecordNumber" VARCHAR(100) UNIQUE NOT NULL, -- HC-CI
+    "medicalRecordNumber" VARCHAR(100) UNIQUE NOT NULL,
     "documentType" VARCHAR(20) DEFAULT 'CEDULA',
     "documentPrefix" VARCHAR(5) DEFAULT 'V',
     "documentNumber" VARCHAR(50) NOT NULL,
@@ -204,7 +201,7 @@ CREATE TABLE "Patients" (
 );
 
 CREATE TABLE "MedicalRecords" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "patientId" UUID NOT NULL REFERENCES "Patients"("id") ON DELETE CASCADE,
     "doctorId" UUID NOT NULL REFERENCES "Doctors"("id"),
     "consultationDate" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -221,7 +218,7 @@ CREATE TABLE "MedicalRecords" (
 );
 
 CREATE TABLE "Drugs" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "genericName" VARCHAR(200) NOT NULL,
     "commercialName" VARCHAR(200),
     "pharmaceuticalForm" VARCHAR(100),
@@ -235,7 +232,7 @@ CREATE TABLE "Drugs" (
 );
 
 CREATE TABLE "Prescriptions" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "medicalRecordId" UUID NOT NULL REFERENCES "MedicalRecords"("id") ON DELETE CASCADE,
     "drugId" UUID REFERENCES "Drugs"("id") ON DELETE SET NULL,
     "dosage" VARCHAR(100) NOT NULL,
@@ -246,9 +243,9 @@ CREATE TABLE "Prescriptions" (
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. CITAS Y TELEMEDICINA
+-- 5. CITAS Y TELEMEDICINA
 CREATE TABLE "Appointments" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "patientId" UUID NOT NULL REFERENCES "Patients"("id") ON DELETE CASCADE,
     "doctorId" UUID NOT NULL REFERENCES "Doctors"("id") ON DELETE CASCADE,
     "appointmentDate" TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -262,7 +259,7 @@ CREATE TABLE "Appointments" (
 );
 
 CREATE TABLE "VideoConsultations" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "appointmentId" UUID UNIQUE REFERENCES "Appointments"("id") ON DELETE CASCADE,
     "doctorId" UUID NOT NULL REFERENCES "Users"("id"),
     "patientId" UUID NOT NULL REFERENCES "Users"("id"),
@@ -276,9 +273,9 @@ CREATE TABLE "VideoConsultations" (
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. ADMISIONES Y HOSPITALIZACIÓN
+-- 6. ADMISIONES Y HOSPITALIZACIÓN
 CREATE TABLE "HospitalBeds" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "currentPatientId" UUID REFERENCES "Patients"("id") ON DELETE SET NULL,
     "bedNumber" VARCHAR(50) NOT NULL,
@@ -292,7 +289,7 @@ CREATE TABLE "HospitalBeds" (
 );
 
 CREATE TABLE "Admissions" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "patientId" UUID NOT NULL REFERENCES "Patients"("id") ON DELETE CASCADE,
     "attendingDoctorId" UUID REFERENCES "Doctors"("id") ON DELETE SET NULL,
@@ -328,11 +325,11 @@ CREATE TABLE "Admissions" (
 );
 
 CREATE TABLE "EmergencyTriages" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "admissionId" UUID REFERENCES "Admissions"("id") ON DELETE SET NULL,
     "patientId" UUID NOT NULL REFERENCES "Patients"("id") ON DELETE CASCADE,
     "assignedDoctorId" UUID REFERENCES "Doctors"("id") ON DELETE SET NULL,
-    "triageLevel" INTEGER NOT NULL DEFAULT 3, -- 1=Rojo, 2=Naranja, 3=Amarillo, 4=Verde, 5=Azul
+    "triageLevel" INTEGER NOT NULL DEFAULT 3,
     "chiefComplaint" TEXT NOT NULL,
     "systolicBP" INTEGER,
     "diastolicBP" INTEGER,
@@ -348,7 +345,7 @@ CREATE TABLE "EmergencyTriages" (
 );
 
 CREATE TABLE "HospitalStays" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "admissionId" UUID NOT NULL REFERENCES "Admissions"("id") ON DELETE CASCADE,
     "patientId" UUID NOT NULL REFERENCES "Patients"("id") ON DELETE CASCADE,
     "bedId" UUID NOT NULL REFERENCES "HospitalBeds"("id"),
@@ -364,7 +361,7 @@ CREATE TABLE "HospitalStays" (
 );
 
 CREATE TABLE "Surgeries" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "admissionId" UUID REFERENCES "Admissions"("id") ON DELETE SET NULL,
     "patientId" UUID NOT NULL REFERENCES "Patients"("id") ON DELETE CASCADE,
     "specialtyId" INTEGER REFERENCES "Specialties"("id") ON DELETE SET NULL,
@@ -387,9 +384,9 @@ CREATE TABLE "Surgeries" (
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. LABORATORIO CLÍNICO
+-- 7. LABORATORIO CLÍNICO
 CREATE TABLE "LabTests" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "code" VARCHAR(50) UNIQUE NOT NULL,
     "name" VARCHAR(200) NOT NULL,
     "category" VARCHAR(100) DEFAULT 'HEMATOLOGÍA',
@@ -401,7 +398,7 @@ CREATE TABLE "LabTests" (
 );
 
 CREATE TABLE "LabCombos" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "code" VARCHAR(50) UNIQUE NOT NULL,
     "name" VARCHAR(200) NOT NULL,
     "description" TEXT,
@@ -418,7 +415,7 @@ CREATE TABLE "LabComboTests" (
 );
 
 CREATE TABLE "LabResults" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "patientId" UUID NOT NULL REFERENCES "Patients"("id") ON DELETE CASCADE,
     "testId" UUID REFERENCES "LabTests"("id") ON DELETE SET NULL,
     "orderNumber" VARCHAR(100) NOT NULL,
@@ -430,9 +427,9 @@ CREATE TABLE "LabResults" (
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. INVENTARIO Y MOVIMIENTOS DE FARMACIA
+-- 8. INVENTARIO Y MOVIMIENTOS DE FARMACIA
 CREATE TABLE "InventoryItems" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "specialtyId" INTEGER REFERENCES "Specialties"("id") ON DELETE SET NULL,
     "doctorId" UUID REFERENCES "Doctors"("id") ON DELETE SET NULL,
@@ -452,12 +449,12 @@ CREATE TABLE "InventoryItems" (
 );
 
 CREATE TABLE "InventoryMovements" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "itemId" UUID NOT NULL REFERENCES "InventoryItems"("id") ON DELETE CASCADE,
     "patientId" UUID REFERENCES "Patients"("id") ON DELETE SET NULL,
     "doctorId" UUID REFERENCES "Doctors"("id") ON DELETE SET NULL,
-    "movementType" VARCHAR(50) NOT NULL, -- IN, OUT, ADJUSTMENT, SURGERY_CONSUMPTION
+    "movementType" VARCHAR(50) NOT NULL,
     "quantity" INTEGER NOT NULL,
     "unitCostUSD" NUMERIC(10, 2) DEFAULT 0.00,
     "totalCostUSD" NUMERIC(12, 2) DEFAULT 0.00,
@@ -465,9 +462,9 @@ CREATE TABLE "InventoryMovements" (
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 10. VENTAS, COTIZACIONES Y COMBOS CLÍNICOS
+-- 9. VENTAS, COTIZACIONES Y COMBOS CLÍNICOS
 CREATE TABLE "ClinicalServices" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "specialtyId" INTEGER REFERENCES "Specialties"("id") ON DELETE SET NULL,
     "code" VARCHAR(50) NOT NULL,
@@ -485,7 +482,7 @@ CREATE TABLE "ClinicalServices" (
 );
 
 CREATE TABLE "ClinicalPackages" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "code" VARCHAR(50) NOT NULL,
     "name" VARCHAR(200) NOT NULL,
@@ -493,7 +490,7 @@ CREATE TABLE "ClinicalPackages" (
     "description" TEXT,
     "totalPriceUSD" NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     "estimatedDurationHours" NUMERIC(6, 2) DEFAULT 2.0,
-    "items" JSONB DEFAULT '[]'::jsonb, -- [{ concept, quantity, unitPriceUSD, type }]
+    "items" JSONB DEFAULT '[]'::jsonb,
     "isActive" BOOLEAN DEFAULT TRUE,
     "notes" TEXT,
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -502,7 +499,7 @@ CREATE TABLE "ClinicalPackages" (
 );
 
 CREATE TABLE "Quotes" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "patientId" UUID REFERENCES "Patients"("id") ON DELETE SET NULL,
     "doctorId" UUID REFERENCES "Doctors"("id") ON DELETE SET NULL,
@@ -528,7 +525,7 @@ CREATE TABLE "Quotes" (
 );
 
 CREATE TABLE "QuoteItems" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "quoteId" UUID NOT NULL REFERENCES "Quotes"("id") ON DELETE CASCADE,
     "serviceId" UUID REFERENCES "ClinicalServices"("id") ON DELETE SET NULL,
     "concept" VARCHAR(255) NOT NULL,
@@ -542,16 +539,16 @@ CREATE TABLE "QuoteItems" (
     "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 11. PAGOS, HONORARIOS MÉDICOS Y CONTABILIDAD VENEZOLANA
+-- 10. PAGOS, HONORARIOS MÉDICOS Y CONTABILIDAD VENEZOLANA
 CREATE TABLE "Payments" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "patientId" UUID REFERENCES "Patients"("id") ON DELETE SET NULL,
     "appointmentId" UUID REFERENCES "Appointments"("id") ON DELETE SET NULL,
     "amountUSD" NUMERIC(10, 2) NOT NULL,
     "amountVES" NUMERIC(14, 2) NOT NULL,
     "exchangeRateBCV" NUMERIC(12, 4) NOT NULL,
-    "paymentMethod" VARCHAR(50) NOT NULL, -- PAGO_MOVIL, TRANSFERENCIA, ZELLE, CASH_USD, POS
+    "paymentMethod" VARCHAR(50) NOT NULL,
     "referenceNumber" VARCHAR(100),
     "status" VARCHAR(50) DEFAULT 'COMPLETED',
     "notes" TEXT,
@@ -560,7 +557,7 @@ CREATE TABLE "Payments" (
 );
 
 CREATE TABLE "DoctorFees" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "doctorId" UUID NOT NULL REFERENCES "Doctors"("id") ON DELETE CASCADE,
     "patientId" UUID REFERENCES "Patients"("id") ON DELETE SET NULL,
@@ -579,7 +576,7 @@ CREATE TABLE "DoctorFees" (
 );
 
 CREATE TABLE "InsuranceClaims" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "insuranceCompanyId" UUID NOT NULL REFERENCES "InsuranceCompanies"("id") ON DELETE CASCADE,
     "patientId" UUID NOT NULL REFERENCES "Patients"("id") ON DELETE CASCADE,
@@ -589,7 +586,7 @@ CREATE TABLE "InsuranceClaims" (
     "approvedAmountUSD" NUMERIC(12, 2) DEFAULT 0.00,
     "deductibleUSD" NUMERIC(10, 2) DEFAULT 0.00,
     "copayUSD" NUMERIC(10, 2) DEFAULT 0.00,
-    "status" VARCHAR(50) DEFAULT 'SUBMITTED', -- SUBMITTED, IN_REVIEW, APPROVED, REJECTED, PAID
+    "status" VARCHAR(50) DEFAULT 'SUBMITTED',
     "settlementDate" DATE,
     "rejectionReason" TEXT,
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -597,11 +594,11 @@ CREATE TABLE "InsuranceClaims" (
 );
 
 CREATE TABLE "AccountCharts" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "code" VARCHAR(50) NOT NULL,
     "name" VARCHAR(200) NOT NULL,
-    "type" VARCHAR(50) NOT NULL, -- ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE
+    "type" VARCHAR(50) NOT NULL,
     "level" INTEGER DEFAULT 1,
     "parentAccountId" UUID REFERENCES "AccountCharts"("id") ON DELETE SET NULL,
     "isActive" BOOLEAN DEFAULT TRUE,
@@ -610,7 +607,7 @@ CREATE TABLE "AccountCharts" (
 );
 
 CREATE TABLE "JournalEntries" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "entryNumber" VARCHAR(100) UNIQUE NOT NULL,
     "entryDate" DATE NOT NULL,
@@ -624,7 +621,7 @@ CREATE TABLE "JournalEntries" (
 );
 
 CREATE TABLE "JournalItems" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "journalEntryId" UUID NOT NULL REFERENCES "JournalEntries"("id") ON DELETE CASCADE,
     "accountId" UUID NOT NULL REFERENCES "AccountCharts"("id") ON DELETE CASCADE,
     "debitUSD" NUMERIC(12, 2) DEFAULT 0.00,
@@ -636,16 +633,16 @@ CREATE TABLE "JournalItems" (
 );
 
 CREATE TABLE "TaxRetentions" (
-    "id" UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    "id" UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     "organizationId" UUID REFERENCES "Organizations"("id") ON DELETE CASCADE,
     "voucherNumber" VARCHAR(100) UNIQUE NOT NULL,
-    "taxType" VARCHAR(50) DEFAULT 'ISLR', -- ISLR, IVA
+    "taxType" VARCHAR(50) DEFAULT 'ISLR',
     "beneficiaryName" VARCHAR(200) NOT NULL,
     "beneficiaryRif" VARCHAR(50) NOT NULL,
     "baseAmountVES" NUMERIC(16, 2) NOT NULL,
     "retentionPercentage" NUMERIC(5, 2) NOT NULL,
     "retainedAmountVES" NUMERIC(16, 2) NOT NULL,
     "retentionDate" DATE NOT NULL,
-    "fiscalPeriod" VARCHAR(20) NOT NULL, -- YYYY-MM
+    "fiscalPeriod" VARCHAR(20) NOT NULL,
     "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

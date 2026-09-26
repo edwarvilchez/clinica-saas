@@ -1,5 +1,8 @@
 const { Employee, Doctor, Specialty, Department, User, Role, sequelize } = require('../models');
 
+const getOrgId = (req) => req.user?.organizationId || req.organizationId || null;
+const isPlatformAdmin = (req) => req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+
 exports.getEmployees = async (req, res) => {
   try {
     const { isDoctor, departmentId, status } = req.query;
@@ -7,6 +10,10 @@ exports.getEmployees = async (req, res) => {
     if (isDoctor !== undefined) where.isDoctor = isDoctor === 'true';
     if (departmentId) where.departmentId = departmentId;
     if (status) where.status = status;
+
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) where.organizationId = orgId;
 
     const employees = await Employee.findAll({
       where,
@@ -31,7 +38,7 @@ exports.getEmployees = async (req, res) => {
 exports.createEmployee = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       employeeCode,
       documentId,
@@ -161,6 +168,12 @@ exports.updateEmployee = async (req, res) => {
     const employee = await Employee.findByPk(id);
     if (!employee) {
       return res.status(404).json({ message: 'Empleado no encontrado' });
+    }
+
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && employee.organizationId && employee.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este empleado de otra clínica' });
     }
 
     await employee.update(req.body);

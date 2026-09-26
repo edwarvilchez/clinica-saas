@@ -5,13 +5,17 @@ const {
 const { v4: uuidv4 } = require('uuid');
 const { Op } = require('sequelize');
 
+const getOrgId = (req) => req.user?.organizationId || req.organizationId || null;
+const isPlatformAdmin = (req) => req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+
 // List doctor fees (filterable by doctor, status PENDING/PAID, serviceType, date range)
 exports.getDoctorFees = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
     const { doctorId, status, serviceType, startDate, endDate } = req.query;
     const where = {};
-    if (orgId) where.organizationId = orgId;
+    if (!isSuperAdmin && orgId) where.organizationId = orgId;
     if (doctorId) where.doctorId = doctorId;
     if (status) where.status = status;
     if (serviceType) where.serviceType = serviceType;
@@ -58,9 +62,10 @@ exports.getDoctorFees = async (req, res) => {
 // Get Doctor Fee Configuration & Baremos for all doctors in clinic
 exports.getDoctorConfigs = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
     const where = {};
-    if (orgId) where.organizationId = orgId;
+    if (!isSuperAdmin && orgId) where.organizationId = orgId;
 
     const doctors = await Doctor.findAll({
       where,
@@ -112,6 +117,12 @@ exports.updateDoctorConfig = async (req, res) => {
       return res.status(404).json({ message: 'Médico no encontrado.' });
     }
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && doctor.organizationId && doctor.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este médico de otra clínica' });
+    }
+
     await doctor.update({
       feeType: feeType || doctor.feeType,
       doctorPercent: doctorPercent !== undefined ? parseFloat(doctorPercent) : doctor.doctorPercent,
@@ -135,7 +146,7 @@ exports.updateDoctorConfig = async (req, res) => {
 exports.createDoctorFee = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       doctorId,
       patientId,
@@ -226,7 +237,8 @@ exports.createDoctorFee = async (req, res) => {
 exports.payDoctorFees = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
     const {
       feeIds, // Array of DoctorFee IDs
       paymentMethod = 'Transferencia Bancaria',
@@ -240,11 +252,16 @@ exports.payDoctorFees = async (req, res) => {
       return res.status(400).json({ message: 'Debe seleccionar al menos un honorario para procesar el pago.' });
     }
 
+    const feeWhere = {
+      id: { [Op.in]: feeIds },
+      status: 'PENDING'
+    };
+    if (!isSuperAdmin && orgId) {
+      feeWhere.organizationId = orgId;
+    }
+
     const fees = await DoctorFee.findAll({
-      where: {
-        id: { [Op.in]: feeIds },
-        status: 'PENDING'
-      },
+      where: feeWhere,
       include: [
         { model: Doctor, include: [{ model: User }] },
         { model: Patient, include: [{ model: User }] },

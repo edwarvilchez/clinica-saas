@@ -1,5 +1,8 @@
 const { ClinicalService, Quote, QuoteItem, Patient, Doctor, InsuranceCompany, Specialty, User, ClinicalPackage, sequelize } = require('../models');
 
+const getOrgId = (req) => req.user?.organizationId || req.organizationId || null;
+const isPlatformAdmin = (req) => req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+
 // Default Venezuelan Clinical & Surgical packages seed
 const DEFAULT_PACKAGES = [
   {
@@ -99,6 +102,16 @@ exports.getServices = async (req, res) => {
     const where = {};
     if (category) where.category = category;
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) {
+      const { Op } = require('sequelize');
+      where[Op.or] = [
+        { organizationId: orgId },
+        { organizationId: null } // System-wide global catalog services
+      ];
+    }
+
     const services = await ClinicalService.findAll({
       where,
       include: [{ model: Specialty, attributes: ['id', 'name'] }],
@@ -112,7 +125,7 @@ exports.getServices = async (req, res) => {
 
 exports.createService = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const { code, name, category, description, priceUSD, isTaxExempt, taxRate, requiresDoctor, specialtyId } = req.body;
 
     if (!code || !name || priceUSD === undefined) {
@@ -141,12 +154,24 @@ exports.createService = async (req, res) => {
 // ── CLINICAL PACKAGES & COMBOS ────────────────
 exports.getPackages = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    const where = {};
+
+    if (!isSuperAdmin && orgId) {
+      const { Op } = require('sequelize');
+      where[Op.or] = [
+        { organizationId: orgId },
+        { organizationId: null }
+      ];
+    }
+
     let packages = await ClinicalPackage.findAll({
+      where,
       order: [['category', 'ASC'], ['name', 'ASC']]
     });
 
-    // Auto-seed if none exist
+    // Auto-seed for this organization if none exist
     if (packages.length === 0) {
       for (const pkg of DEFAULT_PACKAGES) {
         await ClinicalPackage.create({
@@ -155,6 +180,7 @@ exports.getPackages = async (req, res) => {
         });
       }
       packages = await ClinicalPackage.findAll({
+        where,
         order: [['category', 'ASC'], ['name', 'ASC']]
       });
     }
@@ -167,7 +193,7 @@ exports.getPackages = async (req, res) => {
 
 exports.createPackage = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const { code, name, category, description, totalPriceUSD, estimatedDurationHours, items, notes } = req.body;
 
     if (!code || !name || totalPriceUSD === undefined) {
@@ -200,6 +226,12 @@ exports.updatePackage = async (req, res) => {
       return res.status(404).json({ message: 'Paquete o combo no encontrado' });
     }
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && pkg.organizationId && pkg.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este paquete de otra clínica' });
+    }
+
     await pkg.update(req.body);
     res.json(pkg);
   } catch (error) {
@@ -213,6 +245,12 @@ exports.deletePackage = async (req, res) => {
     const pkg = await ClinicalPackage.findByPk(id);
     if (!pkg) {
       return res.status(404).json({ message: 'Paquete no encontrado' });
+    }
+
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && pkg.organizationId && pkg.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para eliminar este paquete de otra clínica' });
     }
 
     await pkg.destroy();
@@ -229,6 +267,12 @@ exports.getQuotes = async (req, res) => {
     const where = {};
     if (status) where.status = status;
     if (patientId) where.patientId = patientId;
+
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) {
+      where.organizationId = orgId;
+    }
 
     const quotes = await Quote.findAll({
       where,
@@ -249,7 +293,7 @@ exports.getQuotes = async (req, res) => {
 exports.createQuote = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       patientId,
       patientName,
@@ -271,7 +315,7 @@ exports.createQuote = async (req, res) => {
       return res.status(400).json({ message: 'Nombre del paciente, título y al menos 1 ítem son obligatorios' });
     }
 
-    const count = await Quote.count();
+    const count = await Quote.count({ where: orgId ? { organizationId: orgId } : {} });
     const quoteNumber = `COT-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
 
     let subtotalUSD = 0;
@@ -357,6 +401,12 @@ exports.updateQuoteStatus = async (req, res) => {
       return res.status(404).json({ message: 'Presupuesto no encontrado' });
     }
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && quote.organizationId && quote.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para modificar este presupuesto de otra clínica' });
+    }
+
     await quote.update({ status });
     res.json(quote);
   } catch (error) {
@@ -370,6 +420,12 @@ exports.deleteQuote = async (req, res) => {
     const quote = await Quote.findByPk(id);
     if (!quote) {
       return res.status(404).json({ message: 'Presupuesto no encontrado' });
+    }
+
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && quote.organizationId && quote.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para eliminar este presupuesto de otra clínica' });
     }
 
     await quote.destroy();

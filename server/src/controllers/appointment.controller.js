@@ -70,8 +70,8 @@ exports.getAppointments = async (req, res) => {
     // Dynamic Include for Doctor to filter by Organization
     let doctorUserInclude = { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'organizationId'] };
 
-    // If not SUPER_ADMIN and belongs to an Organization, filter Doctors by that Organization
-    const isSuperAdmin = userRole === 'SUPERADMIN' || userRole === 'SUPERADMIN';
+    // If not SUPERADMIN / PLATFORM_ADMIN and belongs to an Organization, filter Doctors by that Organization
+    const isSuperAdmin = userRole === 'SUPERADMIN' || userRole === 'PLATFORM_ADMIN';
     if (organizationId && !isSuperAdmin) {
         doctorUserInclude.where = { organizationId };
     }

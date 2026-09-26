@@ -12,6 +12,9 @@ const {
   sequelize
 } = require('../models');
 
+const getOrgId = (req) => req.user?.organizationId || req.organizationId || null;
+const isPlatformAdmin = (req) => req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+
 // ── ADMISIONES ──────────────────────────────────
 exports.getAdmissions = async (req, res) => {
   try {
@@ -19,6 +22,12 @@ exports.getAdmissions = async (req, res) => {
     const where = {};
     if (status) where.status = status;
     if (admissionType) where.admissionType = admissionType;
+
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) {
+      where.organizationId = orgId;
+    }
 
     const admissions = await Admission.findAll({
       where,
@@ -41,7 +50,7 @@ exports.getAdmissions = async (req, res) => {
 
 exports.createAdmission = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       patientId,
       medicalRecordNumber,
@@ -459,6 +468,12 @@ exports.getTriages = async (req, res) => {
     if (status) where.status = status;
     if (triageLevel) where.triageLevel = triageLevel;
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) {
+      where.organizationId = orgId;
+    }
+
     const triages = await EmergencyTriage.findAll({
       where,
       include: [
@@ -477,7 +492,7 @@ exports.getTriages = async (req, res) => {
 
 exports.createTriage = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       patientId,
       admissionId,
@@ -498,7 +513,7 @@ exports.createTriage = async (req, res) => {
       return res.status(400).json({ message: 'Paciente y motivo principal de consulta son obligatorios' });
     }
 
-    const count = await EmergencyTriage.count();
+    const count = await EmergencyTriage.count({ where: orgId ? { organizationId: orgId } : {} });
     const triageNumber = `TRI-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
 
     const triage = await EmergencyTriage.create({
@@ -542,6 +557,12 @@ exports.getBeds = async (req, res) => {
     if (status) where.status = status;
     if (floor) where.floor = floor;
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) {
+      where.organizationId = orgId;
+    }
+
     const beds = await HospitalBed.findAll({
       where,
       include: [
@@ -563,7 +584,7 @@ exports.getBeds = async (req, res) => {
 exports.assignBed = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const { admissionId, patientId, bedId, attendingDoctorId, dailyRateUSD, dietType, isolationType } = req.body;
 
     if (!admissionId || !patientId || !bedId || !attendingDoctorId) {
@@ -625,6 +646,12 @@ exports.getSurgeries = async (req, res) => {
     if (status) where.status = status;
     if (operatingRoom) where.operatingRoom = operatingRoom;
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) {
+      where.organizationId = orgId;
+    }
+
     const surgeries = await Surgery.findAll({
       where,
       include: [
@@ -645,7 +672,7 @@ exports.getSurgeries = async (req, res) => {
 
 exports.createSurgery = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       patientId,
       admissionId,
@@ -666,7 +693,7 @@ exports.createSurgery = async (req, res) => {
       return res.status(400).json({ message: 'Paciente, procedimiento, cirujano y horarios son requeridos' });
     }
 
-    const count = await Surgery.count();
+    const count = await Surgery.count({ where: orgId ? { organizationId: orgId } : {} });
     const surgeryNumber = `CIR-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
 
     const surgery = await Surgery.create({

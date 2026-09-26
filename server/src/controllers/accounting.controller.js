@@ -1,10 +1,25 @@
 const { AccountChart, JournalEntry, JournalItem, TaxRetention, Organization, sequelize } = require('../models');
 const { Op } = require('sequelize');
 
+const getOrgId = (req) => req.user?.organizationId || req.organizationId || null;
+const isPlatformAdmin = (req) => req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+
 // ── PLAN DE CUENTAS (CHART OF ACCOUNTS) ───────────
 exports.getChartOfAccounts = async (req, res) => {
   try {
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    const where = {};
+
+    if (!isSuperAdmin && orgId) {
+      where[Op.or] = [
+        { organizationId: orgId },
+        { organizationId: null } // Standard base accounts
+      ];
+    }
+
     const accounts = await AccountChart.findAll({
+      where,
       order: [['code', 'ASC']]
     });
     res.json(accounts);
@@ -15,7 +30,7 @@ exports.getChartOfAccounts = async (req, res) => {
 
 exports.createAccount = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const { code, name, accountType, category, parentCode, level, allowsMovement } = req.body;
 
     if (!code || !name || !accountType) {
@@ -49,6 +64,12 @@ exports.getJournalEntries = async (req, res) => {
       where.entryDate = { [Op.between]: [startDate, endDate] };
     }
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) {
+      where.organizationId = orgId;
+    }
+
     const entries = await JournalEntry.findAll({
       where,
       include: [
@@ -71,7 +92,7 @@ exports.getJournalEntries = async (req, res) => {
 exports.createJournalEntry = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const userId = req.user ? req.user.id : null;
     const { entryDate, concept, sourceModule, bcvRate = 1.0, items } = req.body;
 
@@ -206,6 +227,12 @@ exports.getTaxRetentions = async (req, res) => {
     const where = {};
     if (retentionType) where.retentionType = retentionType;
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId) {
+      where.organizationId = orgId;
+    }
+
     const retentions = await TaxRetention.findAll({
       where,
       order: [['createdAt', 'DESC']]
@@ -218,7 +245,7 @@ exports.getTaxRetentions = async (req, res) => {
 
 exports.createTaxRetention = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       retentionType,
       beneficiaryName,
@@ -240,7 +267,7 @@ exports.createTaxRetention = async (req, res) => {
     const taxVES = (parseFloat(taxUSD) * parseFloat(bcvRate)).toFixed(2);
     const retainedVES = (parseFloat(retainedUSD) * parseFloat(bcvRate)).toFixed(2);
 
-    const count = await TaxRetention.count();
+    const count = await TaxRetention.count({ where: orgId ? { organizationId: orgId } : {} });
     const voucherNumber = `${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(count + 1).padStart(6, '0')}`;
 
     const retention = await TaxRetention.create({

@@ -4,10 +4,25 @@ const {
 const { v4: uuidv4 } = require('uuid');
 const { Op } = require('sequelize');
 
+const getOrgId = (req) => req.user?.organizationId || req.organizationId || null;
+const isPlatformAdmin = (req) => req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+
 // ── INSURANCE COMPANIES ─────────────────────────
 exports.getCompanies = async (req, res) => {
   try {
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    const where = {};
+
+    if (!isSuperAdmin && orgId) {
+      where[Op.or] = [
+        { organizationId: orgId },
+        { organizationId: null }
+      ];
+    }
+
     const companies = await InsuranceCompany.findAll({
+      where,
       include: [
         {
           model: InsurancePolicy,
@@ -25,7 +40,7 @@ exports.getCompanies = async (req, res) => {
 
 exports.createCompany = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const { name, rif, phone, email, contactPerson, defaultCoveragePercent, paymentTermDays, notes } = req.body;
 
     if (!name || !rif) {
@@ -141,10 +156,11 @@ exports.createPolicy = async (req, res) => {
 // ── CLAIMS TO INSURANCE COMPANIES (RECLAMOS / SINIESTROS) ─────────────────────────
 exports.getClaims = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
     const { insuranceCompanyId, patientId, doctorId, status, serviceType, startDate, endDate } = req.query;
     const where = {};
-    if (orgId) where.organizationId = orgId;
+    if (!isSuperAdmin && orgId) where.organizationId = orgId;
     if (insuranceCompanyId) where.insuranceCompanyId = insuranceCompanyId;
     if (patientId) where.patientId = patientId;
     if (doctorId) where.doctorId = doctorId;
@@ -216,6 +232,12 @@ exports.getClaimById = async (req, res) => {
       return res.status(404).json({ message: 'Reclamo de seguro no encontrado' });
     }
 
+    const orgId = getOrgId(req);
+    const isSuperAdmin = isPlatformAdmin(req);
+    if (!isSuperAdmin && orgId && claim.organizationId && claim.organizationId !== orgId) {
+      return res.status(403).json({ message: 'No tienes permisos para consultar reclamos de otra clínica' });
+    }
+
     res.json(claim);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -224,7 +246,7 @@ exports.getClaimById = async (req, res) => {
 
 exports.createClaim = async (req, res) => {
   try {
-    const orgId = req.organizationId || null;
+    const orgId = getOrgId(req);
     const {
       insuranceCompanyId,
       patientId,
