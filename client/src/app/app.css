@@ -11,22 +11,43 @@
   left: 0;
 }
 
+app-navbar {
+  display: block;
+  width: 100%;
+  flex-shrink: 0;
+  z-index: 1020;
+}
+
 .app-body {
   display: flex;
   flex: 1;
   overflow: hidden;
-  height: calc(100vh - 70px);
-  max-height: calc(100vh - 70px);
+  height: calc(100vh - 60px);
+  max-height: calc(100vh - 60px);
   position: relative; /* Contexto para overlay */
 }
 
 /* Sidebar Default (Desktop) */
 app-sidebar {
-  width: 260px;
+  width: 275px;
+  min-width: 275px;
   flex-shrink: 0;
-  transition: transform 0.3s ease, width 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 1000;
-  background-color: #f8fafc; /* Asegurar fondo opaco */
+  background-color: #ffffff;
+  border-right: 1px solid #e2e8f0;
+  overflow: hidden;
+  display: block;
+  height: 100%;
+}
+
+.sidebar-collapsed app-sidebar {
+  width: 0 !important;
+  min-width: 0 !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  border-right: none;
 }
 
 /* Main Content */
@@ -34,29 +55,39 @@ app-sidebar {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 1.5rem;
+  padding: 1.25rem 1.5rem;
   background-color: #f8fafc;
   height: 100%;
-  width: 100%; /* Asegura que tome el ancho disponible */
+  width: 100%;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* RESPONSIVE DESIGN (Mobile/Tablet) */
 @media (max-width: 991.98px) {
-  /* Sidebar oculto por defecto */
+  /* Sidebar oculto por defecto en móvil */
   app-sidebar {
     position: fixed;
     top: 0;
     left: 0;
     height: 100%;
-    width: 280px;
+    width: 285px;
+    min-width: 285px;
     transform: translateX(-100%);
-    box-shadow: 0 0 15px rgba(0,0,0,0.1);
-    background: white; 
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.15);
+    background: #ffffff;
+    z-index: 1050;
+    opacity: 1;
+    visibility: visible;
   }
 
   /* Clase para abrir sidebar via TS */
   .sidebar-open app-sidebar {
     transform: translateX(0);
+    width: 285px !important;
+    min-width: 285px !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
   }
 
   /* Overlay oscuro */
@@ -66,11 +97,12 @@ app-sidebar {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.5);
-    z-index: 900;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 1040;
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s ease;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
   }
 
   .sidebar-open .sidebar-overlay {

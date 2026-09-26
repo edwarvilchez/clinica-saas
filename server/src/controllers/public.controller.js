@@ -177,7 +177,7 @@ Equipo de Clínica Clinica SaaS`;
 
       await sendEmail({
         email: user.email,
-        subject: `✅ Confirmación de Cita ${paymentRecord ? '(Con Pago Registrado)' : ''} - MedicalCare 888`,
+        subject: `✅ Confirmación de Cita ${paymentRecord ? '(Con Pago Registrado)' : ''} - Clinica - SaaS`,
         message: emailMessage
       });
       console.log('✅ Email confirmation sent successfully to:', user.email);

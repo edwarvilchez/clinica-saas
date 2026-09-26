@@ -40,7 +40,9 @@ exports.importData = async (req, res) => {
         if (type === 'patients') await importPatient(record, t, userOrgId);
         else if (type === 'doctors') await importDoctor(record, t, userOrgId);
         else if (type === 'lab_catalog') await importLabTest(record, t, userOrgId);
-        else if (type === 'pharmacy_inventory') await importPharmacyItem(record, t, userOrgId);
+        else if (type === 'pharmacy_inventory' || type === 'inventory') await importInventoryItem(record, t, userOrgId);
+        else if (type === 'insurance_companies') await importInsuranceCompany(record, t, userOrgId);
+        else if (type === 'baremos') await importBaremoService(record, t, userOrgId);
         else throw new Error(`Tipo de importación inválido: ${type}`);
 
         if (dryRun) {
@@ -161,3 +163,90 @@ async function importPharmacyItem(data, transaction, organizationId) {
         }, { transaction });
     }
 }
+
+async function importInsuranceCompany(data, transaction, organizationId) {
+    const { InsuranceCompany } = require('../models');
+    if (InsuranceCompany) {
+        await InsuranceCompany.create({
+            name: data.name,
+            rif: data.rif,
+            phone: data.phone || null,
+            email: data.email || null,
+            contactPerson: data.contactPerson || null,
+            defaultCoveragePercent: parseFloat(data.defaultCoveragePercent) || 80.00,
+            paymentTermDays: parseInt(data.paymentTermDays) || 30,
+            notes: data.notes || null,
+            isActive: true,
+            organizationId
+        }, { transaction });
+    }
+}
+
+async function importInventoryItem(data, transaction, organizationId) {
+    const { InventoryItem } = require('../models');
+    if (InventoryItem) {
+        const code = data.code || `ITM-${Math.floor(1000 + Math.random() * 9000)}`;
+        await InventoryItem.create({
+            code,
+            name: data.name,
+            nameEn: data.nameEn || null,
+            itemType: data.itemType || 'PRODUCT',
+            category: data.category || 'MEDICINE',
+            unit: data.unit || 'UNIDAD',
+            costUSD: parseFloat(data.costUSD) || 0.00,
+            priceUSD: parseFloat(data.priceUSD) || 0.00,
+            stockCurrent: parseFloat(data.stockCurrent) || 0.00,
+            stockMin: parseFloat(data.stockMin) || 5.00,
+            batchNumber: data.batchNumber || null,
+            expiryDate: data.expiryDate || null,
+            location: data.location || 'Almacén General',
+            isTaxExempt: data.isTaxExempt !== 'false' && data.isTaxExempt !== false,
+            isActive: true,
+            organizationId
+        }, { transaction });
+    }
+}
+
+async function importBaremoService(data, transaction, organizationId) {
+    const { ClinicalService, InventoryItem } = require('../models');
+    const code = data.code || `SRV-${Math.floor(1000 + Math.random() * 9000)}`;
+    const priceUSD = parseFloat(data.priceUSD) || 0.00;
+    const doctorFeePercent = parseFloat(data.doctorFeePercent) || 70.00;
+    const doctorFeeFixedUSD = parseFloat(data.doctorFeeFixedUSD) || 0.00;
+
+    if (ClinicalService) {
+        await ClinicalService.create({
+            code,
+            name: data.name,
+            category: data.category || 'CONSULTATION',
+            description: data.description || '',
+            priceUSD,
+            isTaxExempt: true,
+            taxRate: 0.00,
+            requiresDoctor: true,
+            isActive: true,
+            organizationId
+        }, { transaction });
+    }
+
+    if (InventoryItem) {
+        await InventoryItem.create({
+            code,
+            name: data.name,
+            itemType: 'SERVICE',
+            category: data.category || 'CONSULTATION',
+            unit: 'SERVICIO',
+            costUSD: 0.00,
+            priceUSD,
+            stockCurrent: 9999,
+            stockMin: 0,
+            isTaxExempt: true,
+            doctorFeePercent,
+            doctorFeeFixedUSD,
+            requiresDoctor: true,
+            isActive: true,
+            organizationId
+        }, { transaction });
+    }
+}
+

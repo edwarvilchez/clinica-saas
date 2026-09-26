@@ -1,17 +1,23 @@
 <div class="animate-fade-in">
-  <div class="d-flex justify-content-between align-items-center mb-4">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
     <div>
-      <h2 class="mb-1">{{ 'payments.title' | translate }}</h2>
-      <p class="text-muted">{{ 'payments.subtitle' | translate }}</p>
+      <h2 class="mb-1 fw-bold">{{ 'payments.title' | translate }}</h2>
+      <p class="text-muted small mb-0">{{ 'payments.subtitle' | translate }}</p>
     </div>
-    <button class="btn btn-primary-premium" (click)="createNewPayment()">
-      <i class="bi bi-plus-circle me-2"></i> {{ 'payments.newPayment' | translate }}
-    </button>
+    <div class="d-flex align-items-center gap-2 flex-wrap">
+      <button class="btn btn-outline-secondary rounded-pill px-3 shadow-sm" *ngIf="!authService.hasRole(['PATIENT'])" (click)="exportReport()">
+        <i class="bi bi-download me-1"></i> {{ 'payments.export' | translate }}
+      </button>
+      <button class="btn btn-primary-premium shadow-sm" (click)="createNewPayment()">
+        <i class="bi bi-plus-circle me-2"></i> {{ 'payments.newPayment' | translate }}
+      </button>
+    </div>
   </div>
 
-  <div class="card-premium border-0 p-4 mb-4">
-    <div class="row g-3">
-      <div [ngClass]="authService.hasRole(['PATIENT']) ? 'col-12' : 'col-md-9'">
+  <!-- Search & View Mode Switcher -->
+  <div class="card-premium border-0 p-3 mb-4">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-6 col-lg-7">
         <div class="input-group glass-morphism rounded-3 border">
           <span class="input-group-text bg-transparent border-0"
             ><i class="bi bi-search text-muted"></i
@@ -24,15 +30,30 @@
           />
         </div>
       </div>
-      <div class="col-md-3" *ngIf="!authService.hasRole(['PATIENT'])">
-        <button class="btn btn-primary-premium w-100 py-2" (click)="exportReport()">
-          {{ 'payments.export' | translate }}
-        </button>
+      <div class="col-md-6 col-lg-5 d-flex align-items-center justify-content-md-end gap-3 flex-wrap">
+        <!-- View Mode Switcher -->
+        <div class="btn-group bg-light p-1 rounded-pill border shadow-sm" role="group">
+          <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+            [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+            (click)="viewMode.set('list')">
+            <i class="bi bi-list-ul"></i><span class="small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+          </button>
+          <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+            [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+            (click)="viewMode.set('kanban')">
+            <i class="bi bi-kanban-fill"></i><span class="small">Kanban</span>
+          </button>
+        </div>
+
+        <div class="badge bg-light text-dark border p-2">
+          Total: <strong>{{ filteredPayments().length }}</strong>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="card-premium border-0 overflow-hidden">
+  <!-- LIST VIEW -->
+  <div *ngIf="viewMode() === 'list'" class="card-premium border-0 overflow-hidden">
     <div class="table-responsive">
       <table class="table table-hover align-middle mb-0">
         <thead class="bg-light">
@@ -52,7 +73,7 @@
         <tbody>
           <tr *ngFor="let p of filteredPayments()">
             <td class="ps-4 fw-bold">
-              #{{ p.reference || 'N/A' }}
+              <span class="font-monospace text-primary">#{{ p.reference || 'N/A' }}</span>
               <i
                 class="bi bi-paperclip text-primary ms-1"
                 *ngIf="p.receiptUrl"
@@ -60,7 +81,7 @@
               ></i>
             </td>
             <td *ngIf="!authService.hasRole(['PATIENT'])">
-              <span *ngIf="p.Patient"
+              <span *ngIf="p.Patient" class="fw-semibold"
                 >{{ p.Patient?.User?.firstName }} {{ p.Patient?.User?.lastName }}</span
               >
               <span *ngIf="!p.Patient && p.Organization" class="fw-bold text-primary">
@@ -81,7 +102,7 @@
                 {{ (p.Appointment.type === 'Video' ? 'dashboard.stats.videoCalls' : 'dashboard.stats.inPerson') | translate }}
               </div>
               <div class="x-small text-muted" *ngIf="p.Appointment?.Doctor">
-                {{ p.Appointment.Doctor.User.firstName }} {{ p.Appointment.Doctor.User.lastName }}
+                {{ p.Appointment.Doctor.User?.firstName }} {{ p.Appointment.Doctor.User?.lastName }}
               </div>
               <span class="text-muted small" *ngIf="!p.Appointment">{{
                 'payments.generalPayment' | translate
@@ -103,8 +124,8 @@
                 class="badge rounded-pill px-3"
                 [ngClass]="
                   p.status === 'Paid'
-                    ? 'bg-success bg-opacity-10 text-success'
-                    : 'bg-warning bg-opacity-10 text-warning'
+                    ? 'bg-success bg-opacity-10 text-success border border-success-subtle'
+                    : 'bg-warning bg-opacity-10 text-warning border border-warning-subtle'
                 "
                 >{{
                     (p.status === 'Paid' ? 'payments.paid' : (p.status === 'Pending' ? 'payments.pending' : '')) | translate
@@ -147,12 +168,87 @@
             </td>
           </tr>
           <tr *ngIf="filteredPayments().length === 0">
-            <td colspan="7" class="text-center py-4 text-muted">
+            <td colspan="8" class="text-center py-4 text-muted">
               {{ 'common.noResults' | translate }}
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+  </div>
+
+  <!-- KANBAN VIEW (Odoo ERP Style by Payment Status) -->
+  <div *ngIf="viewMode() === 'kanban'" class="row g-3">
+    <!-- Columna 1: Pagos Completados / Cobrados -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-success">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold text-success mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-check-circle-fill"></i> {{ langService.lang() === 'es' ? 'Pagos Confirmados / Cobrados' : 'Paid Transactions' }}
+          </h6>
+          <span class="badge bg-success rounded-pill px-2">{{ paidPayments().length }}</span>
+        </div>
+        <div class="d-flex flex-column gap-2" style="max-height: 700px; overflow-y: auto;">
+          <div *ngFor="let p of paidPayments()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <span class="badge bg-light text-primary font-monospace">#{{ p.reference || 'N/A' }}</span>
+              <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle">{{ 'payments.paid' | translate }}</span>
+            </div>
+            <h6 class="fw-bold text-dark mb-1">{{ p.Patient ? (p.Patient.User?.firstName + ' ' + p.Patient.User?.lastName) : (p.Organization?.name || 'Pago General') }}</h6>
+            <div class="text-muted small mb-2">{{ p.concept }} | {{ p.createdAt | date:'shortDate' }}</div>
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+              <span class="fw-bold text-success fs-6">{{ currencyService.formatAmount(p.amount) }}</span>
+              <button class="btn btn-xs btn-light rounded-pill px-2 py-1 text-primary" (click)="viewReceipt(p)" title="Ver Comprobante">
+                <i class="bi bi-file-earmark-text me-1"></i> Recibo
+              </button>
+            </div>
+          </div>
+          <div *ngIf="paidPayments().length === 0" class="text-center py-4 text-muted small">
+            Sin pagos confirmados
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Columna 2: Pagos Pendientes -->
+    <div class="col-md-6">
+      <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-warning">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 class="fw-bold text-warning mb-0 d-flex align-items-center gap-2">
+            <i class="bi bi-hourglass-split"></i> {{ langService.lang() === 'es' ? 'Pagos Pendientes por Cobrar' : 'Pending Transactions' }}
+          </h6>
+          <span class="badge bg-warning text-dark rounded-pill px-2">{{ pendingPayments().length }}</span>
+        </div>
+        <div class="d-flex flex-column gap-2" style="max-height: 700px; overflow-y: auto;">
+          <div *ngFor="let p of pendingPayments()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <span class="badge bg-light text-primary font-monospace">#{{ p.reference || 'N/A' }}</span>
+              <span class="badge bg-warning bg-opacity-10 text-dark border border-warning-subtle">{{ 'payments.pending' | translate }}</span>
+            </div>
+            <h6 class="fw-bold text-dark mb-1">{{ p.Patient ? (p.Patient.User?.firstName + ' ' + p.Patient.User?.lastName) : (p.Organization?.name || 'Pago General') }}</h6>
+            <div class="text-muted small mb-2">{{ p.concept }} | {{ p.createdAt | date:'shortDate' }}</div>
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+              <span class="fw-bold text-dark fs-6">{{ currencyService.formatAmount(p.amount) }}</span>
+              <div class="d-flex gap-1">
+                <button class="btn btn-xs btn-light rounded-pill px-2 py-1 text-primary" (click)="viewReceipt(p)" title="Ver Comprobante">
+                  <i class="bi bi-file-earmark-text"></i>
+                </button>
+                <button
+                  class="btn btn-xs btn-success rounded-pill px-2 py-1"
+                  *ngIf="!authService.hasRole(['PATIENT'])"
+                  (click)="collectPayment(p.id)"
+                  title="Cobrar pago"
+                >
+                  <i class="bi bi-wallet2 me-1"></i> Cobrar
+                </button>
+              </div>
+            </div>
+          </div>
+          <div *ngIf="pendingPayments().length === 0" class="text-center py-4 text-muted small">
+            Sin pagos pendientes
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -13,7 +13,7 @@ export interface BrandingInfo {
 })
 export class ExportService {
   private defaultBranding: BrandingInfo = {
-    name: 'MedicalCare 888',
+    name: 'Clinica - SaaS',
     tagline: 'Healthcare Management System',
     address: 'Global Solutions'
   };
@@ -24,7 +24,7 @@ export class ExportService {
 
   private updateDefaultBranding() {
     this.defaultBranding = {
-      name: 'MedicalCare 888',
+      name: 'Clinica - SaaS',
       tagline: this.langService.translate('landing.description').substring(0, 40) + '...',
       address: 'Cloud Healthcare'
     };
@@ -128,7 +128,7 @@ export class ExportService {
     // --- MedicalCare 888 BRANDING (Small corner) ---
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.text('POWERED BY MedicalCare 888', 15, 35);
+    doc.text('POWERED BY Clinica - SaaS', 15, 35);
 
     // Document Title (Right aligned, on a different level to avoid overlap)
     doc.setFontSize(11);

@@ -25,6 +25,7 @@ export class Appointments implements OnInit {
   specialties = signal<any[]>([]);
   selectedSpecialty = signal<string | number>('all');
   dateFilter = signal<'day' | 'week' | 'month'>('month');
+  viewMode = signal<'list' | 'kanban'>('list');
   
   appointmentForm: FormGroup;
   showModal = signal(false);
@@ -35,6 +36,22 @@ export class Appointments implements OnInit {
   modalSpecialty = signal<string | number>('all');
 
   selectedDate = signal<string>(new Date().toISOString().split('T')[0]);
+
+  pendingAppointments = computed(() => {
+    return this.filteredAppointments().filter(a => !a.status || a.status === 'Pending' || a.status === 'Scheduled');
+  });
+
+  confirmedAppointments = computed(() => {
+    return this.filteredAppointments().filter(a => a.status === 'Confirmed');
+  });
+
+  completedAppointments = computed(() => {
+    return this.filteredAppointments().filter(a => a.status === 'Completed');
+  });
+
+  cancelledAppointments = computed(() => {
+    return this.filteredAppointments().filter(a => a.status === 'Cancelled');
+  });
 
   filteredAppointments = computed(() => {
     const specialtyId = this.selectedSpecialty();

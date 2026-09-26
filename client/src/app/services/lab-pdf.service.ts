@@ -24,13 +24,13 @@ export class LabPdfService {
     
     // Branding Setup
     const branding = {
-      name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888'),
+      name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clinica - SaaS'),
       tagline: user?.businessName ? 'Servicios de Salud Integrales' : 'Gestión Médica Profesional'
     };
 
-    // --- CABECERA PREMIUM (MedicalCare 888 Header) ---
+    // --- CABECERA PREMIUM (Clinica - SaaS Header) ---
     // Background Accent (Top Emerald Bar)
-    doc.setFillColor(16, 185, 129); // #10b981 (MedicalCare Emerald Green)
+    doc.setFillColor(16, 185, 129); // #10b981 (Emerald Green)
     doc.rect(0, 0, pageWidth, 2, 'F');
 
     // Heartbeat Icon / Logo Placeholder (Stylized Heart)
@@ -50,14 +50,14 @@ export class LabPdfService {
     
     doc.setFontSize(8.5);
     doc.setFont('helvetica', 'medium');
-    doc.setTextColor(16, 185, 129); // MedicalCare Emerald Green
+    doc.setTextColor(16, 185, 129); // Emerald Green
     doc.text(branding.tagline.toUpperCase(), 35, 23);
 
     // Platform Identity (Top Right)
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(148, 163, 184); // Slate-400
-    doc.text('POWERED BY MedicalCare 888', pageWidth - 14, 8, { align: 'right' });
+    doc.text('POWERED BY Clinica - SaaS', pageWidth - 14, 8, { align: 'right' });
 
     // Lab Order / Document ID (Derecha)
     doc.setFontSize(14);

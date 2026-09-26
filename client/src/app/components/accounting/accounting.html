@@ -1,0 +1,384 @@
+<div class="container-fluid py-4 px-3 px-md-4">
+  <!-- Header -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <div class="badge bg-indigo bg-opacity-10 text-indigo p-2 rounded-3" style="background-color: #e0e7ff; color: #4338ca;">
+          <i class="bi bi-calculator fs-5"></i>
+        </div>
+        <h1 class="h3 fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Módulo Contable (Normativa VEN-NIF)' : 'Accounting Module (VEN-NIF Norms)' }}</h1>
+      </div>
+      <p class="text-muted small mb-0">{{ langService.lang() === 'es' ? 'Libro Diario, Plan Único de Cuentas, Balance de Comprobación y Retenciones SENIAT (IVA/ISLR)' : 'General Journal, Chart of Accounts, Trial Balance and SENIAT Withholdings' }}</p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <a routerLink="/doctor-fees" class="btn btn-outline-warning text-dark rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 fw-semibold">
+        <i class="bi bi-wallet2 text-warning"></i>
+        <span>{{ langService.lang() === 'es' ? 'Cuentas por Pagar (Honorarios)' : 'Accounts Payable (Fees)' }}</span>
+      </a>
+      <button class="btn btn-primary rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 fw-semibold" (click)="openEntryModal()">
+        <i class="bi bi-file-earmark-plus"></i>
+        <span>{{ langService.lang() === 'es' ? 'Nuevo Asiento Contable' : 'New Journal Entry' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation & View Mode Toggle -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+    <ul class="nav nav-pills custom-pills bg-white p-1 rounded-pill shadow-sm border d-inline-flex mb-0">
+      <li class="nav-item">
+        <button 
+          class="nav-link rounded-pill px-3 py-2 fw-bold text-sm" 
+          [class.active]="activeTab() === 'journal'"
+          (click)="activeTab.set('journal')">
+          <i class="bi bi-journal-text me-1"></i>{{ langService.lang() === 'es' ? 'Libro Diario' : 'General Journal' }}
+        </button>
+      </li>
+      <li class="nav-item">
+        <button 
+          class="nav-link rounded-pill px-3 py-2 fw-bold text-sm" 
+          [class.active]="activeTab() === 'chart'"
+          (click)="activeTab.set('chart')">
+          <i class="bi bi-diagram-3 me-1"></i>{{ langService.lang() === 'es' ? 'Plan de Cuentas' : 'Chart of Accounts' }}
+        </button>
+      </li>
+      <li class="nav-item">
+        <button 
+          class="nav-link rounded-pill px-3 py-2 fw-bold text-sm" 
+          [class.active]="activeTab() === 'trial'"
+          (click)="activeTab.set('trial')">
+          <i class="bi bi-bar-chart-steps me-1"></i>{{ langService.lang() === 'es' ? 'Balance Comprobación' : 'Trial Balance' }}
+        </button>
+      </li>
+      <li class="nav-item">
+        <button 
+          class="nav-link rounded-pill px-3 py-2 fw-bold text-sm" 
+          [class.active]="activeTab() === 'retentions'"
+          (click)="activeTab.set('retentions')">
+          <i class="bi bi-receipt-cutoff me-1"></i>{{ langService.lang() === 'es' ? 'Retenciones SENIAT' : 'SENIAT Tax Vouchers' }}
+        </button>
+      </li>
+    </ul>
+
+    <!-- View Mode Toggle (Odoo style) -->
+    <div *ngIf="activeTab() === 'journal'" class="btn-group bg-white p-1 rounded-pill border shadow-sm" role="group">
+      <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+        [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+        (click)="viewMode.set('list')">
+        <i class="bi bi-list-ul"></i><span class="x-small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+      </button>
+      <button type="button" class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+        [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+        (click)="viewMode.set('kanban')">
+        <i class="bi bi-kanban-fill"></i><span class="x-small">Kanban</span>
+      </button>
+    </div>
+  </div>
+
+  <div *ngIf="loading()" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+  </div>
+
+  <!-- TAB 1: LIBRO DIARIO -->
+  <div *ngIf="!loading() && activeTab() === 'journal'">
+    <!-- LIST VIEW -->
+    <div *ngIf="viewMode() === 'list'" class="space-y-3">
+      <div *ngFor="let entry of journalEntries()" class="card border-0 shadow-sm rounded-4 bg-white mb-3 overflow-hidden">
+        <div class="card-header bg-light bg-opacity-50 px-4 py-3 border-bottom d-flex align-items-center justify-content-between">
+          <div>
+            <span class="badge bg-primary rounded-pill me-2">{{ entry.entryNumber }}</span>
+            <span class="fw-bold text-dark">{{ entry.concept }}</span>
+          </div>
+          <div class="text-end">
+            <span class="text-muted x-small me-3"><i class="bi bi-calendar3 me-1"></i>{{ entry.entryDate }}</span>
+            <span class="badge bg-success bg-opacity-10 text-success fw-bold">Cuadrado (${{ entry.totalDebitUSD }})</span>
+          </div>
+        </div>
+        <div class="card-body p-0">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="bg-light text-muted x-small">
+              <tr>
+                <th class="ps-4 py-2">CUENTA CONTABLE</th>
+                <th class="py-2">DESCRIPCIÓN</th>
+                <th class="py-2 text-end">DEBE ($ / USD)</th>
+                <th class="py-2 text-end">HABER ($ / USD)</th>
+                <th class="pe-4 py-2 text-end">EQUIV. BS (BCV)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of entry.items">
+                <td class="ps-4">
+                  <span class="badge bg-light text-secondary border font-monospace me-1">{{ item.AccountChart?.code }}</span>
+                  <span class="fw-semibold text-dark">{{ item.AccountChart?.name }}</span>
+                </td>
+                <td class="text-muted x-small">{{ item.description }}</td>
+                <td class="text-end fw-bold" [class.text-primary]="item.debitUSD > 0">{{ item.debitUSD > 0 ? '$' + item.debitUSD : '-' }}</td>
+                <td class="text-end fw-bold" [class.text-success]="item.creditUSD > 0">{{ item.creditUSD > 0 ? '$' + item.creditUSD : '-' }}</td>
+                <td class="pe-4 text-end text-muted x-small">{{ item.debitVES > 0 ? currencyService.formatAmount(item.debitUSD, 'VES') : currencyService.formatAmount(item.creditUSD, 'VES') }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div *ngIf="journalEntries().length === 0" class="card border-0 shadow-sm rounded-4 p-5 text-center bg-white">
+        <i class="bi bi-journal-text display-4 text-muted opacity-50 mb-3"></i>
+        <h6 class="fw-bold text-dark">No hay asientos contables registrados</h6>
+        <p class="text-muted small mb-0">Crea tu primer asiento con el botón superior.</p>
+      </div>
+    </div>
+
+    <!-- KANBAN VIEW (Odoo ERP Style) -->
+    <div *ngIf="viewMode() === 'kanban'" class="row g-3">
+      <!-- Column 1: Asientos Operativos / Corrientes (< $500) -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-primary">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-primary mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-file-earmark-text"></i> {{ langService.lang() === 'es' ? 'Asientos Operativos y Corrientes' : 'Standard Journal Entries' }}
+            </h6>
+            <span class="badge bg-primary rounded-pill px-2">{{ standardEntries().length }}</span>
+          </div>
+          <div class="d-flex flex-column gap-2" style="max-height: 600px; overflow-y: auto;">
+            <div *ngFor="let entry of standardEntries()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-primary bg-opacity-10 text-primary font-monospace">{{ entry.entryNumber }}</span>
+                <span class="badge bg-success bg-opacity-10 text-success fw-bold">${{ entry.totalDebitUSD }}</span>
+              </div>
+              <h6 class="fw-bold text-dark mb-1">{{ entry.concept }}</h6>
+              <div class="text-muted x-small mb-2"><i class="bi bi-calendar3 me-1"></i>{{ entry.entryDate }}</div>
+              <div class="p-2 bg-light rounded-3 x-small">
+                <div *ngFor="let it of entry.items?.slice(0, 2)" class="d-flex justify-content-between text-muted">
+                  <span class="text-truncate" style="max-width: 200px;">{{ it.AccountChart?.name }}</span>
+                  <span class="font-monospace fw-semibold">{{ it.debitUSD > 0 ? '$' + it.debitUSD : '$' + it.creditUSD }}</span>
+                </div>
+                <div *ngIf="entry.items?.length > 2" class="text-center text-primary x-small mt-1">
+                  +{{ entry.items.length - 2 }} partidas más
+                </div>
+              </div>
+            </div>
+            <div *ngIf="standardEntries().length === 0" class="text-center py-4 text-muted small">
+              Sin asientos operativos
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Column 2: Asientos Mayores / Honorarios / Quirófano (>= $500) -->
+      <div class="col-md-6">
+        <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-success">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="fw-bold text-success mb-0 d-flex align-items-center gap-2">
+              <i class="bi bi-cash-coin"></i> {{ langService.lang() === 'es' ? 'Asientos de Alto Valor / Honorarios / Clínicos' : 'High Value / Clinical Entries' }}
+            </h6>
+            <span class="badge bg-success rounded-pill px-2">{{ highValueEntries().length }}</span>
+          </div>
+          <div class="d-flex flex-column gap-2" style="max-height: 600px; overflow-y: auto;">
+            <div *ngFor="let entry of highValueEntries()" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card border-start border-3 border-success">
+              <div class="d-flex justify-content-between align-items-start mb-2">
+                <span class="badge bg-success bg-opacity-10 text-success font-monospace">{{ entry.entryNumber }}</span>
+                <span class="badge bg-success text-white fw-bold">${{ entry.totalDebitUSD }} USD</span>
+              </div>
+              <h6 class="fw-bold text-dark mb-1">{{ entry.concept }}</h6>
+              <div class="text-muted x-small mb-2"><i class="bi bi-calendar3 me-1"></i>{{ entry.entryDate }}</div>
+              <div class="p-2 bg-light rounded-3 x-small">
+                <div *ngFor="let it of entry.items?.slice(0, 3)" class="d-flex justify-content-between text-muted">
+                  <span class="text-truncate" style="max-width: 220px;">{{ it.AccountChart?.name }}</span>
+                  <span class="font-monospace fw-bold text-dark">{{ it.debitUSD > 0 ? '$' + it.debitUSD : '$' + it.creditUSD }}</span>
+                </div>
+                <div *ngIf="entry.items?.length > 3" class="text-center text-success x-small mt-1">
+                  +{{ entry.items.length - 3 }} partidas más
+                </div>
+              </div>
+            </div>
+            <div *ngIf="highValueEntries().length === 0" class="text-center py-4 text-muted small">
+              Sin asientos de alto valor
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: PLAN DE CUENTAS -->
+  <div *ngIf="!loading() && activeTab() === 'chart'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-4 py-3 x-small fw-bold text-muted">CÓDIGO (PUC)</th>
+            <th class="py-3 x-small fw-bold text-muted">NOMBRE DE LA CUENTA</th>
+            <th class="py-3 x-small fw-bold text-muted">TIPO</th>
+            <th class="py-3 x-small fw-bold text-muted text-end">SALDO USD ($)</th>
+            <th class="pe-4 py-3 x-small fw-bold text-muted text-end">SALDO VES (Bs.)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let acc of accounts()">
+            <td class="ps-4 font-monospace fw-bold text-primary">{{ acc.code }}</td>
+            <td [style.padding-left.rem]="acc.level * 0.5">
+              <span [class.fw-bold]="!acc.allowsMovement" [class.text-dark]="!acc.allowsMovement">{{ acc.name }}</span>
+            </td>
+            <td>
+              <span class="badge bg-light text-secondary border rounded-pill x-small">{{ acc.accountType }}</span>
+            </td>
+            <td class="text-end fw-bold" [class.text-success]="acc.balanceUSD >= 0" [class.text-danger]="acc.balanceUSD < 0">
+              ${{ acc.balanceUSD }}
+            </td>
+            <td class="pe-4 text-end text-muted x-small">
+              {{ currencyService.formatAmount(acc.balanceUSD, 'VES') }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 3: BALANCE DE COMPROBACIÓN -->
+  <div *ngIf="!loading() && activeTab() === 'trial'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-4 py-3 x-small fw-bold text-muted">CÓDIGO</th>
+            <th class="py-3 x-small fw-bold text-muted">CUENTA</th>
+            <th class="py-3 x-small fw-bold text-muted text-end">DÉBITO ($)</th>
+            <th class="pe-4 py-3 x-small fw-bold text-muted text-end">CRÉDITO ($)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let tb of trialBalance()">
+            <td class="ps-4 font-monospace text-muted">{{ tb.code }}</td>
+            <td class="fw-semibold text-dark">{{ tb.name }}</td>
+            <td class="text-end fw-bold text-primary">{{ tb.debitUSD > 0 ? '$' + tb.debitUSD.toFixed(2) : '-' }}</td>
+            <td class="pe-4 text-end fw-bold text-success">{{ tb.creditUSD > 0 ? '$' + tb.creditUSD.toFixed(2) : '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 4: RETENCIONES SENIAT -->
+  <div *ngIf="!loading() && activeTab() === 'retentions'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-4 py-3 x-small fw-bold text-muted">COMPROBANTE</th>
+            <th class="py-3 x-small fw-bold text-muted">TIPO</th>
+            <th class="py-3 x-small fw-bold text-muted">BENEFICIARIO / RIF</th>
+            <th class="py-3 x-small fw-bold text-muted">FACTURA</th>
+            <th class="py-3 x-small fw-bold text-muted text-end">BASE ($)</th>
+            <th class="pe-4 py-3 x-small fw-bold text-muted text-end">RETENIDO ($ / Bs)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of retentions()">
+            <td class="ps-4 fw-bold font-monospace text-primary">{{ r.voucherNumber }}</td>
+            <td><span class="badge bg-warning bg-opacity-25 text-dark fw-bold">RET. {{ r.retentionType }} ({{ r.retentionPercentage }}%)</span></td>
+            <td>
+              <div class="fw-semibold text-dark">{{ r.beneficiaryName }}</div>
+              <small class="text-muted x-small">{{ r.beneficiaryRif }}</small>
+            </td>
+            <td><span class="badge bg-light text-secondary border">Fact #{{ r.invoiceNumber }}</span></td>
+            <td class="text-end fw-semibold text-dark">${{ r.baseAmountUSD }}</td>
+            <td class="pe-4 text-end">
+              <div class="fw-bold text-danger">-${{ r.retainedAmountUSD }}</div>
+              <small class="text-muted x-small">-{{ currencyService.formatAmount(r.retainedAmountUSD, 'VES') }}</small>
+            </td>
+          </tr>
+          <tr *ngIf="retentions().length === 0">
+            <td colspan="6" class="text-center py-4 text-muted small">
+              No hay comprobantes de retención emitidos en el período.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Nuevo Asiento Contable -->
+<div *ngIf="showEntryModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-dark">Registrar Asiento Contable (Libro Diario)</h5>
+        <button type="button" class="btn-close shadow-none" (click)="showEntryModal = false"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="saveJournalEntry()">
+          <div class="row g-3 mb-3">
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">Fecha del Asiento *</label>
+              <input type="date" class="form-control form-control-sm rounded-3" [(ngModel)]="entryDate" name="entryDate" required>
+            </div>
+            <div class="col-sm-8">
+              <label class="form-label x-small fw-bold text-muted">Concepto / Glosa *</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="entryConcept" name="entryConcept" required placeholder="Ej. Registro de Honorarios Médicos">
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-between mb-2">
+            <label class="form-label x-small fw-bold text-muted mb-0">Líneas de Movimiento (Partida Doble)</label>
+            <button type="button" class="btn btn-xs btn-outline-primary rounded-pill px-2" (click)="addItemRow()">
+              <i class="bi bi-plus"></i> Añadir Línea
+            </button>
+          </div>
+
+          <div class="table-responsive border rounded-3 mb-3">
+            <table class="table table-sm align-middle mb-0">
+              <thead class="bg-light x-small text-muted">
+                <tr>
+                  <th style="width: 45%;">Cuenta</th>
+                  <th style="width: 25%;" class="text-end">Debe ($)</th>
+                  <th style="width: 25%;" class="text-end">Haber ($)</th>
+                  <th style="width: 5%;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of entryItems; let i = index">
+                  <td>
+                    <select class="form-select form-select-sm" [(ngModel)]="item.accountId" [name]="'acc_' + i">
+                      <option *ngFor="let a of accounts()" [value]="a.id" [disabled]="!a.allowsMovement">
+                        {{ a.code }} - {{ a.name }}
+                      </option>
+                    </select>
+                  </td>
+                  <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm text-end" [(ngModel)]="item.debitUSD" [name]="'deb_' + i">
+                  </td>
+                  <td>
+                    <input type="number" step="0.01" class="form-control form-control-sm text-end" [(ngModel)]="item.creditUSD" [name]="'cred_' + i">
+                  </td>
+                  <td class="text-center">
+                    <button type="button" class="btn btn-xs text-danger" (click)="removeItemRow(i)">
+                      <i class="bi bi-trash"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 mb-4">
+            <div>
+              <span class="x-small text-muted d-block">Estado de Cuadratura:</span>
+              <span *ngIf="isBalanced()" class="badge bg-success fw-bold">Cuadrado (Debe = Haber)</span>
+              <span *ngIf="!isBalanced()" class="badge bg-danger fw-bold">Descuadrado</span>
+            </div>
+            <div class="text-end">
+              <span class="x-small text-muted">Total Debe: <strong>${{ totalDebitUSD().toFixed(2) }}</strong></span>
+              <span class="x-small text-muted ms-3">Total Haber: <strong>${{ totalCreditUSD().toFixed(2) }}</strong></span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="showEntryModal = false">Cancelar</button>
+            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm" [disabled]="!isBalanced()">Guardar Asiento</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

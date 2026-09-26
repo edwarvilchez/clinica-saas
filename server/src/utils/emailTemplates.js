@@ -1,6 +1,6 @@
 const getBaseTemplate = (title, content) => {
-    const logotype = process.env.BRAND_LOGO_URL || 'https://cgk888.com/images/logo.png';
-    const primaryColor = '#10b981'; // MedicalCare Emerald Green
+    const logotype = process.env.BRAND_LOGO_URL || '';
+    const primaryColor = '#10b981'; // Emerald Green
 
     return `
 <!DOCTYPE html>
@@ -16,7 +16,7 @@ const getBaseTemplate = (title, content) => {
                 <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);">
                     <tr style="background-color: ${primaryColor};">
                         <td style="padding: 40px 30px; text-align: center;">
-                            <img src="${logotype}" alt="MedicalCare 888" style="height: 60px; margin-bottom: 20px;" />
+                            ${logotype ? `<img src="${logotype}" alt="Clinica - SaaS" style="height: 60px; margin-bottom: 20px;" />` : ''}
                             <h1 style="color: #ffffff; margin: 0; font-size: 24px;">${title}</h1>
                         </td>
                     </tr>
@@ -27,8 +27,8 @@ const getBaseTemplate = (title, content) => {
                     </tr>
                     <tr>
                         <td style="padding: 30px; text-align: center; background-color: #f1f5f9; border-top: 1px solid #e2e8f0;">
-                            <p style="margin: 0; font-weight: 600; color: #1e293b; font-size: 14px;">MedicalCare 888 Health System</p>
-                            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 11px;">&copy; ${new Date().getFullYear()} MedicalCare 888. Todos los derechos reservados / All rights reserved.</p>
+                            <p style="margin: 0; font-weight: 600; color: #1e293b; font-size: 14px;">Clinica - SaaS Health System</p>
+                            <p style="margin: 5px 0 0 0; color: #64748b; font-size: 11px;">&copy; ${new Date().getFullYear()} Clinica - SaaS. Todos los derechos reservados / All rights reserved.</p>
                         </td>
                     </tr>
                 </table>
@@ -43,7 +43,7 @@ const getBaseTemplate = (title, content) => {
 exports.getWelcomeEmail = (nombre, email, password, urlLogin) => {
   const content = `
     <h2 style="color: #0f172a; margin-top: 0;">¡Bienvenido / Welcome, ${nombre}!</h2>
-    <p>Tu cuenta operativa en <strong>MedicalCare 888</strong> está lista. / Your account is ready.</p>
+    <p>Tu cuenta operativa en <strong>Clinica - SaaS</strong> está lista. / Your account is ready.</p>
     <div style="background-color: #f1f5f9; padding: 25px; border-radius: 12px; margin: 25px 0; border: 1px solid #e2e8f0;">
         <p style="margin: 0 0 10px 0;"><strong>Usuario / User:</strong> ${email}</p>
         <p style="margin: 0;"><strong>Contraseña / Password:</strong> <span style="font-family: monospace; background: #fff; padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 4px;">${password}</span></p>
@@ -55,7 +55,7 @@ exports.getWelcomeEmail = (nombre, email, password, urlLogin) => {
         <a href="${urlLogin}" style="background-color: #10b981; color: #ffffff; padding: 16px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Acceder / Access Panel</a>
     </div>
   `;
-  return getBaseTemplate('Bienvenido a MedicalCare 888', content);
+  return getBaseTemplate('Bienvenido a Clinica - SaaS', content);
 };
 
 exports.getPasswordChangedEmail = (nombre) => {

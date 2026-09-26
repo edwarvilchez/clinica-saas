@@ -1,0 +1,958 @@
+<div class="container-fluid p-4">
+  <!-- Header -->
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+    <div>
+      <h2 class="h3 fw-bold mb-1 d-flex align-items-center gap-2">
+        <i class="bi bi-receipt-cutoff text-primary"></i>
+        <span>{{ 'sales.title' | translate }}</span>
+      </h2>
+      <p class="text-muted small mb-0">
+        {{ 'sales.subtitle' | translate }}
+      </p>
+    </div>
+
+    <!-- Rate indicator -->
+    <div class="d-flex align-items-center gap-2">
+      <div class="badge bg-light text-dark border p-2 d-flex align-items-center gap-2 shadow-sm">
+        <i class="bi bi-bank text-primary"></i>
+        <span>{{ 'sales.bcvRateLabel' | translate }}: <strong>{{ (currencyService.rate || 36.5) | number:'1.2-2' }} VES/USD</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs Navigation -->
+  <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3">
+    <li class="nav-item">
+      <button 
+        class="nav-link px-4 fw-semibold" 
+        [class.active]="activeTab() === 'quotes'"
+        (click)="activeTab.set('quotes')">
+        <i class="bi bi-file-earmark-spreadsheet me-2"></i>
+        {{ 'sales.quotesTab' | translate }} ({{ quotes().length }})
+      </button>
+    </li>
+    <li class="nav-item">
+      <button 
+        class="nav-link px-4 fw-semibold" 
+        [class.active]="activeTab() === 'packages'"
+        (click)="activeTab.set('packages')">
+        <i class="bi bi-box-seam-fill me-2 text-warning"></i>
+        Combos y Plantillas Clínicas ({{ packages().length }})
+      </button>
+    </li>
+    <li class="nav-item">
+      <button 
+        class="nav-link px-4 fw-semibold" 
+        [class.active]="activeTab() === 'services'"
+        (click)="activeTab.set('services')">
+        <i class="bi bi-tags-fill me-2"></i>
+        {{ 'sales.servicesTab' | translate }} ({{ services().length }})
+      </button>
+    </li>
+  </ul>
+
+  <!-- TAB 1: QUOTES / PRESUPUESTOS -->
+  <div *ngIf="activeTab() === 'quotes'">
+    <div class="card shadow-sm border-0 rounded-3 mb-4">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div class="input-group" style="max-width: 400px;">
+            <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search"></i></span>
+            <input 
+              type="text" 
+              class="form-control border-start-0" 
+              [placeholder]="'sales.searchQuotes' | translate" 
+              [ngModel]="quoteSearch()"
+              (ngModelChange)="quoteSearch.set($event)">
+          </div>
+
+          <div class="d-flex align-items-center gap-2">
+            <!-- VIEW TOGGLE (LISTA / KANBAN) ESTILO ODOO -->
+            <div class="btn-group bg-light p-1 rounded-pill border shadow-sm" role="group">
+              <button 
+                type="button" 
+                class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+                [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+                (click)="viewMode.set('list')">
+                <i class="bi bi-list-ul"></i>
+                <span class="x-small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+              </button>
+              <button 
+                type="button" 
+                class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+                [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+                (click)="viewMode.set('kanban')">
+                <i class="bi bi-kanban-fill"></i>
+                <span class="x-small">{{ langService.lang() === 'es' ? 'Kanban' : 'Kanban' }}</span>
+              </button>
+            </div>
+
+            <button class="btn btn-primary rounded-pill d-flex align-items-center gap-2 px-3 fw-bold shadow-sm" (click)="openCreateQuoteModal()">
+              <i class="bi bi-plus-circle-fill"></i>
+              <span>{{ 'sales.newQuoteBtn' | translate }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- VISTA 1: LISTA / TABLA -->
+    <div *ngIf="viewMode() === 'list'" class="card shadow-sm border-0 rounded-4 bg-white overflow-hidden">
+      <div class="card-body p-0 table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4">{{ 'sales.table.quoteNumber' | translate }}</th>
+              <th>{{ 'sales.table.date' | translate }}</th>
+              <th>{{ 'sales.table.patient' | translate }}</th>
+              <th>Cédula / HC</th>
+              <th>Título / Concepto</th>
+              <th>{{ 'sales.table.totalUSD' | translate }}</th>
+              <th>{{ 'sales.table.totalVES' | translate }}</th>
+              <th>{{ 'sales.table.status' | translate }}</th>
+              <th class="text-end pe-4">{{ 'sales.table.actions' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="loading()">
+              <td colspan="9" class="text-center py-5 text-muted">
+                <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                {{ 'sales.loadingQuotes' | translate }}
+              </td>
+            </tr>
+            <tr *ngIf="!loading() && filteredQuotes().length === 0">
+              <td colspan="9" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                {{ 'sales.emptyQuotes' | translate }}
+              </td>
+            </tr>
+            <tr *ngFor="let q of filteredQuotes()">
+              <td class="ps-4 fw-bold text-primary font-monospace">{{ q.quoteNumber }}</td>
+              <td>{{ q.createdAt | date:'dd/MM/yyyy HH:mm' }}</td>
+              <td>
+                <div class="fw-semibold">{{ q.patientName }}</div>
+                <div class="text-muted small" *ngIf="q.patientPhone"><i class="bi bi-telephone"></i> {{ q.patientPhone }}</div>
+              </td>
+              <td><span class="badge bg-light text-dark border">{{ q.patientDocumentId || q.patientDocument || 'N/A' }}</span></td>
+              <td class="small fw-semibold text-truncate" style="max-width: 200px;">{{ q.title || 'Presupuesto Médico' }}</td>
+              <td class="fw-bold text-success">${{ (q.totalUSD || q.totalAmountUSD || 0) | number:'1.2-2' }}</td>
+              <td class="fw-bold text-dark">Bs. {{ (q.totalVES || q.totalAmountVES || 0) | number:'1.2-2' }}</td>
+              <td>
+                <span class="badge rounded-pill" [ngClass]="{
+                  'bg-warning text-dark': q.status === 'DRAFT',
+                  'bg-info text-white': q.status === 'SENT' || q.status === 'ISSUED',
+                  'bg-success text-white': q.status === 'ACCEPTED',
+                  'bg-danger text-white': q.status === 'REJECTED',
+                  'bg-secondary text-white': q.status === 'EXPIRED'
+                }">
+                  {{ q.status }}
+                </span>
+              </td>
+              <td class="text-end pe-4">
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-primary rounded-pill px-3 me-1" (click)="viewQuoteDetails(q)" [title]="'sales.table.view' | translate">
+                    <i class="bi bi-eye me-1"></i> {{ 'sales.table.view' | translate }}
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger rounded-pill px-2" (click)="deleteQuote(q)" title="Eliminar">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- VISTA 2: TABLERO KANBAN DE VENTAS & COTIZACIONES ESTILO ODOO -->
+    <div *ngIf="viewMode() === 'kanban'" class="kanban-board">
+      <div class="row g-3">
+        <!-- Stage 1: Borrador / Propuesta -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-warning">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-pencil-square text-warning"></i>
+                <span>Borrador / Elaboración</span>
+              </h6>
+              <span class="badge bg-warning text-dark rounded-pill">{{ getQuotesByStage('DRAFT').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>${{ getQuotesTotalUSD('DRAFT') | number:'1.2-2' }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let q of getQuotesByStage('DRAFT')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-warning bg-opacity-25 text-dark font-monospace x-small">{{ q.quoteNumber }}</span>
+                  <span class="badge bg-secondary bg-opacity-10 text-muted x-small">Borrador</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ q.patientName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ q.patientDocumentId || q.patientDocument }}</div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-success">${{ (q.totalUSD || q.totalAmountUSD) | number:'1.2-2' }}</span>
+                  <button class="btn btn-outline-primary btn-xs rounded-pill" (click)="viewQuoteDetails(q)">Ver</button>
+                </div>
+              </div>
+              <div *ngIf="getQuotesByStage('DRAFT').length === 0" class="text-center py-4 text-muted x-small">
+                Sin cotizaciones en borrador
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 2: Emitido / Enviado -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-info">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-send-fill text-info"></i>
+                <span>Emitido / Enviado</span>
+              </h6>
+              <span class="badge bg-info text-white rounded-pill">{{ getQuotesByStage('SENT').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>${{ getQuotesTotalUSD('SENT') | number:'1.2-2' }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let q of getQuotesByStage('SENT')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-info text-white font-monospace x-small">{{ q.quoteNumber }}</span>
+                  <span class="badge bg-info bg-opacity-10 text-info x-small">Enviado</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ q.patientName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ q.patientDocumentId || q.patientDocument }}</div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-success">${{ (q.totalUSD || q.totalAmountUSD) | number:'1.2-2' }}</span>
+                  <button class="btn btn-outline-primary btn-xs rounded-pill" (click)="viewQuoteDetails(q)">Ver</button>
+                </div>
+              </div>
+              <div *ngIf="getQuotesByStage('SENT').length === 0" class="text-center py-4 text-muted x-small">
+                Sin presupuestos emitidos
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 3: Aprobado / Ganado -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-success">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-check-circle-fill text-success"></i>
+                <span>Aprobado / Ganado</span>
+              </h6>
+              <span class="badge bg-success text-white rounded-pill">{{ getQuotesByStage('ACCEPTED').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>${{ getQuotesTotalUSD('ACCEPTED') | number:'1.2-2' }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let q of getQuotesByStage('ACCEPTED')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card border-start border-3 border-success">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-success text-white font-monospace x-small">{{ q.quoteNumber }}</span>
+                  <span class="badge bg-success bg-opacity-10 text-success x-small">Aprobado</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ q.patientName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ q.patientDocumentId || q.patientDocument }}</div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-success">${{ (q.totalUSD || q.totalAmountUSD) | number:'1.2-2' }}</span>
+                  <button class="btn btn-outline-success btn-xs rounded-pill" (click)="viewQuoteDetails(q)">Ver</button>
+                </div>
+              </div>
+              <div *ngIf="getQuotesByStage('ACCEPTED').length === 0" class="text-center py-4 text-muted x-small">
+                Sin presupuestos aprobados
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Stage 4: Rechazado / Cancelado -->
+        <div class="col-12 col-md-6 col-xl-3">
+          <div class="card border-0 shadow-sm rounded-4 bg-light p-3 h-100 border-top border-4 border-danger">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-x-circle-fill text-danger"></i>
+                <span>Rechazado / Vencido</span>
+              </h6>
+              <span class="badge bg-danger text-white rounded-pill">{{ getQuotesByStage('REJECTED').length + getQuotesByStage('EXPIRED').length }}</span>
+            </div>
+            <div class="text-muted x-small mb-3">Total: <strong>${{ getQuotesTotalUSD('REJECTED') + getQuotesTotalUSD('EXPIRED') | number:'1.2-2' }}</strong></div>
+
+            <div class="d-flex flex-column gap-2">
+              <div *ngFor="let q of getQuotesByStage('REJECTED')" class="card border-0 shadow-sm rounded-3 p-3 bg-white hover-card opacity-75">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="badge bg-danger text-white font-monospace x-small">{{ q.quoteNumber }}</span>
+                  <span class="badge bg-danger bg-opacity-10 text-danger x-small">Rechazado</span>
+                </div>
+                <h6 class="fw-bold text-dark mb-1">{{ q.patientName }}</h6>
+                <div class="x-small text-muted mb-2 font-monospace">{{ q.patientDocumentId || q.patientDocument }}</div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                  <span class="fw-bold text-muted">${{ (q.totalUSD || q.totalAmountUSD) | number:'1.2-2' }}</span>
+                  <button class="btn btn-outline-secondary btn-xs rounded-pill" (click)="viewQuoteDetails(q)">Ver</button>
+                </div>
+              </div>
+              <div *ngIf="getQuotesByStage('REJECTED').length === 0 && getQuotesByStage('EXPIRED').length === 0" class="text-center py-4 text-muted x-small">
+                Sin presupuestos rechazados
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: COMBOS Y PLANTILLAS QUIRÚRGICAS / CLÍNICAS -->
+  <div *ngIf="activeTab() === 'packages'">
+    <div class="card shadow-sm border-0 rounded-3 mb-4">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div class="input-group" style="max-width: 400px;">
+            <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search"></i></span>
+            <input 
+              type="text" 
+              class="form-control border-start-0" 
+              placeholder="Buscar combos y paquetes..." 
+              [ngModel]="packageSearch()"
+              (ngModelChange)="packageSearch.set($event)">
+          </div>
+
+          <button class="btn btn-warning text-dark fw-bold d-flex align-items-center gap-2 px-3 rounded-pill shadow-sm" (click)="openCreatePackageModal()">
+            <i class="bi bi-plus-circle-fill"></i>
+            <span>Nuevo Combo / Plantilla</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Cards Grid de Combos -->
+    <div class="row g-4">
+      <div class="col-12 col-md-6 col-xl-4" *ngFor="let pkg of filteredPackages()">
+        <div class="card h-100 border-0 shadow-sm rounded-4 overflow-hidden hover-card">
+          <div class="card-header bg-dark text-white p-3 d-flex justify-content-between align-items-center">
+            <div>
+              <span class="badge bg-warning text-dark font-monospace me-2">{{ pkg.code }}</span>
+              <span class="badge bg-light bg-opacity-25 text-white x-small">{{ pkg.category }}</span>
+            </div>
+            <div class="dropdown">
+              <button class="btn btn-sm btn-link text-white p-0" (click)="openEditPackageModal(pkg)"><i class="bi bi-pencil"></i></button>
+              <button class="btn btn-sm btn-link text-danger p-0 ms-2" (click)="deletePackage(pkg)"><i class="bi bi-trash"></i></button>
+            </div>
+          </div>
+          <div class="card-body p-4 d-flex flex-column justify-content-between">
+            <div>
+              <h5 class="fw-bold text-dark mb-2">{{ pkg.name }}</h5>
+              <p class="text-muted small mb-3">{{ pkg.description || 'Sin descripción' }}</p>
+
+              <div class="p-3 bg-light rounded-3 mb-3">
+                <div class="fw-bold text-muted x-small mb-2 text-uppercase tracking-wider">Desglose de Ítems / Componentes:</div>
+                <ul class="list-unstyled mb-0 small">
+                  <li *ngFor="let item of (pkg.items || [])" class="d-flex justify-content-between align-items-center py-1 border-bottom border-light">
+                    <span><i class="bi bi-check2-circle text-primary me-1"></i> {{ item.concept }} (x{{ item.quantity || 1 }})</span>
+                    <span class="fw-semibold text-muted">${{ (item.quantity * item.unitPriceUSD) | number:'1.2-2' }}</span>
+                  </li>
+                  <li *ngIf="!pkg.items || pkg.items.length === 0" class="text-muted fst-italic x-small">Sin desglose detallado</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="pt-3 border-top d-flex justify-content-between align-items-center">
+              <div>
+                <div class="x-small text-muted">Precio Total Estimado</div>
+                <div class="h4 fw-bold text-success mb-0">${{ pkg.totalPriceUSD | number:'1.2-2' }}</div>
+                <div class="x-small text-muted font-monospace">Bs. {{ (pkg.totalPriceUSD * (currencyService.rate || 36.5)) | number:'1.2-2' }}</div>
+              </div>
+              <button class="btn btn-primary rounded-pill px-3 fw-semibold btn-sm shadow-sm" (click)="openCreateQuoteModal(); applyPackageToQuote(pkg)">
+                <i class="bi bi-cart-plus me-1"></i> Cotizar Combo
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: CLINICAL SERVICES CATALOG -->
+  <div *ngIf="activeTab() === 'services'">
+    <div class="card shadow-sm border-0 rounded-3 mb-4">
+      <div class="card-body p-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+          <div class="input-group" style="max-width: 400px;">
+            <span class="input-group-text bg-transparent border-end-0"><i class="bi bi-search"></i></span>
+            <input 
+              type="text" 
+              class="form-control border-start-0" 
+              [placeholder]="'sales.searchServices' | translate" 
+              [ngModel]="serviceSearch()"
+              (ngModelChange)="serviceSearch.set($event)">
+          </div>
+
+          <button class="btn btn-success d-flex align-items-center gap-2 px-3 rounded-pill" (click)="openCreateServiceModal()">
+            <i class="bi bi-plus-circle-fill"></i>
+            <span>{{ 'sales.newServiceBtn' | translate }}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Services Table -->
+    <div class="card shadow-sm border-0 rounded-3">
+      <div class="card-body p-0 table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="ps-4">{{ 'sales.table.code' | translate }}</th>
+              <th>{{ 'sales.table.service' | translate }}</th>
+              <th>{{ 'sales.table.category' | translate }}</th>
+              <th>{{ 'sales.table.feeUSD' | translate }}</th>
+              <th>{{ 'sales.table.feeVES' | translate }}</th>
+              <th>{{ 'sales.table.taxExempt' | translate }}</th>
+              <th>{{ 'sales.table.requiresDoctor' | translate }}</th>
+              <th class="text-end pe-4">{{ 'sales.table.actions' | translate }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngIf="loading()">
+              <td colspan="8" class="text-center py-5 text-muted">
+                <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                {{ 'sales.loadingServices' | translate }}
+              </td>
+            </tr>
+            <tr *ngIf="!loading() && filteredServices().length === 0">
+              <td colspan="8" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox fs-2 d-block mb-2 opacity-50"></i>
+                {{ 'sales.emptyServices' | translate }}
+              </td>
+            </tr>
+            <tr *ngFor="let s of filteredServices()">
+              <td class="ps-4 font-monospace fw-bold text-muted">{{ s.code }}</td>
+              <td>
+                <div class="fw-semibold">{{ langService.lang() === 'es' ? s.name : (s.nameEn || s.name) }}</div>
+                <div class="text-muted small" *ngIf="langService.lang() === 'es' && s.nameEn">{{ s.nameEn }}</div>
+              </td>
+              <td><span class="badge bg-info-subtle text-info border">{{ s.category }}</span></td>
+              <td class="fw-bold text-success">${{ s.priceUSD | number:'1.2-2' }}</td>
+              <td class="fw-bold text-dark">Bs. {{ (s.priceUSD * (currencyService.rate || 36.5)) | number:'1.2-2' }}</td>
+              <td>
+                <span class="badge bg-success-subtle text-success" *ngIf="s.isTaxExempt">
+                  <i class="bi bi-check-circle"></i> {{ 'sales.table.taxExempt' | translate }}
+                </span>
+                <span class="badge bg-secondary" *ngIf="!s.isTaxExempt">IVA 16%</span>
+              </td>
+              <td>
+                <span class="badge bg-light text-dark border" *ngIf="s.requiresDoctor"><i class="bi bi-person-badge"></i> Requerido</span>
+                <span class="text-muted small" *ngIf="!s.requiresDoctor">-</span>
+              </td>
+              <td class="text-end pe-4">
+                <button class="btn btn-sm btn-outline-primary me-2" (click)="openEditServiceModal(s)">
+                  <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" (click)="deleteService(s)">
+                  <i class="bi bi-trash"></i>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CREAR / EDITAR COMBO O PLANTILLA -->
+<div class="modal fade show d-block" *ngIf="showPackageModal" tabindex="-1" style="background: rgba(0,0,0,0.5)">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-box-seam-fill me-2"></i>
+          {{ editingPackage ? 'Editar Combo / Plantilla' : 'Crear Nuevo Combo / Plantilla Quirúrgica' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closePackageModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="savePackage()">
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Código del Combo *</label>
+              <input type="text" class="form-control font-monospace" [(ngModel)]="currentPackage.code" name="pkgCode" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Categoría</label>
+              <select class="form-select" [(ngModel)]="currentPackage.category" name="pkgCategory">
+                <option value="SURGERY">Cirugía Mayor</option>
+                <option value="MATERNITY">Maternidad / Obstetricia</option>
+                <option value="SPECIALTY">Cirugía Menor / Especialidad</option>
+                <option value="LABORATORY">Laboratorio / Preoperatorio</option>
+                <option value="EMERGENCY">Emergencia / Triaje</option>
+                <option value="HOSPITALIZATION">Hospitalización</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">Duración Estimada (Horas)</label>
+              <input type="number" step="0.5" class="form-control" [(ngModel)]="currentPackage.estimatedDurationHours" name="pkgDuration">
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-bold">Nombre del Combo / Paquete *</label>
+              <input type="text" class="form-control" [(ngModel)]="currentPackage.name" name="pkgName" required placeholder="Ejem: Combo Apendicectomía Laparoscópica">
+            </div>
+            <div class="col-12">
+              <label class="form-label small fw-bold">Descripción Clínica</label>
+              <textarea class="form-control" rows="2" [(ngModel)]="currentPackage.description" name="pkgDesc" placeholder="Detalle de cobertura de insumos, quirófano y estancia"></textarea>
+            </div>
+          </div>
+
+          <!-- Componentes del Combo -->
+          <div class="card bg-light border-0 p-3 mb-4 rounded-3">
+            <h6 class="fw-bold mb-3"><i class="bi bi-list-check me-2 text-primary"></i>Componentes e Insumos Incluidos en el Combo</h6>
+            <div class="row g-2 align-items-end mb-3">
+              <div class="col-md-5">
+                <label class="form-label small">Concepto / Servicio</label>
+                <input type="text" class="form-control form-control-sm" [(ngModel)]="pkgItemTemp.concept" name="pConcept" placeholder="Ejem: Honorarios Médico Anestesiólogo">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label small">Tipo</label>
+                <select class="form-select form-select-sm" [(ngModel)]="pkgItemTemp.type" name="pType">
+                  <option value="FACILITY">Quirófano / Sala</option>
+                  <option value="HONORARIUM">Honorarios Médicos</option>
+                  <option value="STAY">Hospitalización</option>
+                  <option value="SUPPLY">Material / Insumo</option>
+                  <option value="DRUG">Medicamentos</option>
+                  <option value="LAB">Laboratorio</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label small">Precio USD</label>
+                <input type="number" step="0.01" class="form-control form-control-sm" [(ngModel)]="pkgItemTemp.unitPriceUSD" name="pPrice">
+              </div>
+              <div class="col-md-2">
+                <button type="button" class="btn btn-sm btn-primary w-100 fw-bold" (click)="addPkgItem()">
+                  <i class="bi bi-plus-lg"></i> Agregar
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabla de items del combo -->
+            <table class="table table-sm table-bordered bg-white mb-0">
+              <thead class="table-light">
+                <tr>
+                  <th>Concepto</th>
+                  <th>Tipo</th>
+                  <th class="text-center" style="width: 70px;">Cant.</th>
+                  <th class="text-end" style="width: 120px;">Precio USD</th>
+                  <th class="text-center" style="width: 50px;"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngIf="currentPackage.items.length === 0">
+                  <td colspan="5" class="text-center py-3 text-muted small">No hay ítems en este combo. Agregue componentes arriba.</td>
+                </tr>
+                <tr *ngFor="let it of currentPackage.items; let i = index">
+                  <td>{{ it.concept }}</td>
+                  <td><span class="badge bg-light text-dark border">{{ it.type }}</span></td>
+                  <td class="text-center">{{ it.quantity }}</td>
+                  <td class="text-end fw-bold text-success">${{ it.unitPriceUSD | number:'1.2-2' }}</td>
+                  <td class="text-center">
+                    <button type="button" class="btn btn-sm text-danger p-0" (click)="removePkgItem(i)"><i class="bi bi-trash"></i></button>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot *ngIf="currentPackage.items.length > 0">
+                <tr class="table-light fw-bold">
+                  <td colspan="3" class="text-end">Total Combo USD:</td>
+                  <td class="text-end text-success">${{ currentPackage.totalPriceUSD | number:'1.2-2' }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 pt-3 border-top">
+            <button type="button" class="btn btn-outline-secondary" (click)="closePackageModal()">Cancelar</button>
+            <button type="submit" class="btn btn-warning text-dark px-4 fw-bold">Guardar Combo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CREAR / EDITAR SERVICIO -->
+<div class="modal fade show d-block" *ngIf="showServiceModal" tabindex="-1" style="background: rgba(0,0,0,0.5)">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-tag-fill me-2"></i>
+          {{ (editingService ? 'sales.modalService.editTitle' : 'sales.modalService.newTitle') | translate }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeServiceModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="saveService()">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label small fw-bold">{{ 'sales.modalService.code' | translate }}</label>
+              <input type="text" class="form-control font-monospace" [(ngModel)]="currentService.code" name="code" required>
+            </div>
+            <div class="col-md-8">
+              <label class="form-label small fw-bold">{{ 'sales.modalService.category' | translate }}</label>
+              <select class="form-select" [(ngModel)]="currentService.category" name="category">
+                <option value="CONSULTATION">{{ 'sales.categories.consultation' | translate }}</option>
+                <option value="SURGERY">{{ 'sales.categories.surgery' | translate }}</option>
+                <option value="HOSPITALIZATION">{{ 'sales.categories.hospitalization' | translate }}</option>
+                <option value="EMERGENCY">{{ 'sales.categories.emergency' | translate }}</option>
+                <option value="LABORATORY">{{ 'sales.categories.laboratory' | translate }}</option>
+                <option value="IMAGING">{{ 'sales.categories.imaging' | translate }}</option>
+                <option value="PROCEDURE">{{ 'sales.categories.procedure' | translate }}</option>
+                <option value="SUPPLIES">{{ 'sales.categories.supplies' | translate }}</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">{{ 'sales.modalService.nameEs' | translate }}</label>
+              <input type="text" class="form-control" [(ngModel)]="currentService.name" name="name" required placeholder="Ejem: Consulta Médica Especializada">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">{{ 'sales.modalService.nameEn' | translate }}</label>
+              <input type="text" class="form-control" [(ngModel)]="currentService.nameEn" name="nameEn" placeholder="Ejem: Specialist Medical Consultation">
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">{{ 'sales.modalService.priceUSD' | translate }}</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" step="0.01" class="form-control fw-bold" [(ngModel)]="currentService.priceUSD" name="priceUSD" required>
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">{{ 'sales.modalService.costUSD' | translate }}</label>
+              <div class="input-group">
+                <span class="input-group-text">$</span>
+                <input type="number" step="0.01" class="form-control" [(ngModel)]="currentService.costUSD" name="costUSD">
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="taxExempt" [(ngModel)]="currentService.isTaxExempt" name="isTaxExempt">
+                <label class="form-check-label small" for="taxExempt">{{ 'sales.modalService.taxExemptHint' | translate }}</label>
+              </div>
+              <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="reqDoctor" [(ngModel)]="currentService.requiresDoctor" name="requiresDoctor">
+                <label class="form-check-label small" for="reqDoctor">{{ 'sales.modalService.requiresDoctorHint' | translate }}</label>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-outline-secondary" (click)="closeServiceModal()">{{ 'sales.modalService.cancel' | translate }}</button>
+            <button type="submit" class="btn btn-primary px-4 fw-bold">{{ 'sales.modalService.save' | translate }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CREAR PRESUPUESTO / COTIZACIÓN (CON COMBOS Y MODIFICACIÓN MANUAL DE PRECIOS) -->
+<div class="modal fade show d-block" *ngIf="showQuoteModal" tabindex="-1" style="background: rgba(0,0,0,0.5)">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-file-earmark-plus-fill me-2 text-warning"></i>
+          {{ 'sales.modalQuote.title' | translate }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeQuoteModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Barra superior de Selección de Combos Predeterminados -->
+        <div class="alert alert-warning bg-warning bg-opacity-10 border-warning border-start border-4 rounded-3 p-3 mb-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <div>
+            <strong class="d-block text-dark"><i class="bi bi-lightning-charge-fill text-warning me-1"></i> Plantillas y Combos Predeterminados</strong>
+            <span class="small text-muted">Cargue un combo clínico preconfigurado (Quirúrgico, Maternidad, Perfil 20) para desglosar sus ítems y modificar precios libremente.</span>
+          </div>
+          <div class="dropdown">
+            <button class="btn btn-warning text-dark btn-sm fw-bold dropdown-toggle shadow-sm" type="button" data-bs-toggle="dropdown">
+              <i class="bi bi-box-seam me-1"></i> Cargar Combo Predeterminado
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow">
+              <li *ngFor="let pkg of packages()">
+                <a class="dropdown-item d-flex justify-content-between align-items-center py-2" href="javascript:void(0)" (click)="applyPackageToQuote(pkg)">
+                  <div>
+                    <div class="fw-bold">{{ pkg.name }}</div>
+                    <div class="x-small text-muted">{{ pkg.category }} - {{ pkg.items?.length || 1 }} componentes</div>
+                  </div>
+                  <span class="badge bg-success ms-3">${{ pkg.totalPriceUSD }}</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <!-- Paciente -->
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">{{ 'sales.modalQuote.selectPatient' | translate }}</label>
+            <select class="form-select" (change)="onPatientSelect($any($event.target).value)">
+              <option value="">{{ 'sales.modalQuote.selectPatientHint' | translate }}</option>
+              <option *ngFor="let p of patients()" [value]="p.id">{{ p.firstName || p.User?.firstName }} {{ p.lastName || p.User?.lastName }} ({{ p.documentNumber || p.idCard || p.medicalRecordNumber }})</option>
+            </select>
+          </div>
+
+          <div class="col-md-6">
+            <label class="form-label small fw-bold">{{ 'sales.modalQuote.insurer' | translate }}</label>
+            <select class="form-select" [(ngModel)]="currentQuote.insuranceCompanyId">
+              <option [ngValue]="null">{{ 'sales.modalQuote.privatePay' | translate }}</option>
+              <option *ngFor="let inc of insuranceCompanies()" [value]="inc.id">{{ inc.name }} (RIF: {{ inc.rif }})</option>
+            </select>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small fw-bold">{{ 'sales.modalQuote.patientName' | translate }} *</label>
+            <input type="text" class="form-control" [(ngModel)]="currentQuote.patientName" required placeholder="Nombre completo">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small fw-bold">Cédula / Documento *</label>
+            <input type="text" class="form-control" [(ngModel)]="currentQuote.patientDocumentId" placeholder="V-12345678">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small fw-bold">Título / Asunto</label>
+            <input type="text" class="form-control" [(ngModel)]="currentQuote.title" placeholder="Presupuesto de Intervención Quirúrgica">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small fw-bold">{{ 'sales.modalQuote.patientPhone' | translate }}</label>
+            <input type="text" class="form-control" [(ngModel)]="currentQuote.patientPhone" placeholder="+58 412...">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small fw-bold">{{ 'sales.modalQuote.validUntil' | translate }}</label>
+            <input type="date" class="form-control" [(ngModel)]="currentQuote.validUntil">
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label small fw-bold">{{ 'sales.modalQuote.bcvRate' | translate }}</label>
+            <input type="number" step="0.01" class="form-control font-monospace" [(ngModel)]="currentQuote.bcvRate">
+          </div>
+        </div>
+
+        <!-- Agregar Items al Presupuesto -->
+        <div class="card bg-light border-0 p-3 mb-4 rounded-3">
+          <h6 class="fw-bold mb-3"><i class="bi bi-cart-plus me-2 text-primary"></i>Agregar Ítem o Servicio Manualmente</h6>
+          <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+              <label class="form-label small">{{ 'sales.modalQuote.serviceSelect' | translate }}</label>
+              <select class="form-select form-select-sm" [(ngModel)]="quoteItemTemp.serviceId" (change)="onServiceSelectInQuote(quoteItemTemp.serviceId)">
+                <option [ngValue]="null">-- Seleccionar Servicio del Catálogo --</option>
+                <option *ngFor="let s of services()" [value]="s.id">{{ s.name }} (${{ s.priceUSD }})</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label small">Concepto Personalizado</label>
+              <input type="text" class="form-control form-control-sm" [(ngModel)]="quoteItemTemp.concept" placeholder="Descripción del servicio o insumo">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small">{{ 'sales.modalQuote.quantity' | translate }}</label>
+              <input type="number" min="1" class="form-control form-control-sm" [(ngModel)]="quoteItemTemp.quantity">
+            </div>
+            <div class="col-md-2">
+              <label class="form-label small">{{ 'sales.modalQuote.unitPriceUSD' | translate }}</label>
+              <input type="number" step="0.01" class="form-control form-control-sm" [(ngModel)]="quoteItemTemp.unitPriceUSD">
+            </div>
+            <div class="col-md-1">
+              <button type="button" class="btn btn-sm btn-primary w-100" (click)="addQuoteItem()">
+                <i class="bi bi-plus-lg"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de Items Agregados con MODIFICACIÓN MANUAL DE PRECIOS EN LÍNEA -->
+        <div class="table-responsive mb-3">
+          <table class="table table-bordered table-sm align-middle bg-white">
+            <thead class="table-secondary">
+              <tr>
+                <th>Concepto / Desglose</th>
+                <th class="text-center" style="width: 90px;">Cant.</th>
+                <th class="text-end" style="width: 140px;">Precio Unit. ($) <i class="bi bi-pencil-fill text-muted x-small"></i></th>
+                <th class="text-center" style="width: 100px;">Desc. (%)</th>
+                <th class="text-end" style="width: 140px;">Total USD</th>
+                <th class="text-end" style="width: 150px;">Total VES (BCV)</th>
+                <th class="text-center" style="width: 50px;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="currentQuote.items.length === 0">
+                <td colspan="7" class="text-center py-4 text-muted">
+                  <i class="bi bi-cart-x fs-4 d-block mb-1 opacity-50"></i>
+                  No hay ítems en la cotización. Cargue un combo predeterminado o agregue servicios arriba.
+                </td>
+              </tr>
+              <tr *ngFor="let it of currentQuote.items; let i = index">
+                <td>
+                  <input type="text" class="form-control form-control-sm border-0 bg-transparent fw-semibold" [(ngModel)]="it.concept">
+                </td>
+                <td class="text-center">
+                  <input type="number" min="1" class="form-control form-control-sm text-center" [(ngModel)]="it.quantity" (ngModelChange)="updateItemSubtotal(it)">
+                </td>
+                <td class="text-end">
+                  <div class="input-group input-group-sm">
+                    <span class="input-group-text">$</span>
+                    <input type="number" step="0.01" class="form-control form-control-sm text-end fw-bold" [(ngModel)]="it.unitPriceUSD" (ngModelChange)="updateItemSubtotal(it)">
+                  </div>
+                </td>
+                <td class="text-center">
+                  <input type="number" min="0" max="100" class="form-control form-control-sm text-center" [(ngModel)]="it.discountPercent" (ngModelChange)="updateItemSubtotal(it)">
+                </td>
+                <td class="text-end fw-bold text-success font-monospace">
+                  ${{ (it.quantity * it.unitPriceUSD * (1 - (it.discountPercent || 0)/100)) | number:'1.2-2' }}
+                </td>
+                <td class="text-end fw-bold font-monospace text-dark">
+                  Bs. {{ (it.quantity * it.unitPriceUSD * (1 - (it.discountPercent || 0)/100) * (currentQuote.bcvRate || currentQuote.exchangeRateBCV)) | number:'1.2-2' }}
+                </td>
+                <td class="text-center">
+                  <button class="btn btn-sm text-danger p-0" (click)="removeQuoteItem(i)"><i class="bi bi-trash"></i></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Totales y Notas -->
+        <div class="row">
+          <div class="col-md-7">
+            <label class="form-label small fw-bold">{{ 'sales.modalQuote.notes' | translate }}</label>
+            <textarea class="form-control form-control-sm" rows="3" [(ngModel)]="currentQuote.notes"></textarea>
+          </div>
+          <div class="col-md-5">
+            <div class="card bg-light border-0 p-3 rounded-4 shadow-sm">
+              <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">{{ 'sales.modalQuote.subtotal' | translate }}</span>
+                <span class="fw-bold">${{ getQuoteSubtotalUSD() | number:'1.2-2' }}</span>
+              </div>
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="text-muted">{{ 'sales.modalQuote.discount' | translate }}</span>
+                <input type="number" step="0.01" class="form-control form-control-sm text-end" style="width: 110px;" [(ngModel)]="currentQuote.discountAmount">
+              </div>
+              <hr class="my-2">
+              <div class="d-flex justify-content-between mb-1">
+                <span class="h5 fw-bold mb-0">{{ 'sales.modalQuote.totalUSDLabel' | translate }}</span>
+                <span class="h5 fw-bold text-success mb-0">${{ getQuoteTotalUSD() | number:'1.2-2' }}</span>
+              </div>
+              <div class="d-flex justify-content-between">
+                <span class="fw-bold text-muted">{{ 'sales.modalQuote.totalVESLabel' | translate }}</span>
+                <span class="fw-bold text-primary">Bs. {{ getQuoteTotalVES() | number:'1.2-2' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+          <button type="button" class="btn btn-outline-secondary" (click)="closeQuoteModal()">{{ 'sales.modalQuote.cancel' | translate }}</button>
+          <button type="button" class="btn btn-success px-4 fw-bold" (click)="saveQuote()">
+            <i class="bi bi-check-circle me-1"></i> {{ 'sales.modalQuote.emitQuote' | translate }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: DETALLE / FACTURACIÓN DE COTIZACIÓN -->
+<div class="modal fade show d-block" *ngIf="showQuoteDetailModal && viewingQuote" tabindex="-1" style="background: rgba(0,0,0,0.5)">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg" id="printableQuote">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title fw-bold">
+          <i class="bi bi-file-earmark-medical me-2"></i>
+          {{ 'sales.table.quoteNumber' | translate }} {{ viewingQuote.quoteNumber }}
+        </h5>
+        <button type="button" class="btn-close btn-close-white" (click)="closeQuoteDetailModal()"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Encabezado Clínico -->
+        <div class="d-flex justify-content-between border-bottom pb-3 mb-3">
+          <div>
+            <h4 class="fw-bold text-primary mb-0">CLÍNICA - SAAS</h4>
+            <div class="text-muted small">Servicios Médicos Hospitalarios</div>
+            <div class="text-muted small">RIF: J-50123456-7</div>
+          </div>
+          <div class="text-end">
+            <span class="badge" [ngClass]="{
+              'bg-warning text-dark': viewingQuote.status === 'DRAFT',
+              'bg-info text-white': viewingQuote.status === 'SENT' || viewingQuote.status === 'ISSUED',
+              'bg-success': viewingQuote.status === 'ACCEPTED',
+              'bg-danger': viewingQuote.status === 'REJECTED'
+            }">{{ viewingQuote.status }}</span>
+            <div class="text-muted small mt-1">Fecha: {{ viewingQuote.createdAt | date:'dd/MM/yyyy' }}</div>
+            <div class="text-muted small">Tasa BCV: Bs. {{ (viewingQuote.bcvRate || viewingQuote.exchangeRateBCV || 36.5) | number:'1.2-2' }}</div>
+          </div>
+        </div>
+
+        <!-- Paciente Info -->
+        <div class="row g-2 mb-4 bg-light p-3 rounded-3">
+          <div class="col-6"><strong>{{ 'sales.modalQuote.patientName' | translate }}:</strong> {{ viewingQuote.patientName }}</div>
+          <div class="col-6"><strong>Cédula / Documento:</strong> {{ viewingQuote.patientDocumentId || viewingQuote.patientDocument || 'N/A' }}</div>
+          <div class="col-6"><strong>{{ 'sales.modalQuote.patientPhone' | translate }}:</strong> {{ viewingQuote.patientPhone || 'N/A' }}</div>
+          <div class="col-6"><strong>{{ 'sales.modalQuote.patientEmail' | translate }}:</strong> {{ viewingQuote.patientEmail || 'N/A' }}</div>
+          <div class="col-12" *ngIf="viewingQuote.title"><strong>Título / Procedimiento:</strong> {{ viewingQuote.title }}</div>
+        </div>
+
+        <!-- Items Table -->
+        <table class="table table-sm table-bordered">
+          <thead class="table-light">
+            <tr>
+              <th>Concepto / Servicio</th>
+              <th class="text-center">Cant.</th>
+              <th class="text-end">Precio Unit. ($)</th>
+              <th class="text-end">Subtotal ($)</th>
+              <th class="text-end">Subtotal (VES)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let it of (viewingQuote.items || viewingQuote.QuoteItems || [])">
+              <td>{{ it.concept || it.description }}</td>
+              <td class="text-center">{{ it.quantity }}</td>
+              <td class="text-end">${{ it.unitPriceUSD | number:'1.2-2' }}</td>
+              <td class="text-end font-monospace fw-bold text-success">${{ (it.totalPriceUSD || it.totalUSD) | number:'1.2-2' }}</td>
+              <td class="text-end font-monospace">Bs. {{ (it.totalPriceVES || it.totalVES) | number:'1.2-2' }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- Totales -->
+        <div class="d-flex justify-content-end text-end mt-3">
+          <div>
+            <div class="h5 fw-bold text-success mb-1">{{ 'sales.modalQuote.totalUSDLabel' | translate }} ${{ (viewingQuote.totalUSD || viewingQuote.totalAmountUSD) | number:'1.2-2' }}</div>
+            <div class="h6 fw-bold text-primary mb-0">{{ 'sales.modalQuote.totalVESLabel' | translate }} Bs. {{ (viewingQuote.totalVES || viewingQuote.totalAmountVES) | number:'1.2-2' }}</div>
+          </div>
+        </div>
+
+        <div class="mt-3 p-2 bg-light rounded text-muted small" *ngIf="viewingQuote.notes">
+          <strong>Notas:</strong> {{ viewingQuote.notes }}
+        </div>
+
+        <!-- Acciones de Estado -->
+        <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top">
+          <div class="btn-group">
+            <button class="btn btn-sm btn-outline-success" (click)="updateQuoteStatus(viewingQuote, 'ACCEPTED')">
+              <i class="bi bi-check-lg"></i> Aprobar / Aceptar
+            </button>
+            <button class="btn btn-sm btn-outline-danger" (click)="updateQuoteStatus(viewingQuote, 'REJECTED')">
+              <i class="bi bi-x-lg"></i> Rechazar
+            </button>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" (click)="printQuote()">
+              <i class="bi bi-printer"></i> Imprimir
+            </button>
+            <button class="btn btn-primary" (click)="closeQuoteDetailModal()">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

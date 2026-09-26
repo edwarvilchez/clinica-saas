@@ -1,186 +1,182 @@
-<nav class="navbar navbar-expand-lg glass-morphism sticky-top py-2">
-  <div class="container-fluid px-4">
-    <a class="navbar-brand d-flex align-items-center" routerLink="/">
-      <div 
-        *ngIf="!orgService.settings().logoUrl"
-        class="bg-primary rounded-circle p-2 me-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px">
-        <i class="bi bi-activity text-white fs-5"></i>
-      </div>
-      <img *ngIf="orgService.settings().logoUrl" [src]="orgService.settings().logoUrl" class="me-2" style="max-height: 40px;">
-      <span class="fw-bold fs-4 gradient-text text-uppercase">{{ orgService.settings().name || 'MEDICALCARE 888' }}</span>
-    </a>
+<nav class="navbar navbar-expand sticky-top py-2 px-3 px-md-4">
+  <div class="container-fluid px-0 d-flex align-items-center justify-content-between">
+    <!-- Left: Brand & Sidebar Toggle -->
+    <div class="d-flex align-items-center gap-2">
+      <!-- Sidebar Toggle Button (Desktop & Mobile) -->
+      <button
+        class="btn sidebar-toggle-btn rounded-circle d-flex align-items-center justify-content-center border shadow-none"
+        type="button"
+        (click)="toggleSidebar.emit()"
+        [title]="isSidebarCollapsed ? 'Expandir menú lateral' : 'Contraer menú lateral'"
+      >
+        <i class="bi" [ngClass]="isSidebarCollapsed ? 'bi-layout-sidebar-inset-reverse text-primary' : 'bi-list text-dark'" style="font-size: 1.25rem;"></i>
+      </button>
 
-    <button
-      class="navbar-toggler border-0 shadow-none"
-      type="button"
-      (click)="toggleSidebar.emit()"
-    >
-      <span class="navbar-toggler-icon"></span>
-    </button>
-
-    <div class="collapse navbar-collapse" id="navbarText">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-4">
-        <li class="nav-item">
-          <a class="nav-link px-3 fw-medium text-dark active" routerLink="/dashboard">{{
-            'common.dashboard' | translate
-          }}</a>
-        </li>
-      </ul>
-
-      <div class="d-flex align-items-center gap-3">
-        <!-- Settings Group -->
-        <div
-          class="d-flex align-items-center bg-light border rounded-pill px-2 py-1 gap-2 shadow-sm me-2"
-        >
-          <!-- Currency Toggle -->
-          <div class="d-flex align-items-center gap-1">
-            <button
-              [class]="
-                currencyService.currency() === 'USD'
-                  ? 'btn btn-xs btn-primary rounded-circle p-1 active-lang'
-                  : 'btn btn-xs text-muted p-1'
-              "
-              (click)="setCurrency('USD')"
-              title="USD ($)"
-              style="width: 28px; height: 28px; font-size: 10px; font-weight: bold"
-            >
-              $
-            </button>
-            <button
-              [class]="
-                currencyService.currency() === 'VES'
-                  ? 'btn btn-xs btn-primary rounded-circle p-1 active-lang'
-                  : 'btn btn-xs text-muted p-1'
-              "
-              (click)="setCurrency('VES')"
-              title="VES (Bs.)"
-              style="width: 28px; height: 28px; font-size: 10px; font-weight: bold"
-            >
-              Bs
-            </button>
-          </div>
-
-          <div class="vr my-1 opacity-25"></div>
-
-          <!-- Rate Management Toggle (Visible to all, editable by authorized) -->
-          <div class="d-flex align-items-center">
-            <button
-              *ngIf="canManageRate(); else viewOnlyRate"
-              class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 x-small-compact hover-shadow transition"
-              (click)="refreshBcvRate()"
-              [title]="'navbar.updateRate' | translate"
-              style="font-size: 10px; font-weight: bold; border-style: dashed"
-            >
-              BCV: {{ currencyService.rate }} <i class="bi bi-arrow-clockwise ms-1"></i>
-            </button>
-            <ng-template #viewOnlyRate>
-              <div
-                class="badge bg-light text-secondary border rounded-pill px-2 py-1 x-small-compact"
-                style="font-size: 10px; font-weight: bold"
-                [title]="'navbar.rateHint' | translate"
-              >
-                BCV: {{ currencyService.rate }}
-              </div>
-            </ng-template>
-          </div>
-
-          <div class="vr my-1 opacity-25"></div>
-
-          <!-- Language Toggle -->
-          <div class="d-flex align-items-center gap-1">
-            <button
-              [class]="
-                langService.lang() === 'es'
-                  ? 'btn btn-xs btn-primary rounded-circle p-1 active-lang'
-                  : 'btn btn-xs text-muted p-1'
-              "
-              (click)="setLanguage('es')"
-              style="width: 28px; height: 28px; font-size: 10px; font-weight: bold"
-            >
-              ES
-            </button>
-            <button
-              [class]="
-                langService.lang() === 'en'
-                  ? 'btn btn-xs btn-primary rounded-circle p-1 active-lang'
-                  : 'btn btn-xs text-muted p-1'
-              "
-              (click)="setLanguage('en')"
-              style="width: 28px; height: 28px; font-size: 10px; font-weight: bold"
-            >
-              EN
-            </button>
-          </div>
+      <a class="navbar-brand d-flex align-items-center me-0 ps-1" routerLink="/">
+        <div 
+          *ngIf="!orgService.settings().logoUrl"
+          class="bg-primary rounded-circle p-2 me-2 d-flex align-items-center justify-content-center shadow-sm" style="width: 36px; height: 36px">
+          <i class="bi bi-activity text-white fs-6"></i>
         </div>
+        <img *ngIf="orgService.settings().logoUrl" [src]="orgService.settings().logoUrl" class="me-2" style="max-height: 36px;">
+        <span class="fw-bold fs-5 gradient-text text-uppercase d-none d-sm-inline">{{ orgService.settings().name || 'CLINICA - SAAS' }}</span>
+      </a>
+    </div>
 
-        <!-- User Dropdown Menu -->
-        <div class="dropdown user-dropdown-container position-relative">
+    <!-- Right Controls: Currency, BCV Rate, Language, User -->
+    <div class="d-flex align-items-center gap-2">
+      <!-- Settings Group Pill -->
+      <div
+        class="d-flex align-items-center bg-light border rounded-pill px-2 py-1 gap-2 shadow-sm"
+      >
+        <!-- Currency Toggle -->
+        <div class="d-flex align-items-center gap-1">
           <button
-            class="btn border-0 d-flex align-items-center gap-2 p-1 px-3 glass-morphism rounded-pill shadow-sm"
-            type="button"
-            (click)="toggleUserMenu()"
-            [class.active]="isUserMenuOpen"
+            [class]="
+              currencyService.currency() === 'USD'
+                ? 'btn btn-xs btn-primary rounded-circle p-1 active-lang'
+                : 'btn btn-xs text-muted p-1'
+            "
+            (click)="setCurrency('USD')"
+            title="Dólares USD ($)"
+            style="width: 26px; height: 26px; font-size: 11px; font-weight: 700"
           >
-            <div
-              class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white small shadow-sm"
-              style="width: 32px; height: 32px; background-color: var(--primary)"
-            >
-              {{ (authService.currentUser()?.firstName || 'U').charAt(0)
-              }}{{ (authService.currentUser()?.lastName || '').charAt(0) }}
-            </div>
-            <span class="fw-semibold small d-none d-md-inline text-dark">{{
-              authService.currentUser()?.firstName
-            }}</span>
-            <i
-              class="bi bi-chevron-down small text-muted transition"
-              [class.rotate-180]="isUserMenuOpen"
-            ></i>
+            $
           </button>
-
-          <ul
-            class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2 rounded-4 mt-2"
-            style="min-width: 220px; right: 0; top: 100%; z-index: 1050"
-            [class.show]="isUserMenuOpen"
+          <button
+            [class]="
+              currencyService.currency() === 'VES'
+                ? 'btn btn-xs btn-primary rounded-circle p-1 active-lang'
+                : 'btn btn-xs text-muted p-1'
+            "
+            (click)="setCurrency('VES')"
+            title="Bolívares VES (Bs.)"
+            style="width: 26px; height: 26px; font-size: 11px; font-weight: 700"
           >
-            <!-- Header -->
-            <li class="px-3 py-2 border-bottom mb-2">
-              <p class="mb-0 fw-bold text-dark">
-                {{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}
-              </p>
-              <p class="text-muted x-small mb-0 text-uppercase">
-                {{ ('roles.' + authService.currentUser()?.role) | translate }}
-              </p>
-            </li>
-            <!-- Actions -->
-            <li>
-              <button
-                class="dropdown-item rounded-3 py-2 d-flex align-items-center gap-2 small"
-                (click)="openProfileModal(); isUserMenuOpen = false"
-              >
-                <i class="bi bi-person-gear text-primary"></i>
-                {{ 'navbar.updateInfo' | translate }}
-              </button>
-            </li>
-            <li>
-              <button
-                class="dropdown-item rounded-3 py-2 d-flex align-items-center gap-2 small"
-                (click)="openChangePasswordModal(); isUserMenuOpen = false"
-              >
-                <i class="bi bi-shield-lock text-primary"></i>
-                {{ 'navbar.changePassword' | translate }}
-              </button>
-            </li>
-            <li><hr class="dropdown-divider my-2" /></li>
-            <li>
-              <button
-                class="dropdown-item rounded-3 py-2 d-flex align-items-center gap-2 small text-danger"
-                (click)="logout(); isUserMenuOpen = false"
-              >
-                <i class="bi bi-box-arrow-right"></i> {{ 'navbar.logout' | translate }}
-              </button>
-            </li>
-          </ul>
+            Bs
+          </button>
         </div>
+
+        <div class="vr my-1 opacity-25"></div>
+
+        <!-- Rate Management Toggle -->
+        <div class="d-flex align-items-center">
+          <button
+            *ngIf="canManageRate(); else viewOnlyRate"
+            class="btn btn-xs btn-outline-secondary rounded-pill px-2 py-0 hover-shadow transition"
+            (click)="refreshBcvRate()"
+            [title]="'navbar.updateRate' | translate"
+            style="font-size: 11px; font-weight: 700; border-style: dashed; line-height: 1.5;"
+          >
+            BCV: {{ currencyService.rate }} <i class="bi bi-arrow-clockwise ms-1"></i>
+          </button>
+          <ng-template #viewOnlyRate>
+            <div
+              class="badge bg-light text-secondary border rounded-pill px-2 py-1"
+              style="font-size: 11px; font-weight: 700"
+              [title]="'navbar.rateHint' | translate"
+            >
+              BCV: {{ currencyService.rate }}
+            </div>
+          </ng-template>
+        </div>
+
+        <div class="vr my-1 opacity-25"></div>
+
+        <!-- Language Toggle -->
+        <div class="d-flex align-items-center gap-1">
+          <button
+            [class]="
+              langService.lang() === 'es'
+                ? 'btn btn-xs btn-primary rounded-circle p-1 active-lang'
+                : 'btn btn-xs text-muted p-1'
+            "
+            (click)="setLanguage('es')"
+            style="width: 26px; height: 26px; font-size: 10px; font-weight: 700"
+          >
+            ES
+          </button>
+          <button
+            [class]="
+              langService.lang() === 'en'
+                ? 'btn btn-xs btn-primary rounded-circle p-1 active-lang'
+                : 'btn btn-xs text-muted p-1'
+            "
+            (click)="setLanguage('en')"
+            style="width: 26px; height: 26px; font-size: 10px; font-weight: 700"
+          >
+            EN
+          </button>
+        </div>
+      </div>
+
+      <!-- User Dropdown Menu -->
+      <div class="dropdown user-dropdown-container position-relative">
+        <button
+          class="btn border-0 d-flex align-items-center gap-2 p-1 ps-2 pe-3 bg-light rounded-pill shadow-sm hover-shadow"
+          type="button"
+          (click)="toggleUserMenu()"
+          [class.active]="isUserMenuOpen"
+        >
+          <div
+            class="rounded-circle d-flex align-items-center justify-content-center fw-bold text-white small shadow-sm"
+            style="width: 32px; height: 32px; background: linear-gradient(135deg, #10b981, #059669)"
+          >
+            {{ (authService.currentUser()?.firstName || 'U').charAt(0)
+            }}{{ (authService.currentUser()?.lastName || '').charAt(0) }}
+          </div>
+          <span class="fw-semibold small d-none d-md-inline text-dark">{{
+            authService.currentUser()?.firstName
+          }}</span>
+          <i
+            class="bi bi-chevron-down small text-muted transition"
+            [class.rotate-180]="isUserMenuOpen"
+          ></i>
+        </button>
+
+        <ul
+          class="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2 rounded-4 mt-2"
+          style="min-width: 220px; right: 0; top: 100%; z-index: 1050"
+          [class.show]="isUserMenuOpen"
+        >
+          <!-- Header -->
+          <li class="px-3 py-2 border-bottom mb-2">
+            <p class="mb-0 fw-bold text-dark">
+              {{ authService.currentUser()?.firstName }} {{ authService.currentUser()?.lastName }}
+            </p>
+            <p class="text-muted small mb-0 text-uppercase fw-semibold" style="font-size: 0.75rem;">
+              {{ ('roles.' + authService.currentUser()?.role) | translate }}
+            </p>
+          </li>
+          <!-- Actions -->
+          <li>
+            <button
+              class="dropdown-item rounded-3 py-2 d-flex align-items-center gap-2 small"
+              (click)="openProfileModal(); isUserMenuOpen = false"
+            >
+              <i class="bi bi-person-gear text-primary"></i>
+              {{ 'navbar.updateInfo' | translate }}
+            </button>
+          </li>
+          <li>
+            <button
+              class="dropdown-item rounded-3 py-2 d-flex align-items-center gap-2 small"
+              (click)="openChangePasswordModal(); isUserMenuOpen = false"
+            >
+              <i class="bi bi-shield-lock text-primary"></i>
+              {{ 'navbar.changePassword' | translate }}
+            </button>
+          </li>
+          <li><hr class="dropdown-divider my-2" /></li>
+          <li>
+            <button
+              class="dropdown-item rounded-3 py-2 d-flex align-items-center gap-2 small text-danger fw-semibold"
+              (click)="logout(); isUserMenuOpen = false"
+            >
+              <i class="bi bi-box-arrow-right"></i> {{ 'navbar.logout' | translate }}
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
   </div>

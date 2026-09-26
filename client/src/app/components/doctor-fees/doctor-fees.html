@@ -1,0 +1,783 @@
+<div class="container-fluid py-4 px-3 px-md-4">
+  <!-- Header -->
+  <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-4">
+    <div>
+      <div class="d-flex align-items-center gap-2 mb-1">
+        <div class="badge bg-warning bg-opacity-10 text-warning p-2 rounded-3">
+          <i class="bi bi-cash-coin fs-5"></i>
+        </div>
+        <h1 class="h3 fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Cuentas por Pagar (CXP) - Honorarios Médicos' : 'Accounts Payable (AP) - Doctor Fees' }}</h1>
+      </div>
+      <p class="text-muted small mb-0">{{ langService.lang() === 'es' ? 'Liquidación de honorarios a profesionales, baremos por servicio, retención ISLR 3% SENIAT y recibos digitales' : 'Professional fee settlements, service baremos, ISLR 3% tax withholding and digital receipts' }}</p>
+    </div>
+
+    <div class="d-flex align-items-center gap-2">
+      <!-- VIEW TOGGLE (LISTA / KANBAN) ESTILO ODOO -->
+      <div class="btn-group bg-white p-1 rounded-pill border shadow-sm" role="group">
+        <button 
+          type="button" 
+          class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+          [ngClass]="viewMode() === 'list' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+          (click)="viewMode.set('list')">
+          <i class="bi bi-list-ul"></i>
+          <span class="x-small">{{ langService.lang() === 'es' ? 'Lista' : 'List' }}</span>
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-sm rounded-pill px-3 fw-bold d-flex align-items-center gap-1"
+          [ngClass]="viewMode() === 'kanban' ? 'btn-primary shadow-sm text-white' : 'btn-light text-muted border-0'"
+          (click)="viewMode.set('kanban')">
+          <i class="bi bi-kanban-fill"></i>
+          <span class="x-small">{{ langService.lang() === 'es' ? 'Kanban' : 'Kanban' }}</span>
+        </button>
+      </div>
+
+      <button class="btn btn-outline-primary btn-sm rounded-pill px-3 shadow-sm fw-semibold" (click)="loadData()">
+        <i class="bi bi-arrow-clockwise me-1"></i> {{ langService.lang() === 'es' ? 'Actualizar' : 'Refresh' }}
+      </button>
+      <button class="btn btn-warning text-dark btn-sm rounded-pill px-3 shadow-sm d-flex align-items-center gap-2 fw-semibold" (click)="openCreateModal()">
+        <i class="bi bi-plus-circle"></i>
+        <span>{{ langService.lang() === 'es' ? 'Registrar Honorario' : 'Register Fee' }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Metrics Bar -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-warning h-100 cursor-pointer" (click)="activeTab.set('pending')">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Cuentas Por Pagar (Pendientes)' : 'Accounts Payable (Pending)' }}</span>
+            <h4 class="fw-bold text-warning mb-0 mt-1">${{ totalPendingUSD().toFixed(2) }}</h4>
+            <small class="text-muted x-small">≈ {{ currencyService.formatAmount(totalPendingUSD(), 'VES') }}</small>
+          </div>
+          <div class="bg-warning bg-opacity-10 text-warning p-3 rounded-circle">
+            <i class="bi bi-hourglass-split fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6 col-xl-4">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-success h-100 cursor-pointer" (click)="activeTab.set('paid')">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Total Liquidado / Pagado' : 'Total Settled / Paid' }}</span>
+            <h4 class="fw-bold text-success mb-0 mt-1">${{ totalPaidUSD().toFixed(2) }}</h4>
+            <small class="text-muted x-small">≈ {{ currencyService.formatAmount(totalPaidUSD(), 'VES') }}</small>
+          </div>
+          <div class="bg-success bg-opacity-10 text-success p-3 rounded-circle">
+            <i class="bi bi-check2-circle fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-12 col-xl-4">
+      <div class="card border-0 shadow-sm rounded-4 p-3 bg-white border-start border-4 border-primary h-100">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <span class="text-muted x-small fw-bold text-uppercase">{{ langService.lang() === 'es' ? 'Tasa Oficial BCV' : 'Official BCV Rate' }}</span>
+            <h4 class="fw-bold text-primary mb-0 mt-1">{{ currencyService.rate }} Bs/$</h4>
+            <small class="text-muted x-small">{{ langService.lang() === 'es' ? 'Liquidación y recibos bimoneda en tiempo real' : 'Real-time dual-currency settlements' }}</small>
+          </div>
+          <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle">
+            <i class="bi bi-currency-exchange fs-4"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="card border-0 shadow-sm rounded-4 bg-white p-2 mb-4">
+    <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-2">
+      <ul class="nav nav-pills gap-1 flex-fill">
+        <li class="nav-item">
+          <button 
+            class="nav-link rounded-pill px-4 py-2 fw-semibold d-flex align-items-center gap-2" 
+            [class.active]="activeTab() === 'pending'"
+            (click)="activeTab.set('pending')">
+            <i class="bi bi-clock-history"></i>
+            <span>{{ langService.lang() === 'es' ? 'Por Pagar' : 'Pending Payment' }}</span>
+            <span class="badge rounded-pill bg-warning text-dark">{{ pendingFees().length }}</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button 
+            class="nav-link rounded-pill px-4 py-2 fw-semibold d-flex align-items-center gap-2" 
+            [class.active]="activeTab() === 'paid'"
+            (click)="activeTab.set('paid')">
+            <i class="bi bi-patch-check"></i>
+            <span>{{ langService.lang() === 'es' ? 'Pagados' : 'Paid History' }}</span>
+            <span class="badge rounded-pill bg-success">{{ paidFees().length }}</span>
+          </button>
+        </li>
+        <li class="nav-item">
+          <button 
+            class="nav-link rounded-pill px-4 py-2 fw-semibold d-flex align-items-center gap-2" 
+            [class.active]="activeTab() === 'baremos'"
+            (click)="activeTab.set('baremos')">
+            <i class="bi bi-sliders"></i>
+            <span>{{ langService.lang() === 'es' ? 'Baremos & Honorarios por Médico' : 'Fee Rules & Baremos' }}</span>
+            <span class="badge rounded-pill bg-primary bg-opacity-10 text-primary">{{ doctorConfigs().length }}</span>
+          </button>
+        </li>
+      </ul>
+
+      <!-- Search Input -->
+      <div class="input-group search-bar rounded-pill overflow-hidden bg-light border" style="max-width: 320px;">
+        <span class="input-group-text bg-transparent border-0 ps-3 text-muted">
+          <i class="bi bi-search"></i>
+        </span>
+        <input 
+          type="text" 
+          class="form-control bg-transparent border-0 py-2 shadow-none small" 
+          [placeholder]="langService.lang() === 'es' ? 'Buscar médico, paciente, recibo...' : 'Search doctor, patient, receipt...'"
+          [ngModel]="searchTerm()"
+          (ngModelChange)="searchTerm.set($event)">
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 1: POR PAGAR (CXP PENDIENTES)         -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab() === 'pending'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <!-- Top Action Bar for Selection -->
+    <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
+      <div class="d-flex align-items-center gap-2">
+        <span class="fw-bold text-dark small">
+          {{ selectedFees().length }} {{ langService.lang() === 'es' ? 'honorario(s) seleccionado(s)' : 'fee(s) selected' }}
+        </span>
+        <span *ngIf="selectedFees().length > 0" class="badge bg-warning bg-opacity-20 text-dark border rounded-pill px-2 py-1 x-small">
+          Total Neto: ${{ selectedTotalNetUSD().toFixed(2) }} ({{ currencyService.formatAmount(selectedTotalNetUSD(), 'VES') }})
+        </span>
+      </div>
+
+      <div>
+        <button 
+          class="btn btn-success btn-sm rounded-pill px-4 shadow-sm fw-bold d-flex align-items-center gap-2"
+          [disabled]="selectedFees().length === 0"
+          (click)="openPayModal()">
+          <i class="bi bi-wallet2"></i>
+          <span>{{ langService.lang() === 'es' ? 'Pagar Seleccionados' : 'Pay Selected' }} ({{ selectedFees().length }})</span>
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="loading()" class="text-center py-5">
+      <div class="spinner-border text-warning" role="status"></div>
+    </div>
+
+    <div *ngIf="viewMode() === 'list' && !loading()" class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-3 py-3 text-center" style="width: 40px;">
+              <input 
+                type="checkbox" 
+                class="form-check-input" 
+                [checked]="isAllSelected()" 
+                (change)="toggleSelectAll($event)">
+            </th>
+            <th class="py-3 x-small fw-bold text-muted text-nowrap">{{ langService.lang() === 'es' ? 'MÉDICO / REGISTRO' : 'DOCTOR / MPPS' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-nowrap">{{ langService.lang() === 'es' ? 'PACIENTE' : 'PATIENT' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-nowrap">{{ langService.lang() === 'es' ? 'SERVICIO PRESTADO' : 'SERVICE PROVIDED' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-end text-nowrap">{{ langService.lang() === 'es' ? 'BRUTO' : 'GROSS' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-center text-nowrap">{{ langService.lang() === 'es' ? 'RÉGIMEN' : 'SCHEME' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-end text-nowrap">{{ langService.lang() === 'es' ? 'RET. ISLR (3%)' : 'ISLR TAX (3%)' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-end text-nowrap">{{ langService.lang() === 'es' ? 'NETO A PAGAR' : 'NET PAYABLE' }}</th>
+            <th class="pe-3 py-3 x-small fw-bold text-muted text-center text-nowrap">{{ langService.lang() === 'es' ? 'ACCIÓN' : 'ACTION' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of pendingFees()" [class.table-warning]="f.selected">
+            <td class="ps-3 text-center">
+              <input 
+                type="checkbox" 
+                class="form-check-input" 
+                [checked]="f.selected" 
+                (change)="toggleSelectFee(f)">
+            </td>
+            <td>
+              <div class="fw-bold text-dark">Dr. {{ f.Doctor?.User?.firstName }} {{ f.Doctor?.User?.lastName }}</div>
+              <small class="text-muted x-small d-block">{{ f.Doctor?.Specialty?.name || 'Especialista' }}</small>
+              <span *ngIf="f.Doctor?.mppsNumber" class="badge bg-light text-muted border rounded-pill x-small">MPPS: {{ f.Doctor?.mppsNumber }}</span>
+            </td>
+            <td>
+              <div class="fw-semibold text-dark">{{ f.Patient?.User ? (f.Patient?.User?.firstName + ' ' + f.Patient?.User?.lastName) : (langService.lang() === 'es' ? 'Paciente General' : 'General Patient') }}</div>
+              <small class="text-muted x-small">{{ f.Patient?.documentId || 'Cédula N/A' }}</small>
+            </td>
+            <td>
+              <div class="fw-semibold text-dark">{{ f.serviceConcept }}</div>
+              <span class="badge bg-light text-secondary border rounded-pill x-small me-1">{{ f.serviceType }}</span>
+              <span *ngIf="f.InsuranceCompany" class="badge bg-info bg-opacity-10 text-info border border-info rounded-pill x-small">
+                <i class="bi bi-shield-check me-1"></i>{{ f.InsuranceCompany.name }}
+              </span>
+            </td>
+            <td class="text-end fw-semibold text-dark">
+              <div>${{ f.totalAmountUSD }}</div>
+              <small class="text-muted x-small">{{ currencyService.formatAmount(f.totalAmountUSD, 'VES') }}</small>
+            </td>
+            <td class="text-center">
+              <span class="badge bg-info bg-opacity-10 text-info">{{ f.doctorPercent }}% Méd</span>
+              <span class="badge bg-secondary bg-opacity-10 text-secondary ms-1">{{ f.clinicPercent }}% Cln</span>
+            </td>
+            <td class="text-end text-danger fw-semibold">-${{ f.retentionIslrUSD }}</td>
+            <td class="text-end">
+              <div class="fw-bold text-success fs-6">${{ f.netPayableUSD }}</div>
+              <small class="text-muted x-small">{{ currencyService.formatAmount(f.netPayableUSD, 'VES') }}</small>
+            </td>
+            <td class="pe-3 text-center">
+              <button class="btn btn-sm btn-outline-success rounded-pill px-3 py-1 fw-bold" (click)="openPayModal(f)">
+                <i class="bi bi-wallet2 me-1"></i>{{ langService.lang() === 'es' ? 'Pagar' : 'Pay' }}
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="pendingFees().length === 0">
+            <td colspan="9" class="text-center py-5 text-muted">
+              <i class="bi bi-check2-circle display-5 text-success d-block mb-2"></i>
+              <h6>{{ langService.lang() === 'es' ? 'No hay honorarios pendientes por pagar.' : 'No pending fees to pay.' }}</h6>
+              <p class="x-small mb-0">{{ langService.lang() === 'es' ? 'Todos los honorarios médicos han sido liquidados o no hay registros pendientes.' : 'All doctor fees have been settled.' }}</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- VISTA 2: KANBAN PARA HONORARIOS PENDIENTES ESTILO ODOO -->
+    <div *ngIf="viewMode() === 'kanban' && !loading()" class="p-3">
+      <div class="row g-3">
+        <div class="col-md-6 col-xl-4" *ngFor="let f of pendingFees()">
+          <div class="card border-0 shadow-sm rounded-4 p-3 bg-light border-start border-4 border-warning hover-card h-100">
+            <div class="d-flex justify-content-between align-items-start mb-2">
+              <span class="badge bg-warning text-dark x-small">POR PAGAR</span>
+              <span class="badge bg-white text-dark border x-small">{{ f.feeType === 'PERCENTAGE' ? (f.doctorPercent + '%') : 'Monto Fijo' }}</span>
+            </div>
+            <h6 class="fw-bold text-dark mb-1">Dr(a). {{ f.Doctor?.User?.firstName }} {{ f.Doctor?.User?.lastName }}</h6>
+            <div class="x-small text-muted mb-2">Paciente: <strong>{{ f.Patient?.User?.firstName }} {{ f.Patient?.User?.lastName }}</strong> ({{ f.Patient?.documentId }})</div>
+            <p class="x-small text-dark fw-semibold mb-2">{{ f.serviceConcept }}</p>
+            
+            <div class="d-flex justify-content-between align-items-center pt-2 border-top mt-auto">
+              <div>
+                <span class="text-muted x-small d-block">Neto a Liquidar:</span>
+                <strong class="text-success fs-6">${{ f.netPayableUSD }}</strong>
+              </div>
+              <button class="btn btn-success btn-sm rounded-pill px-3 fw-bold" (click)="openPayModal(f)">Pagar</button>
+            </div>
+          </div>
+        </div>
+        <div *ngIf="pendingFees().length === 0" class="col-12 text-center py-5 text-muted">
+          Sin honorarios pendientes
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 2: PAGADOS (HISTORIAL & RECIBOS)      -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab() === 'paid'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="p-3 bg-light border-bottom">
+      <h6 class="fw-bold text-dark mb-0 d-flex align-items-center gap-2">
+        <i class="bi bi-journal-check text-success"></i>
+        <span>{{ langService.lang() === 'es' ? 'Historial de Pagos Realizados y Comprobantes Oficiales' : 'Payment History & Official Vouchers' }}</span>
+      </h6>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-3 py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'FECHA Y HORA' : 'DATE & TIME' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'NRO. RECIBO' : 'RECEIPT NO.' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'MÉDICO' : 'DOCTOR' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'PACIENTE & SERVICIO' : 'PATIENT & SERVICE' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-end">{{ langService.lang() === 'es' ? 'MONTO CANCELADO' : 'AMOUNT PAID' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'MÉTODO / REFERENCIA' : 'METHOD / REF' }}</th>
+            <th class="pe-3 py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? 'RECIBO / ENLACE' : 'RECEIPT / LINK' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let f of paidFees()">
+            <td class="ps-3">
+              <strong class="text-dark small d-block">{{ formatDateTime(f.paidAt || f.settlementDate) }}</strong>
+            </td>
+            <td>
+              <span class="badge bg-primary bg-opacity-10 text-primary font-monospace rounded-pill px-2 py-1 border border-primary">
+                {{ f.receiptNumber || 'REC-HON' }}
+              </span>
+            </td>
+            <td>
+              <div class="fw-bold text-dark">Dr. {{ f.Doctor?.User?.firstName }} {{ f.Doctor?.User?.lastName }}</div>
+              <small class="text-muted x-small">{{ f.Doctor?.Specialty?.name || 'Especialista' }}</small>
+            </td>
+            <td>
+              <div class="fw-semibold text-dark">{{ f.serviceConcept }}</div>
+              <small class="text-muted x-small">
+                {{ langService.lang() === 'es' ? 'Pac:' : 'Pat:' }} {{ f.Patient?.User ? (f.Patient?.User?.firstName + ' ' + f.Patient?.User?.lastName) : 'General' }}
+              </small>
+            </td>
+            <td class="text-end">
+              <div class="fw-bold text-success fs-6">${{ f.paidAmountUSD || f.netPayableUSD }}</div>
+              <small class="text-muted x-small">{{ currencyService.formatAmount(f.paidAmountUSD || f.netPayableUSD, 'VES') }}</small>
+            </td>
+            <td>
+              <span class="d-block small text-dark fw-semibold">{{ f.paidPaymentMethod || 'Transferencia' }}</span>
+              <small class="text-muted font-monospace x-small">Ref: {{ f.paymentReference || 'N/A' }}</small>
+            </td>
+            <td class="pe-3 text-center">
+              <div class="d-flex justify-content-center gap-1">
+                <button 
+                  class="btn btn-sm btn-light rounded-pill px-2 py-1 text-primary" 
+                  [title]="langService.lang() === 'es' ? 'Ver Recibo Digital' : 'View Digital Receipt'"
+                  (click)="viewReceipt(f)">
+                  <i class="bi bi-file-earmark-pdf-fill me-1"></i>{{ langService.lang() === 'es' ? 'Recibo' : 'Receipt' }}
+                </button>
+                <button 
+                  class="btn btn-sm btn-light rounded-pill px-2 py-1 text-secondary" 
+                  [title]="langService.lang() === 'es' ? 'Copiar Enlace de Consulta' : 'Copy Verification Link'"
+                  (click)="copyReceiptLink(f)">
+                  <i class="bi bi-link-45deg"></i>
+                </button>
+                <a 
+                  *ngIf="f.receiptToken"
+                  [routerLink]="['/doctor-fee-receipt', f.receiptToken]" 
+                  target="_blank"
+                  class="btn btn-sm btn-light rounded-pill px-2 py-1 text-muted" 
+                  [title]="langService.lang() === 'es' ? 'Abrir en pestaña nueva' : 'Open in new tab'">
+                  <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="paidFees().length === 0">
+            <td colspan="7" class="text-center py-5 text-muted">
+              <i class="bi bi-inbox display-5 text-muted opacity-50 d-block mb-2"></i>
+              <h6>{{ langService.lang() === 'es' ? 'No se han registrado pagos en el historial.' : 'No paid history records found.' }}</h6>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TAB 3: BAREMOS & CONFIGURACIÓN POR MÉDICO -->
+  <!-- ========================================== -->
+  <div *ngIf="activeTab() === 'baremos'" class="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
+    <div class="p-3 bg-light border-bottom d-flex align-items-center justify-content-between">
+      <div>
+        <h6 class="fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Catálogo de Baremos y Esquemas de Honorarios' : 'Fee Rules & Insurance Baremos Catalog' }}</h6>
+        <span class="text-muted x-small">{{ langService.lang() === 'es' ? 'Configure porcentajes clínicos, montos fijos y acuerdos de seguros por cada profesional' : 'Configure clinic percentages, fixed amounts and insurance agreements per doctor' }}</span>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="bg-light">
+          <tr>
+            <th class="ps-3 py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'MÉDICO ESPECIALISTA' : 'DOCTOR SPECIALIST' }}</th>
+            <th class="py-3 x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'ESPECIALIDAD' : 'SPECIALTY' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? 'RÉGIMEN PRINCIPAL' : 'PRIMARY SCHEME' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? '% MÉDICO / CLÍNICA' : '% DOC / CLINIC' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-end">{{ langService.lang() === 'es' ? 'TARIFA FIJA ($)' : 'FIXED FEE ($)' }}</th>
+            <th class="py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? 'SEGUROS PRIVADOS' : 'INSURANCE' }}</th>
+            <th class="pe-3 py-3 x-small fw-bold text-muted text-center">{{ langService.lang() === 'es' ? 'CONFIGURAR' : 'CONFIGURE' }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let cfg of doctorConfigs()">
+            <td class="ps-3">
+              <div class="fw-bold text-dark">{{ cfg.doctorName }}</div>
+              <small class="text-muted x-small">MPPS: {{ cfg.mppsNumber || 'N/A' }} | Col: {{ cfg.collegeNumber || 'N/A' }}</small>
+            </td>
+            <td>
+              <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-2 py-1 x-small fw-semibold">{{ cfg.specialty }}</span>
+            </td>
+            <td class="text-center">
+              <span *ngIf="cfg.feeType === 'PERCENTAGE'" class="badge bg-info bg-opacity-10 text-info rounded-pill px-2 py-1">
+                {{ langService.lang() === 'es' ? 'Porcentaje (%)' : 'Percentage (%)' }}
+              </span>
+              <span *ngIf="cfg.feeType === 'FIXED_AMOUNT'" class="badge bg-success bg-opacity-10 text-success rounded-pill px-2 py-1">
+                {{ langService.lang() === 'es' ? 'Monto Fijo ($)' : 'Fixed Amount ($)' }}
+              </span>
+            </td>
+            <td class="text-center">
+              <span class="fw-bold text-primary">{{ cfg.doctorPercent }}%</span> / 
+              <span class="text-muted">{{ cfg.clinicPercent }}%</span>
+            </td>
+            <td class="text-end fw-semibold text-dark">${{ cfg.fixedFeeUSD.toFixed(2) }}</td>
+            <td class="text-center">
+              <span *ngIf="cfg.acceptsInsurance" class="badge rounded-pill bg-success bg-opacity-10 text-success">
+                <i class="bi bi-shield-check me-1"></i>{{ cfg.insuranceDoctorPercent }}% / ${{ cfg.insuranceFixedFeeUSD }}
+              </span>
+              <span *ngIf="!cfg.acceptsInsurance" class="badge rounded-pill bg-secondary bg-opacity-10 text-secondary">
+                {{ langService.lang() === 'es' ? 'No acepta' : 'Not accepted' }}
+              </span>
+            </td>
+            <td class="pe-3 text-center">
+              <button class="btn btn-sm btn-outline-primary rounded-pill px-3 py-1 fw-semibold" (click)="openConfigModal(cfg)">
+                <i class="bi bi-pencil-square me-1"></i>{{ langService.lang() === 'es' ? 'Editar Baremo' : 'Edit Baremo' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: LIQUIDAR Y PAGAR SELECCIONADOS (CXP)-->
+<!-- ========================================== -->
+<div *ngIf="showPayModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <div class="d-flex align-items-center gap-2">
+          <div class="badge bg-success bg-opacity-10 text-success p-2 rounded-3">
+            <i class="bi bi-wallet2 fs-5"></i>
+          </div>
+          <div>
+            <h5 class="modal-title fw-bold text-dark mb-0">{{ langService.lang() === 'es' ? 'Procesar Liquidación de Honorarios (CXP)' : 'Process AP Fee Settlement' }}</h5>
+            <span class="text-muted x-small">{{ selectedFees().length }} {{ langService.lang() === 'es' ? 'honorario(s) médico(s) seleccionados' : 'doctor fee(s) selected' }}</span>
+          </div>
+        </div>
+        <button type="button" class="btn-close shadow-none" (click)="showPayModal = false"></button>
+      </div>
+
+      <div class="modal-body p-4">
+        <!-- Summary Financial Box -->
+        <div class="bg-light p-3 rounded-4 mb-4 border">
+          <div class="row g-3 text-center">
+            <div class="col-4 border-end">
+              <span class="text-muted x-small text-uppercase fw-bold d-block">{{ langService.lang() === 'es' ? 'Monto Bruto' : 'Gross Total' }}</span>
+              <h5 class="fw-bold text-dark mb-0 mt-1">${{ selectedTotalGrossUSD().toFixed(2) }}</h5>
+            </div>
+            <div class="col-4 border-end">
+              <span class="text-danger x-small text-uppercase fw-bold d-block">{{ langService.lang() === 'es' ? 'Retención ISLR (3%)' : 'ISLR Retention (3%)' }}</span>
+              <h5 class="fw-bold text-danger mb-0 mt-1">-${{ selectedTotalRetentionUSD().toFixed(2) }}</h5>
+            </div>
+            <div class="col-4">
+              <span class="text-success x-small text-uppercase fw-bold d-block">{{ langService.lang() === 'es' ? 'Total Neto a Pagar' : 'Total Net Payable' }}</span>
+              <h4 class="fw-bold text-success mb-0 mt-1">${{ selectedTotalNetUSD().toFixed(2) }}</h4>
+              <small class="text-muted x-small">≈ {{ currencyService.formatAmount(selectedTotalNetUSD(), 'VES') }}</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Selected Fees Quick List -->
+        <div class="mb-4" style="max-height: 180px; overflow-y: auto;">
+          <h6 class="fw-bold text-muted x-small text-uppercase mb-2">{{ langService.lang() === 'es' ? 'Detalle de los Registros a Cancelar:' : 'Records to be Settled:' }}</h6>
+          <div *ngFor="let f of selectedFees()" class="d-flex justify-content-between align-items-center p-2 rounded-3 border bg-white mb-1 small">
+            <div>
+              <strong class="text-dark">Dr. {{ f.Doctor?.User?.firstName }} {{ f.Doctor?.User?.lastName }}</strong>
+              <span class="text-muted x-small d-block">{{ f.serviceConcept }} (Pac: {{ f.Patient?.User?.firstName || 'General' }})</span>
+            </div>
+            <div class="text-end">
+              <strong class="text-success">${{ f.netPayableUSD }}</strong>
+              <small class="text-muted x-small d-block">Ret. ISLR: -${{ f.retentionIslrUSD }}</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Method Details Form -->
+        <form (ngSubmit)="confirmPayment()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Forma de Pago / Banco *' : 'Payment Method / Bank *' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="payForm.paymentMethod" name="paymentMethod" required>
+                <option value="Transferencia Bancaria (Banesco)">Transferencia Bancaria (Banesco)</option>
+                <option value="Transferencia Bancaria (Banco de Venezuela)">Transferencia Bancaria (Banco de Venezuela)</option>
+                <option value="Transferencia Bancaria (Mercantil)">Transferencia Bancaria (Mercantil)</option>
+                <option value="Pago Móvil Interbancario">Pago Móvil Interbancario</option>
+                <option value="Zelle USD">Zelle USD</option>
+                <option value="Efectivo USD (Caja Chica)">Efectivo USD (Caja Chica)</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Referencia Bancaria / Comprobante *' : 'Bank Reference / Voucher No. *' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3 font-monospace" [(ngModel)]="payForm.paymentReference" name="paymentReference" required placeholder="Ej. 98452104">
+            </div>
+
+            <div class="col-12">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Notas / Observaciones de Liquidación' : 'Settlement Notes' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="payForm.notes" name="notes" placeholder="Ej. Liquidación quincenal de honorarios quirúrgicos y consultas...">
+            </div>
+
+            <div class="col-12">
+              <div class="alert alert-info border-0 rounded-3 p-2 mb-0 d-flex align-items-center gap-2">
+                <i class="bi bi-info-circle-fill text-info fs-5"></i>
+                <span class="x-small">
+                  {{ langService.lang() === 'es' ? 'Al confirmar, se generará el Asiento Contable automático en el Libro Diario (CXP Honorarios Médicos vs Banco/Retenciones) y los Recibos Digitales consultables mediante enlace.' : 'Automatic journal entry and verifiable digital receipts will be emitted upon confirmation.' }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="showPayModal = false">{{ langService.lang() === 'es' ? 'Cancelar' : 'Cancel' }}</button>
+            <button type="submit" class="btn btn-success btn-sm rounded-pill px-4 fw-bold shadow-sm">
+              <i class="bi bi-check-circle me-1"></i>{{ langService.lang() === 'es' ? 'Confirmar y Emitir Recibos' : 'Confirm & Emit Receipts' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: CONFIGURAR BAREMO DEL MÉDICO       -->
+<!-- ========================================== -->
+<div *ngIf="showConfigModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-dark">{{ langService.lang() === 'es' ? 'Configurar Baremo de Honorarios' : 'Configure Fee Rules' }}</h5>
+        <button type="button" class="btn-close shadow-none" (click)="showConfigModal = false"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="saveDoctorConfig()">
+          <div class="mb-3">
+            <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Médico Especialista' : 'Doctor Specialist' }}</label>
+            <input type="text" class="form-control form-control-sm rounded-3 bg-light" [value]="currentDoctorConfig.doctorName" readonly>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Esquema de Cobro Principal' : 'Primary Billing Scheme' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentDoctorConfig.feeType" name="feeType">
+                <option value="PERCENTAGE">{{ langService.lang() === 'es' ? 'Porcentaje (%) sobre el Servicio' : 'Percentage (%) on Service' }}</option>
+                <option value="FIXED_AMOUNT">{{ langService.lang() === 'es' ? 'Monto Fijo ($) por Atención' : 'Fixed Amount ($) per Attention' }}</option>
+              </select>
+            </div>
+
+            <div class="col-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? '% Médico' : '% Doctor' }}</label>
+              <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentDoctorConfig.doctorPercent" name="doctorPercent">
+            </div>
+            <div class="col-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Monto Fijo Base (USD $)' : 'Fixed Base Fee (USD $)' }}</label>
+              <input type="number" step="0.01" class="form-control form-control-sm rounded-3" [(ngModel)]="currentDoctorConfig.fixedFeeUSD" name="fixedFeeUSD">
+            </div>
+
+            <div class="col-12 border-top pt-3">
+              <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="acceptsInsCheck" [(ngModel)]="currentDoctorConfig.acceptsInsurance" name="acceptsInsurance">
+                <label class="form-check-label fw-bold text-dark x-small" for="acceptsInsCheck">
+                  {{ langService.lang() === 'es' ? 'Atiende con Baremos de Aseguradoras' : 'Accepts Insurance Baremos' }}
+                </label>
+              </div>
+
+              <div *ngIf="currentDoctorConfig.acceptsInsurance" class="row g-2">
+                <div class="col-6">
+                  <label class="form-label x-small text-muted">{{ langService.lang() === 'es' ? '% Tarifa Seguro' : '% Insurance Rate' }}</label>
+                  <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentDoctorConfig.insuranceDoctorPercent" name="insuranceDoctorPercent">
+                </div>
+                <div class="col-6">
+                  <label class="form-label x-small text-muted">{{ langService.lang() === 'es' ? 'Monto Fijo Seguro ($)' : 'Fixed Insurance ($)' }}</label>
+                  <input type="number" step="0.01" class="form-control form-control-sm rounded-3" [(ngModel)]="currentDoctorConfig.insuranceFixedFeeUSD" name="insuranceFixedFeeUSD">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="showConfigModal = false">{{ langService.lang() === 'es' ? 'Cancelar' : 'Cancel' }}</button>
+            <button type="submit" class="btn btn-primary btn-sm rounded-pill px-4 fw-bold shadow-sm">{{ langService.lang() === 'es' ? 'Guardar Baremo' : 'Save Baremo' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: REGISTRAR HONORARIO MANUAL         -->
+<!-- ========================================== -->
+<div *ngIf="showCreateModal" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4">
+      <div class="modal-header border-bottom px-4 py-3 bg-light">
+        <h5 class="modal-title fw-bold text-dark">{{ langService.lang() === 'es' ? 'Registrar Honorario Médico en CXP' : 'Register Doctor Fee in AP' }}</h5>
+        <button type="button" class="btn-close shadow-none" (click)="showCreateModal = false"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form (ngSubmit)="saveFee()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Médico Tratante *' : 'Attending Doctor *' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentFee.doctorId" name="doctorId" (change)="onDoctorSelected()" required>
+                <option *ngFor="let d of doctors()" [value]="d.id">
+                  Dr. {{ d.User?.firstName }} {{ d.User?.lastName }} ({{ d.Specialty?.name || 'General' }})
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Paciente Atendido' : 'Attended Patient' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentFee.patientId" name="patientId">
+                <option value="">{{ langService.lang() === 'es' ? 'Seleccionar Paciente...' : 'Select Patient...' }}</option>
+                <option *ngFor="let p of patients()" [value]="p.id">
+                  {{ p.User?.firstName }} {{ p.User?.lastName }} ({{ p.documentId || 'Cédula N/A' }})
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Catálogo de Servicio Clínico' : 'Clinical Service' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentFee.clinicalServiceId" name="clinicalServiceId" (change)="onServiceSelected()">
+                <option value="">{{ langService.lang() === 'es' ? 'Servicio Personalizado...' : 'Custom Service...' }}</option>
+                <option *ngFor="let s of clinicalServices()" [value]="s.id">
+                  {{ s.name }} (${{ s.basePriceUSD }})
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Aseguradora (si aplica)' : 'Insurance Company (optional)' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentFee.insuranceCompanyId" name="insuranceCompanyId">
+                <option value="">{{ langService.lang() === 'es' ? 'Particular / Sin Seguro' : 'Private / No Insurance' }}</option>
+                <option *ngFor="let ins of insuranceCompanies()" [value]="ins.id">
+                  {{ ins.name }} ({{ ins.rif }})
+                </option>
+              </select>
+            </div>
+
+            <div class="col-sm-8">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Concepto del Servicio *' : 'Service Concept *' }}</label>
+              <input type="text" class="form-control form-control-sm rounded-3" [(ngModel)]="currentFee.serviceConcept" name="serviceConcept" required placeholder="Ej. Consulta Cardiología / Cirugía Laparoscópica">
+            </div>
+
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Tipo de Atención' : 'Service Type' }}</label>
+              <select class="form-select form-select-sm rounded-3" [(ngModel)]="currentFee.serviceType" name="serviceType">
+                <option value="CONSULTATION">{{ langService.lang() === 'es' ? 'Consulta' : 'Consultation' }}</option>
+                <option value="SURGERY">{{ langService.lang() === 'es' ? 'Cirugía' : 'Surgery' }}</option>
+                <option value="PROCEDURE">{{ langService.lang() === 'es' ? 'Procedimiento' : 'Procedure' }}</option>
+                <option value="INTERCONSULTATION">{{ langService.lang() === 'es' ? 'Interconsulta' : 'Interconsultation' }}</option>
+              </select>
+            </div>
+
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? 'Monto Bruto Facturado ($)' : 'Gross Amount ($)' }}</label>
+              <input type="number" step="0.01" class="form-control form-control-sm rounded-3" [(ngModel)]="currentFee.totalAmountUSD" name="totalAmountUSD" required>
+            </div>
+
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? '% Médico Pactado' : '% Doctor Fee' }}</label>
+              <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentFee.doctorPercent" name="doctorPercent">
+            </div>
+
+            <div class="col-sm-4">
+              <label class="form-label x-small fw-bold text-muted">{{ langService.lang() === 'es' ? '% Comisión Clínica' : '% Clinic Fee' }}</label>
+              <input type="number" class="form-control form-control-sm rounded-3" [(ngModel)]="currentFee.clinicPercent" name="clinicPercent">
+            </div>
+
+            <div class="col-12 bg-light p-2 rounded-3">
+              <span class="text-muted x-small d-block">Retención ISLR SENIAT automática: <strong>3.00%</strong> | Tasa Oficial BCV: <strong>{{ currencyService.rate }} Bs/$</strong></span>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-light btn-sm rounded-pill px-3" (click)="showCreateModal = false">{{ langService.lang() === 'es' ? 'Cancelar' : 'Cancel' }}</button>
+            <button type="submit" class="btn btn-warning text-dark btn-sm rounded-pill px-4 fw-bold shadow-sm">{{ langService.lang() === 'es' ? 'Registrar en CXP' : 'Save in AP' }}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: RECIBO DE PAGO DIGITAL             -->
+<!-- ========================================== -->
+<div *ngIf="showReceiptModal && currentReceipt" class="modal fade show d-block" tabindex="-1" style="background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content border-0 shadow-lg rounded-4 overflow-hidden">
+      <div class="bg-primary text-white p-4">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <span class="badge bg-white text-primary rounded-pill px-2 py-1 x-small fw-bold mb-1">COMPROBANTE OFICIAL</span>
+            <h5 class="fw-bold mb-0">CLINICA - SAAS</h5>
+            <small class="opacity-75">Recibo N° {{ currentReceipt.receiptNumber }}</small>
+          </div>
+          <button type="button" class="btn-close btn-close-white shadow-none" (click)="showReceiptModal = false"></button>
+        </div>
+      </div>
+
+      <div class="modal-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+          <div>
+            <span class="text-muted x-small d-block">Fecha y Hora de Cancelación:</span>
+            <strong class="text-dark">{{ formatDateTime(currentReceipt.paidAt) }}</strong>
+          </div>
+          <div class="text-end">
+            <span class="text-muted x-small d-block">Forma de Pago & Referencia:</span>
+            <strong class="text-primary">{{ currentReceipt.paidPaymentMethod }} ({{ currentReceipt.paymentReference }})</strong>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <div class="bg-light p-3 rounded-3">
+              <strong class="d-block text-dark">{{ currentReceipt.doctor?.name }}</strong>
+              <small class="text-muted d-block">{{ currentReceipt.doctor?.specialty }}</small>
+              <small class="d-block text-muted">MPPS: {{ currentReceipt.doctor?.mppsNumber || 'N/A' }} | Col: {{ currentReceipt.doctor?.collegeNumber || 'N/A' }}</small>
+            </div>
+          </div>
+          <div class="col-6">
+            <div class="bg-light p-3 rounded-3">
+              <strong class="d-block text-dark">{{ currentReceipt.service?.concept }}</strong>
+              <small class="text-muted d-block">Paciente: {{ currentReceipt.patient?.name }}</small>
+              <small *ngIf="currentReceipt.insurance" class="d-block text-primary">Seguro: {{ currentReceipt.insurance?.name }}</small>
+            </div>
+          </div>
+        </div>
+
+        <!-- Breakdown Table -->
+        <table class="table table-bordered align-middle small mb-3">
+          <tbody>
+            <tr>
+              <td>Monto Bruto Facturado</td>
+              <td class="text-end fw-semibold">${{ currentReceipt.amounts?.totalAmountUSD }}</td>
+            </tr>
+            <tr>
+              <td>Honorario Médico ({{ currentReceipt.amounts?.doctorPercent }}%)</td>
+              <td class="text-end text-primary fw-semibold">${{ currentReceipt.amounts?.doctorAmountUSD }}</td>
+            </tr>
+            <tr>
+              <td>Comisión Clínica ({{ currentReceipt.amounts?.clinicPercent }}%)</td>
+              <td class="text-end text-muted">${{ currentReceipt.amounts?.clinicAmountUSD }}</td>
+            </tr>
+            <tr class="table-light text-danger">
+              <td>Retención ISLR SENIAT (-{{ currentReceipt.amounts?.retentionIslrPercent }}%)</td>
+              <td class="text-end fw-bold">-${{ currentReceipt.amounts?.retentionIslrUSD }}</td>
+            </tr>
+            <tr class="table-success fw-bold">
+              <td class="fs-6">TOTAL NETO CANCELADO</td>
+              <td class="text-end text-success fs-5">
+                ${{ currentReceipt.amounts?.netPayableUSD }}
+                <small class="text-muted d-block fs-6 font-monospace">({{ currencyService.formatAmount(currentReceipt.amounts?.netPayableUSD, 'VES') }})</small>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="d-flex justify-content-between align-items-center pt-3 border-top">
+          <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" (click)="copyReceiptLink(currentReceipt.receiptToken)">
+            <i class="bi bi-link-45deg me-1"></i>{{ langService.lang() === 'es' ? 'Copiar Enlace' : 'Copy Link' }}
+          </button>
+          <a [routerLink]="['/doctor-fee-receipt', currentReceipt.receiptToken]" target="_blank" class="btn btn-primary-premium btn-sm rounded-pill px-4 shadow-sm">
+            <i class="bi bi-printer me-1"></i>{{ langService.lang() === 'es' ? 'Imprimir / PDF' : 'Print / PDF' }}
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

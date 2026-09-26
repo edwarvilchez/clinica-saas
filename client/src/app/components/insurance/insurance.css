@@ -1,0 +1,46 @@
+.table th {
+  font-weight: 600;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.hover-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.hover-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+@media print {
+  body {
+    background: white !important;
+  }
+  .d-print-none, .modal-header .btn-close, .modal-header button, .modal-backdrop {
+    display: none !important;
+  }
+  .modal {
+    position: static !important;
+    display: block !important;
+    background: transparent !important;
+  }
+  .modal-dialog {
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+  .modal-content {
+    border: none !important;
+    box-shadow: none !important;
+  }
+  .print-area {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    padding: 0 !important;
+  }
+}

@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter, HostListener } from '@angular/core';
+import { Component, Input, Output, EventEmitter, HostListener } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../services/auth.service';
@@ -16,6 +16,7 @@ import Swal from 'sweetalert2';
   styleUrl: './navbar.css',
 })
 export class Navbar {
+  @Input() isSidebarCollapsed = false;
   @Output() toggleSidebar = new EventEmitter<void>();
 
   @HostListener('document:click', ['$event'])

@@ -20,6 +20,7 @@ export class Staff implements OnInit {
   searchTerm = signal('');
   departmentFilter = signal('all');
   showAdvancedFilters = signal(false);
+  viewMode = signal<'list' | 'kanban'>('list');
 
   filteredStaff = computed(() => {
     const term = this.searchTerm().toLowerCase();
@@ -27,16 +28,37 @@ export class Staff implements OnInit {
     
     return this.staffList().filter(s => {
       const matchesSearch = 
-        s.User.firstName.toLowerCase().includes(term) || 
-        s.User.lastName.toLowerCase().includes(term) ||
-        s.position.toLowerCase().includes(term) ||
-        s.departmentName.toLowerCase().includes(term);
+        (s.User?.firstName || '').toLowerCase().includes(term) || 
+        (s.User?.lastName || '').toLowerCase().includes(term) ||
+        (s.position || '').toLowerCase().includes(term) ||
+        (s.departmentName || '').toLowerCase().includes(term);
       
       const matchesDepartment = department === 'all' || s.departmentName === department;
       
       return matchesSearch && matchesDepartment;
     });
   });
+
+  adminStaff = computed(() => this.filteredStaff().filter(s => {
+    const dept = (s.departmentName || '').toLowerCase();
+    return dept.includes('admin') || dept.includes('gerenc') || dept.includes('recursos');
+  }));
+
+  receptionStaff = computed(() => this.filteredStaff().filter(s => {
+    const dept = (s.departmentName || '').toLowerCase();
+    const pos = (s.position || '').toLowerCase();
+    return dept.includes('recep') || pos.includes('recep') || dept.includes('atenci');
+  }));
+
+  accountingStaff = computed(() => this.filteredStaff().filter(s => {
+    const dept = (s.departmentName || '').toLowerCase();
+    const pos = (s.position || '').toLowerCase();
+    return dept.includes('conta') || dept.includes('finan') || pos.includes('conta') || pos.includes('caj');
+  }));
+
+  otherStaff = computed(() => this.filteredStaff().filter(s => {
+    return !this.adminStaff().includes(s) && !this.receptionStaff().includes(s) && !this.accountingStaff().includes(s);
+  }));
 
   constructor(
     private http: HttpClient,

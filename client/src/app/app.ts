@@ -20,6 +20,7 @@ import { APP_VERSION } from './api-config';
 export class App implements OnInit {
   protected readonly title = signal('MedicalCare 888');
   isSidebarOpen = false;
+  isSidebarCollapsed = false;
   currentYear = new Date().getFullYear();
   version = APP_VERSION;
   
@@ -45,7 +46,6 @@ export class App implements OnInit {
     });
   }
   
-  // ... methods
   isAuthPage(): boolean {
       const path = window.location.pathname;
       return path === '/' 
@@ -59,7 +59,11 @@ export class App implements OnInit {
   }
 
   toggleSidebar() {
-    this.isSidebarOpen = !this.isSidebarOpen;
+    if (window.innerWidth < 992) {
+      this.isSidebarOpen = !this.isSidebarOpen;
+    } else {
+      this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    }
   }
 
   closeSidebar() {

@@ -1,34 +1,66 @@
-const { Patient, User } = require('../models');
+const { Patient, User, Role, InsuranceCompany, sequelize } = require('../models');
+const { Op } = require('sequelize');
+
+/**
+ * Clean document helper: removes dots, commas, hyphens, slashes, spaces.
+ */
+function cleanDocNumber(val) {
+  if (!val) return '';
+  return String(val).replace(/[^0-9]/g, '');
+}
+
+function cleanDocString(prefix, num) {
+  const cleanP = (prefix || 'V').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const cleanN = cleanDocNumber(num);
+  return `${cleanP}${cleanN}`;
+}
 
 exports.getPatients = async (req, res) => {
   try {
     const { organizationId, role } = req.user;
+    const { search } = req.query;
 
-    // Paginación
     const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
+    const limit = parseInt(req.query.limit) || 50;
     const offset = (page - 1) * limit;
 
-    let whereClause = {};
-    const isSuperAdmin = role === 'SUPERADMIN' || role === 'SUPERADMIN';
+    let userWhere = {};
+    let patientWhere = {};
+
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
     
-    if (isSuperAdmin) {
-      whereClause = {};
-    } else if (organizationId) {
-      whereClause = { organizationId };
-    } else {
-      // If user has no organization, they shouldn't be listing patients
-      return res.json({ patients: [], totalPages: 0, currentPage: 1, total: 0 });
+    if (!isSuperAdmin && organizationId) {
+      patientWhere.organizationId = organizationId;
+    }
+
+    if (search) {
+      const s = search.trim();
+      patientWhere[Op.or] = [
+        { documentId: { [Op.iLike]: `%${s}%` } },
+        { medicalRecordNumber: { [Op.iLike]: `%${s}%` } },
+        { phone: { [Op.iLike]: `%${s}%` } },
+        { '$User.firstName$': { [Op.iLike]: `%${s}%` } },
+        { '$User.lastName$': { [Op.iLike]: `%${s}%` } },
+        { '$User.email$': { [Op.iLike]: `%${s}%` } }
+      ];
     }
 
     const { count, rows } = await Patient.findAndCountAll({
+      where: patientWhere,
       limit,
       offset,
-      include: [{
-        model: User,
-        where: whereClause,
-        attributes: ['id', 'firstName', 'lastName', 'email', 'organizationId']
-      }],
+      include: [
+        {
+          model: User,
+          where: userWhere,
+          attributes: ['id', 'firstName', 'lastName', 'email', 'organizationId', 'isActive']
+        },
+        {
+          model: InsuranceCompany,
+          attributes: ['id', 'name', 'rif', 'phone']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
       distinct: true
     });
 
@@ -39,8 +71,45 @@ exports.getPatients = async (req, res) => {
       total: count,
     });
   } catch (error) {
-    const logger = require('../utils/logger');
-    logger.error({ err: error }, 'Error fetching patients');
+    console.error('Error fetching patients:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getPatientById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const patient = await Patient.findByPk(id, {
+      include: [
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'isActive'] },
+        { model: InsuranceCompany }
+      ]
+    });
+    if (!patient) return res.status(404).json({ message: 'Paciente no encontrado' });
+    res.json(patient);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getPatientByMedicalRecord = async (req, res) => {
+  try {
+    const { recordNumber } = req.params;
+    const patient = await Patient.findOne({
+      where: {
+        [Op.or]: [
+          { medicalRecordNumber: recordNumber },
+          { documentId: recordNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase() }
+        ]
+      },
+      include: [
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone'] },
+        { model: InsuranceCompany }
+      ]
+    });
+    if (!patient) return res.status(404).json({ message: 'Paciente no encontrado con esa Historia Médica o Documento' });
+    res.json(patient);
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
@@ -48,10 +117,287 @@ exports.getPatients = async (req, res) => {
 exports.getPatientByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
-    const patient = await Patient.findOne({ where: { userId }, include: [User] });
-    if (!patient) return res.status(404).json({ message: 'Patient profile not found' });
+    const patient = await Patient.findOne({
+      where: { userId },
+      include: [
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone', 'isActive'] },
+        { model: InsuranceCompany }
+      ]
+    });
+    if (!patient) return res.status(404).json({ message: 'Paciente no encontrado para este usuario' });
     res.json(patient);
   } catch (error) {
+    console.error('Error fetching patient by userId:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.createPatient = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { organizationId } = req.user;
+    const {
+      firstName,
+      lastName,
+      email,
+      password,
+      documentType = 'CEDULA',
+      documentPrefix = 'V',
+      documentNumber,
+      birthDate,
+      gender = 'Other',
+      phone,
+      state,
+      city,
+      municipality,
+      address,
+      bloodType,
+      allergies,
+      hasInsurance = false,
+      insuranceCompanyId,
+      insuranceProvider,
+      policyNumber,
+      coverageType,
+      copayPercentage,
+      familyInfo = [],
+      beneficiaries = [],
+      preexistingDiseases = [],
+      clinicalHistorySummary
+    } = req.body;
+
+    if (!firstName || !lastName || !documentNumber) {
+      await t.rollback();
+      return res.status(400).json({ message: 'Nombres, apellidos y número de documento son obligatorios.' });
+    }
+
+    // Clean format: strictly numbers for documentNumber
+    const cleanNum = cleanDocNumber(documentNumber);
+    if (!cleanNum) {
+      await t.rollback();
+      return res.status(400).json({ message: 'El número de documento debe contener solo dígitos numéricos.' });
+    }
+
+    const cleanPref = (documentPrefix || 'V').toUpperCase();
+    const formattedDocumentId = `${cleanPref}${cleanNum}`;
+    const medicalRecordNumber = `HC-${formattedDocumentId}`;
+
+    // 1. DUPLICATE CHECK: Verify if patient with documentId or medicalRecordNumber already exists
+    const existingPatient = await Patient.findOne({
+      where: {
+        [Op.or]: [
+          { documentId: formattedDocumentId },
+          { medicalRecordNumber }
+        ]
+      }
+    });
+
+    if (existingPatient) {
+      await t.rollback();
+      return res.status(409).json({ 
+        message: `⚠️ Ya existe un paciente registrado con el documento ${formattedDocumentId} (Nro. de Historia Médica: ${existingPatient.medicalRecordNumber || medicalRecordNumber}). Se evitan registros duplicados.` 
+      });
+    }
+
+    // 2. DUPLICATE CHECK: Verify if User email already exists
+    const userEmail = email ? email.trim().toLowerCase() : `pac.${formattedDocumentId.toLowerCase()}@medicusve.com`;
+    const existingUser = await User.findOne({ where: { email: userEmail } });
+    if (existingUser) {
+      await t.rollback();
+      return res.status(409).json({ 
+        message: `⚠️ Ya existe un usuario en el sistema con el correo electrónico ${userEmail}.` 
+      });
+    }
+
+    // Find Patient Role
+    const patientRole = await Role.findOne({ where: { name: 'PATIENT' } });
+
+    // Create User
+    const user = await User.create({
+      username: email ? email.split('@')[0] : `pac.${formattedDocumentId.toLowerCase()}`,
+      email: userEmail,
+      password: password || 'MedicusvePatient123!',
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      roleId: patientRole ? patientRole.id : null,
+      organizationId,
+      phone: phone || null
+    }, { transaction: t });
+
+    // Create Patient
+    const patient = await Patient.create({
+      userId: user.id,
+      organizationId,
+      medicalRecordNumber,
+      documentType,
+      documentPrefix: cleanPref,
+      documentNumber: cleanNum,
+      documentId: formattedDocumentId,
+      birthDate: birthDate || null,
+      gender,
+      phone: phone || null,
+      state: state || null,
+      city: city || null,
+      municipality: municipality || null,
+      address: address || null,
+      bloodType: bloodType || null,
+      allergies: allergies || null,
+      hasInsurance: !!hasInsurance,
+      insuranceCompanyId: hasInsurance && insuranceCompanyId ? insuranceCompanyId : null,
+      insuranceProvider: hasInsurance ? (insuranceProvider || 'Seguro Privado') : 'Particular',
+      policyNumber: hasInsurance ? policyNumber : null,
+      coverageType: hasInsurance ? (coverageType || 'INSURANCE') : 'SELF_PAY',
+      copayPercentage: copayPercentage || 0.00,
+      coverageStatus: 'ACTIVE',
+      familyInfo: Array.isArray(familyInfo) ? familyInfo : [],
+      beneficiaries: Array.isArray(beneficiaries) ? beneficiaries : [],
+      preexistingDiseases: Array.isArray(preexistingDiseases) ? preexistingDiseases : [],
+      clinicalHistorySummary: clinicalHistorySummary || null
+    }, { transaction: t });
+
+    await t.commit();
+
+    const populated = await Patient.findByPk(patient.id, {
+      include: [
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone'] },
+        { model: InsuranceCompany }
+      ]
+    });
+
+    res.status(201).json({
+      message: '¡Paciente registrado exitosamente!',
+      patient: populated
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error in createPatient:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.updatePatient = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { id } = req.params;
+    const patient = await Patient.findByPk(id, { include: [User] });
+    if (!patient) {
+      await t.rollback();
+      return res.status(404).json({ message: 'Paciente no encontrado' });
+    }
+
+    const {
+      firstName,
+      lastName,
+      email,
+      documentType,
+      documentPrefix,
+      documentNumber,
+      birthDate,
+      gender,
+      phone,
+      state,
+      city,
+      municipality,
+      address,
+      bloodType,
+      allergies,
+      hasInsurance,
+      insuranceCompanyId,
+      insuranceProvider,
+      policyNumber,
+      coverageType,
+      copayPercentage,
+      familyInfo,
+      beneficiaries,
+      preexistingDiseases,
+      clinicalHistorySummary
+    } = req.body;
+
+    // If document is being changed, check for duplicates
+    let documentId = patient.documentId;
+    let medicalRecordNumber = patient.medicalRecordNumber;
+    let cleanNum = patient.documentNumber;
+    let cleanPref = patient.documentPrefix;
+
+    if (documentNumber) {
+      cleanNum = cleanDocNumber(documentNumber);
+      cleanPref = (documentPrefix || patient.documentPrefix || 'V').toUpperCase();
+      documentId = `${cleanPref}${cleanNum}`;
+      medicalRecordNumber = `HC-${documentId}`;
+
+      const duplicate = await Patient.findOne({
+        where: {
+          documentId,
+          id: { [Op.ne]: id }
+        }
+      });
+
+      if (duplicate) {
+        await t.rollback();
+        return res.status(409).json({ message: `Ya existe otro paciente con el documento ${documentId}` });
+      }
+    }
+
+    // Update User
+    if (patient.User) {
+      const userUpdates = {};
+      if (firstName) userUpdates.firstName = firstName.trim();
+      if (lastName) userUpdates.lastName = lastName.trim();
+      if (phone) userUpdates.phone = phone;
+      if (email && email !== patient.User.email) {
+        const dupUser = await User.findOne({ where: { email: email.trim().toLowerCase(), id: { [Op.ne]: patient.User.id } } });
+        if (dupUser) {
+          await t.rollback();
+          return res.status(409).json({ message: 'El correo electrónico ya está en uso por otro usuario.' });
+        }
+        userUpdates.email = email.trim().toLowerCase();
+      }
+      await patient.User.update(userUpdates, { transaction: t });
+    }
+
+    // Update Patient
+    await patient.update({
+      documentType: documentType || patient.documentType,
+      documentPrefix: cleanPref,
+      documentNumber: cleanNum,
+      documentId,
+      medicalRecordNumber,
+      birthDate: birthDate !== undefined ? birthDate : patient.birthDate,
+      gender: gender || patient.gender,
+      phone: phone !== undefined ? phone : patient.phone,
+      state: state !== undefined ? state : patient.state,
+      city: city !== undefined ? city : patient.city,
+      municipality: municipality !== undefined ? municipality : patient.municipality,
+      address: address !== undefined ? address : patient.address,
+      bloodType: bloodType !== undefined ? bloodType : patient.bloodType,
+      allergies: allergies !== undefined ? allergies : patient.allergies,
+      hasInsurance: hasInsurance !== undefined ? !!hasInsurance : patient.hasInsurance,
+      insuranceCompanyId: hasInsurance ? (insuranceCompanyId || patient.insuranceCompanyId) : null,
+      insuranceProvider: hasInsurance ? (insuranceProvider || patient.insuranceProvider) : 'Particular',
+      policyNumber: hasInsurance ? (policyNumber || patient.policyNumber) : null,
+      coverageType: hasInsurance ? (coverageType || patient.coverageType) : 'SELF_PAY',
+      copayPercentage: copayPercentage !== undefined ? copayPercentage : patient.copayPercentage,
+      familyInfo: familyInfo !== undefined ? familyInfo : patient.familyInfo,
+      beneficiaries: beneficiaries !== undefined ? beneficiaries : patient.beneficiaries,
+      preexistingDiseases: preexistingDiseases !== undefined ? preexistingDiseases : patient.preexistingDiseases,
+      clinicalHistorySummary: clinicalHistorySummary !== undefined ? clinicalHistorySummary : patient.clinicalHistorySummary
+    }, { transaction: t });
+
+    await t.commit();
+
+    const updated = await Patient.findByPk(id, {
+      include: [
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'phone'] },
+        { model: InsuranceCompany }
+      ]
+    });
+
+    res.json({
+      message: 'Paciente actualizado correctamente',
+      patient: updated
+    });
+  } catch (error) {
+    await t.rollback();
+    console.error('Error updating patient:', error);
     res.status(500).json({ error: error.message });
   }
 };
@@ -60,19 +406,16 @@ exports.deletePatient = async (req, res) => {
   try {
     const { id } = req.params;
     const patient = await Patient.findByPk(id);
-    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+    if (!patient) return res.status(404).json({ message: 'Paciente no encontrado' });
     
-    // The User will be deleted due to CASCADE
     await User.destroy({ where: { id: patient.userId } });
-    res.json({ message: 'Patient deleted successfully' });
+    await patient.destroy();
+    res.json({ message: 'Paciente eliminado correctamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-/**
- * Express Admission for Patients: Searches or creates patient by Document ID and assigns queue ticket.
- */
 exports.expressAdmission = async (req, res) => {
   try {
     const { documentId, firstName, lastName, email, phone, insuranceProvider, policyNumber, coverageType } = req.body;
@@ -82,28 +425,39 @@ exports.expressAdmission = async (req, res) => {
       return res.status(400).json({ message: 'Cédula/DNI, nombres y apellidos son obligatorios' });
     }
 
+    const cleanNum = cleanDocNumber(documentId);
+    const formattedDoc = documentId.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const medRec = `HC-${formattedDoc}`;
+
     let patient = await Patient.findOne({
-      where: { documentId },
+      where: {
+        [Op.or]: [
+          { documentId: formattedDoc },
+          { medicalRecordNumber: medRec }
+        ]
+      },
       include: [User]
     });
 
     if (!patient) {
-      const { Role } = require('../models');
       const patientRole = await Role.findOne({ where: { name: 'PATIENT' } });
 
       const user = await User.create({
-        username: email || `pac.${documentId.toLowerCase()}`,
-        email: email || `pac.${documentId.toLowerCase()}@medicusve.com`,
+        username: email || `pac.${formattedDoc.toLowerCase()}`,
+        email: email || `pac.${formattedDoc.toLowerCase()}@medicusve.com`,
         password: 'MedicusvePatient123!',
-        firstName,
-        lastName,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
         roleId: patientRole ? patientRole.id : null,
         organizationId
       });
 
       patient = await Patient.create({
         userId: user.id,
-        documentId,
+        documentId: formattedDoc,
+        documentNumber: cleanNum,
+        documentPrefix: formattedDoc.charAt(0) || 'V',
+        medicalRecordNumber: medRec,
         phone,
         insuranceProvider: insuranceProvider || 'Particular',
         policyNumber: policyNumber || null,
@@ -113,15 +467,6 @@ exports.expressAdmission = async (req, res) => {
       });
 
       patient.User = user;
-    } else {
-      // Update coverage info if provided
-      if (insuranceProvider || policyNumber) {
-        await patient.update({
-          insuranceProvider: insuranceProvider || patient.insuranceProvider,
-          policyNumber: policyNumber || patient.policyNumber,
-          coverageType: coverageType || (policyNumber ? 'INSURANCE' : 'SELF_PAY')
-        });
-      }
     }
 
     const ticketNumber = `TICKET-${Math.floor(100 + Math.random() * 900)}`;
@@ -133,6 +478,7 @@ exports.expressAdmission = async (req, res) => {
       patient: {
         id: patient.id,
         documentId: patient.documentId,
+        medicalRecordNumber: patient.medicalRecordNumber,
         name: `${patient.User?.firstName} ${patient.User?.lastName}`,
         insuranceProvider: patient.insuranceProvider,
         coverageType: patient.coverageType,
@@ -145,19 +491,16 @@ exports.expressAdmission = async (req, res) => {
   }
 };
 
-/**
- * Verify Insurance Coverage and calculate copay / deductible
- */
 exports.verifyInsuranceCoverage = async (req, res) => {
   try {
     const { id } = req.params;
     const { totalConsultationCost } = req.body;
 
-    const patient = await Patient.findByPk(id, { include: [User] });
+    const patient = await Patient.findByPk(id, { include: [User, InsuranceCompany] });
     if (!patient) return res.status(404).json({ message: 'Paciente no encontrado' });
 
     const total = parseFloat(totalConsultationCost || 100);
-    const isInsurance = patient.coverageType === 'INSURANCE' && patient.coverageStatus === 'ACTIVE';
+    const isInsurance = (patient.hasInsurance || patient.coverageType === 'INSURANCE') && patient.coverageStatus === 'ACTIVE';
 
     const copayPercentage = isInsurance ? (patient.copayPercentage > 0 ? patient.copayPercentage : 15.00) : 100.00;
     const patientAmountToPay = (total * (copayPercentage / 100)).toFixed(2);
@@ -166,7 +509,8 @@ exports.verifyInsuranceCoverage = async (req, res) => {
     res.json({
       patientId: patient.id,
       patientName: `${patient.User?.firstName} ${patient.User?.lastName}`,
-      insuranceProvider: patient.insuranceProvider,
+      medicalRecordNumber: patient.medicalRecordNumber,
+      insuranceProvider: patient.InsuranceCompany?.name || patient.insuranceProvider,
       policyNumber: patient.policyNumber,
       coverageStatus: patient.coverageStatus,
       isApproved: isInsurance,
