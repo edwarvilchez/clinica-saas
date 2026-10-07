@@ -1,5 +1,27 @@
+const fs = require('fs');
 const { Payment, Patient, User, Appointment, Doctor, Organization } = require('../models');
 const sendEmail = require('../utils/sendEmail');
+const fileStorageService = require('../services/fileStorage.service');
+
+const saveUploadedReceipt = async (file, organizationId) => {
+  if (!file) return null;
+  const buffer = file.buffer || (file.path ? await fs.promises.readFile(file.path) : null);
+  if (!buffer) return null;
+
+  const saved = await fileStorageService.saveFile({
+    buffer,
+    originalname: file.originalname,
+    mimetype: file.mimetype,
+    organizationId: organizationId || 'system',
+    folder: 'receipts'
+  });
+
+  if (file.path) {
+    await fs.promises.unlink(file.path).catch(() => {});
+  }
+
+  return saved.storageKey;
+};
 
 exports.createPayment = async (req, res) => {
   try {
@@ -14,7 +36,7 @@ exports.createPayment = async (req, res) => {
     }
 
     if (req.file) {
-        req.body.receiptUrl = `/uploads/${req.file.filename}`;
+        req.body.receiptUrl = await saveUploadedReceipt(req.file, req.body.organizationId || req.user.organizationId);
     }
 
     // Automatically set organizationId if not provided (for multi-tenancy visibility)
@@ -53,7 +75,7 @@ exports.createSubscriptionPayment = async (req, res) => {
 
     let receiptUrl = null;
     if (req.file) {
-        receiptUrl = `/uploads/${req.file.filename}`;
+        receiptUrl = await saveUploadedReceipt(req.file, organizationId);
     }
 
     const payment = await Payment.create({
@@ -224,7 +246,7 @@ exports.updatePayment = async (req, res) => {
     }
 
     if (req.file) {
-        req.body.receiptUrl = `/uploads/${req.file.filename}`;
+        req.body.receiptUrl = await saveUploadedReceipt(req.file, payment.organizationId);
     }
 
     await payment.update(req.body);

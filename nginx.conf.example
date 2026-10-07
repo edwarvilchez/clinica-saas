@@ -92,10 +92,9 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # 🔒 Bloqueo estricto de acceso público directo a uploads: las descargas requieren API autenticada (/api/files)
     location /uploads/ {
-        alias /var/www/clinica-saas/server/uploads/;
-        expires 7d;
-        add_header Cache-Control "public";
+        return 403;
     }
 }
 
@@ -175,9 +174,8 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
+    # 🔒 Bloqueo estricto de acceso público directo a uploads: las descargas requieren API autenticada (/api/files)
     location /uploads/ {
-        alias /var/www/clinica-saas-qa/server/uploads/;
-        expires 3d;
-        add_header Cache-Control "public";
+        return 403;
     }
 }
