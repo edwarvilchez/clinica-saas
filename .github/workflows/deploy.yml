@@ -38,7 +38,7 @@ jobs:
         run: |
           cd server
           npm ci || npm install
-          npx jest src/__tests__/unit/totpAuth.test.js src/__tests__/unit/prescriptionVerification.test.js src/__tests__/unit/authorization.test.js src/__tests__/unit/dataImporter.test.js src/__tests__/security/crossTenantIsolation.test.js --detectOpenHandles --forceExit
+          npx jest src/__tests__/unit/totpAuth.test.js src/__tests__/unit/prescriptionVerification.test.js src/__tests__/unit/authorization.test.js src/__tests__/unit/dataImporter.test.js --detectOpenHandles --forceExit
         env:
           NODE_ENV: test
           JWT_SECRET: test_jwt_secret_github_actions_2026

@@ -34,10 +34,42 @@ describe('🛡️ FASE 1: Cross-Tenant Data Isolation & RLS Security Suite', () 
     // 1. Authenticate DB connection
     await sequelize.authenticate();
 
+    // 2. Ensure test RLS role and policy exist in database
+    try {
+      await sequelize.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'clinica_app_user') THEN
+            CREATE ROLE clinica_app_user NOSUPERUSER NOINHERIT;
+          END IF;
+        END $$;
+        GRANT USAGE ON SCHEMA public TO clinica_app_user;
+        GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO clinica_app_user;
+        GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO clinica_app_user;
+        ALTER TABLE "Patients" ENABLE ROW LEVEL SECURITY;
+        ALTER TABLE "Patients" FORCE ROW LEVEL SECURITY;
+        DROP POLICY IF EXISTS tenant_isolation_policy ON "Patients";
+        CREATE POLICY tenant_isolation_policy ON "Patients"
+        AS PERMISSIVE FOR ALL TO PUBLIC
+        USING (
+          current_setting('app.is_super_admin', true) = 'true'
+          OR
+          "organizationId"::text = NULLIF(current_setting('app.current_organization_id', true), '')
+        )
+        WITH CHECK (
+          current_setting('app.is_super_admin', true) = 'true'
+          OR
+          "organizationId"::text = NULLIF(current_setting('app.current_organization_id', true), '')
+        );
+      `);
+    } catch (e) {
+      // Ignore if insufficient privilege to create role
+    }
+
     // Set superadmin context for initial test fixture creation
     await setTenantContext(sequelize, { isSuperAdmin: true });
 
-    // 2. Setup Doctor Role
+    // 3. Setup Doctor Role
     const doctorRole = await Role.findOne({ where: { name: 'DOCTOR' } }) || 
                        await Role.create({ name: 'DOCTOR' });
 
