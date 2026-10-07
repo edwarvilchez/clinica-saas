@@ -1,4 +1,4 @@
-# 🚀 Guía de Despliegue - MedicalCare 888 (v4.3.12)
+# 🚀 Guía de Despliegue - MedicusVE  (v4.3.12)
 
 ## ✅ Estado del Ecosistema CGK 888
 
