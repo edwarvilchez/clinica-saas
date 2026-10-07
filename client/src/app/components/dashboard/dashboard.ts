@@ -365,7 +365,7 @@ export class Dashboard implements OnInit {
       const user = this.authService.currentUser();
       
       const branding = {
-        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'MedicalCare 888'),
+        name: user?.businessName || (user?.accountType === 'PROFESSIONAL' ? `${user.firstName} ${user.lastName}` : 'Clínica SaaS'),
         professional: user ? `${user.firstName} ${user.lastName}` : undefined,
         tagline: user?.businessName ? this.langService.translate('landing.description').substring(0, 30) + '...' : this.langService.translate('dashboard.report.tagline')
       };

@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 
 describe('Prescription Digital Signature & Verification', () => {
-  const secret = 'secret888_medicalcare';
+  const secret = 'clinica_saas_prescription_secret_2026';
   const medicalRecordId = 'mr-uuid-12345';
   const doctorUserId = 'usr-doctor-999';
   const drugName = 'Amoxicilina 500mg';

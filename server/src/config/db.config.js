@@ -20,8 +20,14 @@ const configs = {
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
     logging: false,
-    dialectOptions: {
+    dialectOptions: process.env.DB_SSL === 'true' ? {
       ssl: { require: true, rejectUnauthorized: false }
+    } : {},
+    pool: {
+      max: parseInt(process.env.DB_POOL_MAX || '20', 10),
+      min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+      acquire: 30000,
+      idle: 10000
     }
   },
   test: {
@@ -36,21 +42,22 @@ const configs = {
 
 const config = configs[env] || configs.development;
 
-// DATABASE_URL takes priority (Supabase, Neon, Railway, Heroku, etc.)
+// DATABASE_URL takes priority if provided
 const databaseUrl = process.env.DATABASE_URL;
 
 let sequelize;
 if (databaseUrl) {
+  const useSsl = process.env.DB_SSL === 'true' || databaseUrl.includes('sslmode=require');
   sequelize = new Sequelize(databaseUrl, {
     dialect: 'postgres',
     logging: false,
-    dialectOptions: {
+    dialectOptions: useSsl ? {
       ssl: { require: true, rejectUnauthorized: false },
       keepAlive: true
-    },
+    } : { keepAlive: true },
     pool: { 
-      max: 8, 
-      min: 0, 
+      max: parseInt(process.env.DB_POOL_MAX || '20', 10), 
+      min: parseInt(process.env.DB_POOL_MIN || '2', 10), 
       acquire: 30000, 
       idle: 10000,
       evict: 1000
@@ -73,15 +80,10 @@ if (databaseUrl) {
       port: config.port,
       dialect: config.dialect,
       logging: config.logging,
-      pool: config.pool,
+      pool: config.pool || { max: 10, min: 0, acquire: 30000, idle: 10000 },
       dialectOptions: config.dialectOptions
     }
   );
-}
-
-// Force inclusion for Vercel
-if (process.env.VERCEL) {
-  sequelize.connectionManager.lib = require('pg');
 }
 
 module.exports = sequelize;

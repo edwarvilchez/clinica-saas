@@ -34,6 +34,7 @@ function validateRecord(type, record, rowIndex = 1) {
     if (!record.diagnosis && !record.symptoms) errors.push({ row: rowIndex, field: 'diagnosis', message: 'Se requieren síntomas o diagnóstico' });
   } else if (type === 'pharmacy_inventory' || type === 'inventory') {
     if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre del producto o insumo' });
+    if (record.stock !== undefined && (record.stock === '' || isNaN(parseInt(record.stock, 10)))) errors.push({ row: rowIndex, field: 'stock', message: 'El stock debe ser un número entero válido' });
     if (record.priceUSD && isNaN(parseFloat(record.priceUSD))) errors.push({ row: rowIndex, field: 'priceUSD', message: 'El precio debe ser un número válido' });
   } else if (type === 'insurance_companies') {
     if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre o razón social de la empresa aseguradora' });

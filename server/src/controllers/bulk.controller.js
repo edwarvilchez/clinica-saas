@@ -84,7 +84,7 @@ async function importPatient(data, transaction, organizationId) {
     const user = await User.create({
         username: data.username,
         email: data.email,
-        password: data.password || 'MedicalCare888!', 
+        password: data.password || 'ClinicaSaaS2026!', 
         firstName: data.firstName,
         lastName: data.lastName,
         gender: data.gender,
@@ -123,7 +123,7 @@ async function importDoctor(data, transaction, organizationId) {
     const user = await User.create({
         username: data.username,
         email: data.email,
-        password: data.password || 'MedicalCare888!',
+        password: data.password || 'ClinicaSaaS2026!',
         firstName: data.firstName,
         lastName: data.lastName,
         gender: data.gender,

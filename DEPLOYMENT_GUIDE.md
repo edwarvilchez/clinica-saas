@@ -1,84 +1,73 @@
-# 🚀 Guía de Despliegue - MedicusVE  (v4.3.12)
+# 🚀 Guía Rápida de Despliegue - Clínica SaaS (v4.3.13)
 
-## ✅ Estado del Ecosistema CGK 888
+## ✅ Estado del Ecosistema
 
-**Versión:** v4.3.12 - "Production Ready"
-**Plataforma:** MedicalCare 888 Professional Clinics
-**Stack:** Angular 21 + Node.js/Express + PostgreSQL (Supabase) + Resend SDK + Docker
-
----
-
-## 📦 Arquitectura de Producción
-
-✅ **Base de Datos (Supabase):**
-- Conexión externa vía Connection String.
-- Certificados SSL obligatorios (ya pre-configurados en `db.config.js`).
-
-✅ **Emails (Resend):**
-- Gestión mediante el SDK oficial.
-- Plantillas dinámicas de CGK 888 con logo centralizado.
-- Soporte para adjuntos y tracking.
-
-✅ **Performance:**
-- **Compresión Gzip:** Activada en el backend para entregas rápidas.
-- **Lazy Loading:** Implementado en rutas pesadas y librerías externas (jsPDF, ExcelJS).
+**Versión:** v4.3.13 - Production Ready  
+**Plataforma:** Clínica SaaS - Sistema Integral de Gestión Médica y Hospitalaria  
+**Infraestructura:** VPS Linux (Ubuntu / Debian) + Nginx + PM2 + PostgreSQL + Socket.IO WebSockets + Resend SDK / SMTP
 
 ---
 
-## 🎯 PASOS PARA DEPLOYMENT (Easypanel / Docker)
+## 📦 Arquitectura de Producción en VPS
 
-### 1️⃣ Variables de Entorno (.env)
+✅ **Base de Datos (PostgreSQL):**
+- Instancia nativa optimizada en VPS o clúster PostgreSQL dedicado.
+- Pool de conexiones Sequelize configurado (2-20 conexiones concurrentes).
+- Migraciones controladas por `sequelize-cli`.
 
-Configura estas variables en tu panel de control de servidor:
+✅ **Backend y Señalización WebSockets (Node.js/Express + PM2):**
+- Ejecutado en modo cluster mediante PM2 (`ecosystem.config.js`).
+- Señalización Socket.IO en tiempo real completamente soportada para videoconsultas médicas.
+- Almacenamiento local persistente para archivos subidos (`uploads/`).
 
+✅ **Frontend (Angular 21 SPA):**
+- Compilación optimizada con Vite/esbuild en `client/dist/browser`.
+- Servido directamente como archivos estáticos con compresión Gzip y headers de caché por Nginx.
+
+✅ **Seguridad y Cumplimiento:**
+- Rate limiting global y protección contra fuerza bruta.
+- Sanitización de inputs y headers HTTP seguros (Helmet, CORS restringido).
+- Inmutabilidad de auditoría de registros médicos (ISO 27001 / HIPAA).
+
+---
+
+## 🎯 Resumen de Comandos para Despliegue en VPS
+
+### 1. Variables de Entorno (`server/.env`)
 ```env
-# Database (Supabase) - Asegúrate de incluir el puerto 5432 ó 6543
-DB_URL=postgres://user:password@aws-0-sa-east-1.pooler.supabase.com:6543/postgres?sslmode=require
-
-# JWT
-JWT_SECRET=node_generate_random_secret
-
-# Email (Resend SDK)
-RESEND_API_KEY=re_tu_api_key_aqui
-FROM_NAME="MedicalCare 888"
-FROM_EMAIL="no-reply@medicalcare-888.com"
-BRAND_LOGO_URL=https://cgk888.com/images/logo.png
-
-# URLs
-CLIENT_URL=https://medicalcare-888.com
-API_URL=https://api.medicalcare-888.com
-
-# Env
 NODE_ENV=production
 PORT=5000
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_NAME=clinica_saas_bd
+DB_USER=clinica_saas_admin
+DB_PASSWORD=tu_password_seguro
+JWT_SECRET=tu_jwt_secret_seguro
+CLIENT_URL=https://tu-dominio.com
+API_URL=https://tu-dominio.com/api
+ALLOWED_ORIGINS=https://tu-dominio.com
+RESEND_API_KEY=re_tu_api_key
+FROM_NAME=Clínica SaaS
+FROM_EMAIL=no-reply@tu-dominio.com
 ```
 
-### 2️⃣ Procedimiento de Lanzamiento
+### 2. Puesta en Marcha
+```bash
+# 1. Compilar frontend
+cd client && npm run build
 
-1. **Build Frontend:** Angular 21 usa `esbuild`, el build es extremadamente rápido.
-2. **Docker Orchestration:** Usa el archivo `docker-compose.prod.yml` para levantar la infraestructura sin base de datos local.
-3. **Migraciones:** Una vez el servidor esté conectado a Supabase, ejecuta:
-   ```bash
-   npm run migrate
-   ```
+# 2. Migrar base de datos
+cd ../server && npx sequelize-cli db:migrate
 
----
+# 3. Iniciar backend con PM2
+cd .. && pm2 start ecosystem.config.js && pm2 save
 
-## 🔐 Seguridad y Robustez
-
-- **Graceful Shutdown:** El servidor maneja `SIGTERM` y cierra conexiones de DB limpiamente.
-- **CORS Hardened:** Solo se permiten dominios de CGK 888 y MedicalCare 888.
-- **XSS Protection:** Sanitización automática de inputs médicos.
-- **Security Headers:** Helmet configurado con estándares 2026.
-
----
-
-## 📊 Mantenimiento
-
-- **Logs:** Pino Logger configurado para salida estructurada (JSON) en producción.
-- **Health Check:** `GET /health` verifica el estado del proceso y la conexión a la DB.
+# 4. Habilitar Nginx y SSL
+sudo cp nginx.conf.example /etc/nginx/sites-available/clinica-saas
+sudo ln -s /etc/nginx/sites-available/clinica-saas /etc/nginx/sites-enabled/
+sudo systemctl reload nginx
+sudo certbot --nginx -d tu-dominio.com
+```
 
 ---
-
-**Última actualización:** 9 de Abril, 2026
-**Equipos:** CGK 888 Digital Ecosystem + Antigravity (Advanced Agentic Coding Team)
+*© 2026 Clínica SaaS - Plataforma Médica Integral*

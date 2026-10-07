@@ -10,20 +10,13 @@ const ensureDir = (dir) => {
       console.log(`Directory created: ${dir}`);
     }
   } catch (err) {
-    console.warn(`⚠️ [Vercel] Could not create directory ${dir}:`, err.message);
-    // In Vercel, this is expected for everything except /tmp
+    console.warn(`⚠️ Could not create directory ${dir}:`, err.message);
   }
 };
 
 // Factory to create multer instance with options
 const createUpload = (options = {}) => {
-  let dest = options.dest || 'uploads/';
-  
-  // En Vercel, redirigir todo a /tmp para evitar errores de solo lectura
-  if (process.env.VERCEL) {
-    dest = path.join('/tmp', dest);
-  }
-  
+  const dest = options.dest || 'uploads/';
   ensureDir(dest);
 
   const storage = multer.diskStorage({

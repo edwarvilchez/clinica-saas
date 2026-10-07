@@ -77,10 +77,10 @@ export class BulkData {
     
     if (type === 'patients') {
       csvContent = 'firstName,lastName,email,username,password,documentId,birthDate,gender,phone,address,bloodType,allergies\n' +
-                   'Juan,Perez,juan@ejemplo.com,jperez,MedicalCare888!,12345678,1990-05-15,Male,04121234567,Caracas,O+,Ninguna';
+                   'Juan,Perez,juan@ejemplo.com,jperez,ClinicaSaaS2026!,12345678,1990-05-15,Male,04121234567,Caracas,O+,Ninguna';
     } else if (type === 'doctors') {
       csvContent = 'firstName,lastName,email,username,password,licenseNumber,phone,address,specialty,gender\n' +
-                   'Maria,Gomez,maria@ejemplo.com,mgomez,MedicalCare888!,MPPS-9999,04247654321,Valencia,Cardiologia,Female';
+                   'Maria,Gomez,maria@ejemplo.com,mgomez,ClinicaSaaS2026!,MPPS-9999,04247654321,Valencia,Cardiologia,Female';
     } else if (type === 'lab_catalog') {
       csvContent = 'name,price,category,description\n' +
                    'Hematologia Completa,15.00,Laboratorio,Analisis de sangre completo con todos los valores.';
