@@ -1,4 +1,4 @@
-# MedicalCare 888 - Sistema de Gestión de Clínica SAAS
+# MedicusVE Sistema de Gestión de Clínica SAAS
 
 Sistema integral para la gestión de clínicas y videoconsultas médicas.
 
