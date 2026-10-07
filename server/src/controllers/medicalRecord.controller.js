@@ -30,11 +30,13 @@ exports.createRecord = async (req, res) => {
         return res.status(400).json({ error: 'Doctor identifier is missing. User must be a Doctor.' });
     }
 
+    req.body.organizationId = organizationId;
     const record = await MedicalRecord.create(req.body);
 
     if (req.body.prescriptions && Array.isArray(req.body.prescriptions)) {
       const prescriptionsData = req.body.prescriptions.map(p => ({
         ...p,
+        organizationId,
         medicalRecordId: record.id
       }));
       await Prescription.bulkCreate(prescriptionsData, { individualHooks: true });

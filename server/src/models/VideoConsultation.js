@@ -47,10 +47,19 @@ const VideoConsultation = sequelize.define('VideoConsultation', {
   notes: {
     type: DataTypes.TEXT,
     allowNull: true
+  },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   tableName: 'VideoConsultations',
-  timestamps: true
+  timestamps: true,
+  indexes: [
+    { fields: ['organizationId'] },
+    { fields: ['appointmentId'] },
+    { fields: ['roomId'] }
+  ]
 });
 
 module.exports = VideoConsultation;

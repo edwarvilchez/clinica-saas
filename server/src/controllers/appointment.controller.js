@@ -15,13 +15,16 @@ exports.createAppointment = async (req, res) => {
       });
     }
     
+    const organizationId = req.user?.organizationId || req.body.organizationId;
+
     const appointment = await Appointment.create({
       patientId,
       doctorId,
       date,
       reason,
       notes,
-      status: 'Confirmed'
+      status: 'Confirmed',
+      organizationId
     });
 
     // Fetch details for WhatsApp
@@ -131,18 +134,26 @@ exports.updateStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
+    const organizationId = req.user?.organizationId;
+    const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
     
-    // Get old data for audit
-    const oldAppointment = await Appointment.findByPk(id);
-    if (!oldAppointment) return res.status(404).json({ error: 'Cita no encontrada' });
+    // Get old data for audit with organization check
+    const whereClause = { id };
+    if (!isSuperAdmin && organizationId) {
+      whereClause.organizationId = organizationId;
+    }
 
-    await Appointment.update({ status }, { where: { id } });
+    const oldAppointment = await Appointment.findOne({ where: whereClause });
+    if (!oldAppointment) return res.status(404).json({ error: 'Cita no encontrada o acceso no autorizado' });
+
+    await Appointment.update({ status }, { where: whereClause });
     
-    const updatedAppointment = await Appointment.findByPk(id);
+    const updatedAppointment = await Appointment.findOne({ where: whereClause });
 
     // Handle specific status updates (like cancellation) if done via this generic endpoint
     if (status === 'Cancelled') {
-        const appointment = await Appointment.findByPk(id, {
+        const appointment = await Appointment.findOne({
+            where: whereClause,
             include: [{ model: Patient, include: [User] }]
         });
         
@@ -165,11 +176,19 @@ exports.updateStatus = async (req, res) => {
 exports.cancelAppointment = async (req, res) => {
     try {
         const { id } = req.params;
-        const appointment = await Appointment.findByPk(id, {
+        const organizationId = req.user?.organizationId;
+        const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+        
+        const whereClause = { id };
+        if (!isSuperAdmin && organizationId) {
+          whereClause.organizationId = organizationId;
+        }
+
+        const appointment = await Appointment.findOne({
+            where: whereClause,
             include: [{ model: Patient, include: [User] }]
         });
-
-        if (!appointment) return res.status(404).json({ error: 'Cita no encontrada' });
+        if (!appointment) return res.status(404).json({ error: 'Cita no encontrada o acceso no autorizado' });
 
         const oldValues = appointment.toJSON();
         appointment.status = 'Cancelled';

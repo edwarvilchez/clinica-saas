@@ -20,6 +20,7 @@ exports.createLabResult = async (req, res) => {
       return res.status(403).json({ message: 'No tienes acceso a este paciente' });
     }
 
+    req.body.organizationId = organizationId;
     const result = await LabResult.create(req.body);
     res.status(201).json(result);
   } catch (error) {

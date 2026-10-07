@@ -40,10 +40,17 @@ const Appointment = sequelize.define('Appointment', {
   deletedBy: {
     type: DataTypes.UUID,
     allowNull: true
+  },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   paranoid: true,
   indexes: [
+    {
+      fields: ['organizationId']
+    },
     {
       fields: ['patientId']
     },

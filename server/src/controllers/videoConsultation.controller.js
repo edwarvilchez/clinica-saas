@@ -82,7 +82,8 @@ exports.createVideoConsultation = async (req, res) => {
       doctorId: doctorUserId,
       patientId: patientUserId,
       roomId,
-      status: 'scheduled'
+      status: 'scheduled',
+      organizationId
     });
 
     console.log(`✅ Videoconsulta creada: ${roomId} (ID: ${videoConsultation.id})`);

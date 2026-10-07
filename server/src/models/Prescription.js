@@ -51,9 +51,17 @@ const Prescription = sequelize.define('Prescription', {
   status: {
     type: DataTypes.ENUM('active', 'dispensed', 'cancelled'),
     defaultValue: 'active'
+  },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  indexes: [
+    { fields: ['organizationId'] },
+    { fields: ['medicalRecordId'] }
+  ]
 });
 
 module.exports = Prescription;

@@ -109,6 +109,21 @@ Appointment.belongsTo(Doctor, { foreignKey: 'doctorId' });
 Patient.hasMany(Appointment, { foreignKey: 'patientId' });
 Appointment.belongsTo(Patient, { foreignKey: 'patientId' });
 
+Organization.hasMany(Appointment, { foreignKey: 'organizationId' });
+Appointment.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Organization.hasMany(MedicalRecord, { foreignKey: 'organizationId' });
+MedicalRecord.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Organization.hasMany(Prescription, { foreignKey: 'organizationId' });
+Prescription.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Organization.hasMany(LabResult, { foreignKey: 'organizationId' });
+LabResult.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Organization.hasMany(VideoConsultation, { foreignKey: 'organizationId' });
+VideoConsultation.belongsTo(Organization, { foreignKey: 'organizationId' });
+
 // VideoConsultation Associations
 User.hasMany(VideoConsultation, { as: 'doctorConsultations', foreignKey: 'doctorId' });
 User.hasMany(VideoConsultation, { as: 'patientConsultations', foreignKey: 'patientId' });
@@ -326,30 +341,90 @@ const context = require('../utils/context');
 const AuditTrail = require('../utils/auditTrail');
 
 /**
- * Automatically inject organizationId filter into all queries
- * Excludes SUPERADMIN or explicit unscoped queries
+ * 🛡️ COMPREHENSIVE MULTI-TENANT ISOLATION HOOKS (SaaS Hardening)
+ * Enforces organization boundary on Find, Create, Update, and Destroy operations.
+ * Excludes platform Superadmins and unscoped background migrations.
  */
-sequelize.addHook('beforeFind', (options) => {
+const shouldApplyTenantFilter = () => {
+  const orgId = context.getOrgId();
+  const role = context.getRole();
+  if (!orgId || role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN') {
+    return null;
+  }
+  return orgId;
+};
+
+// 1. SELECT Operations Isolation
+sequelize.addHook('beforeFind', function(options) {
   try {
-    const orgId = context.getOrgId();
-    const role = context.getRole();
+    const orgId = shouldApplyTenantFilter();
+    if (!orgId) return;
 
-    // Skip if no orgId in context or user is a Super Admin or Platform Admin
-    if (!orgId || role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN') {
-      return;
-    }
-
-    // Ensure 'where' exists
     options.where = options.where || {};
-
-    // If the model has an 'organizationId' attribute, inject it
-    if (options.model?.rawAttributes?.organizationId) {
+    const model = this || options?.model;
+    if (model?.rawAttributes?.organizationId) {
       if (typeof options.where.organizationId === 'undefined') {
-         options.where.organizationId = orgId;
+        options.where.organizationId = orgId;
       }
     }
   } catch (err) {
-    console.error('Sequelize beforeFind Hook Error:', err);
+    console.error('Sequelize beforeFind Tenant Isolation Hook Error:', err);
+  }
+});
+
+// 2. INSERT Operations Isolation
+sequelize.addHook('beforeCreate', function(instance, options) {
+  try {
+    const orgId = shouldApplyTenantFilter();
+    if (!orgId) return;
+
+    const model = this || instance?.constructor;
+    if (model?.rawAttributes?.organizationId) {
+      if (!instance.organizationId) {
+        instance.organizationId = orgId;
+      } else if (instance.organizationId !== orgId) {
+        // Prevent forged cross-tenant creation
+        throw new Error(`[Security] Cross-tenant insertion blocked. Tenant mismatch (${instance.organizationId} vs ${orgId})`);
+      }
+    }
+  } catch (err) {
+    throw err;
+  }
+});
+
+// 3. UPDATE Operations Isolation (Bulk & Single)
+sequelize.addHook('beforeBulkUpdate', function(options) {
+  try {
+    const orgId = shouldApplyTenantFilter();
+    if (!orgId) return;
+
+    options.where = options.where || {};
+    const model = this || options?.model;
+    if (model?.rawAttributes?.organizationId) {
+      options.where.organizationId = orgId;
+      // Prevent changing organizationId to another tenant
+      if (options.attributes && options.attributes.organizationId && options.attributes.organizationId !== orgId) {
+        throw new Error('[Security] Modifying organizationId is strictly forbidden');
+      }
+    }
+  } catch (err) {
+    throw err;
+  }
+});
+
+// 4. DELETE / DESTROY Operations Isolation (Bulk & Single)
+sequelize.addHook('beforeBulkDestroy', function(options) {
+  try {
+    const orgId = shouldApplyTenantFilter();
+    if (!orgId) return;
+
+    options.where = options.where || {};
+    const model = this || options?.model;
+    if (model?.rawAttributes?.organizationId) {
+      options.where.organizationId = orgId;
+    }
+  } catch (err) {
+    throw err;
   }
 });
 
