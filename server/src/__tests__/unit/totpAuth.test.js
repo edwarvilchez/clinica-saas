@@ -32,7 +32,7 @@ describe('RFC 6238 TOTP 2FA Authentication Service', () => {
     const email = 'doctor@clinicasaas.com';
     const { otpauthUrl, qrImageUrl } = totp.getQRCodeUrl(email, secret);
 
-    expect(otpauthUrl).toContain(`otpauth://totp/MedicalCare888:${encodeURIComponent(email)}`);
+    expect(otpauthUrl).toContain(`otpauth://totp/ClinicaSaaS:${encodeURIComponent(email)}`);
     expect(otpauthUrl).toContain(`secret=${secret}`);
     expect(qrImageUrl).toContain('https://api.qrserver.com/v1/create-qr-code/');
   });

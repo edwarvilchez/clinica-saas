@@ -41,7 +41,7 @@ exports.createPrescription = async (req, res) => {
     }
 
     const crypto = require('crypto');
-    const secret = process.env.JWT_SECRET || 'secret888_medicalcare';
+    const secret = process.env.JWT_SECRET || 'clinica_saas_prescription_secret_2026';
     const timestamp = Date.now();
     const verificationHash = crypto.createHash('sha256').update(`${medicalRecordId}-${req.body.drugName}-${timestamp}-${Math.random()}`).digest('hex');
     const digitalSignature = crypto.createHmac('sha256', secret).update(`${verificationHash}:${medicalRecordId}:${req.user.id}:${timestamp}`).digest('hex');

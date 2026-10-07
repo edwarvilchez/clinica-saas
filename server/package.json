@@ -13,8 +13,8 @@
     "test:coverage": "jest --coverage",
     "test:old": "node test/runTests.js",
     "migrate": "npx sequelize-cli db:migrate",
-    "test-email": "node src/utils/testEmail.js",
-    "vercel-build": "node src/index.js"
+    "migrate:tenant-qa-to-prod": "node src/scripts/migrateTenantQaToProd.js",
+    "test-email": "node src/utils/testEmail.js"
   },
   "keywords": [],
   "author": "",

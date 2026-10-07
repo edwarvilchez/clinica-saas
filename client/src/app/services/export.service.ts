@@ -111,7 +111,7 @@ export class ExportService {
     const brand = { ...this.defaultBranding, ...branding };
 
     // --- PREMIUM HEADER ---
-    doc.setFillColor(16, 185, 129); // MedicalCare Emerald Green
+    doc.setFillColor(16, 185, 129); // Primary Emerald Green
     doc.rect(0, 0, pageWidth, 40, 'F');
 
     // Logo Text / Clinic Name
@@ -125,7 +125,7 @@ export class ExportService {
     const tagline = brand.tagline || 'PLATAFORMA MÉDICA INTEGRAL';
     doc.text(tagline.toUpperCase(), 15, 24);
 
-    // --- MedicalCare 888 BRANDING (Small corner) ---
+    // --- BRANDING (Small corner) ---
     doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.text('POWERED BY Clinica - SaaS', 15, 35);
@@ -198,7 +198,7 @@ export class ExportService {
         doc.text(str, pageWidth / 2, pageHeight - 12, { align: 'center' });
         
         doc.text(brand.address || '', 15, pageHeight - 12);
-        doc.text(`Powered by MedicalCare 888`, pageWidth - 15, pageHeight - 12, { align: 'right' });
+        doc.text(`Powered by Clínica SaaS`, pageWidth - 15, pageHeight - 12, { align: 'right' });
       }
     });
 

@@ -87,9 +87,9 @@ const seedAllProfiles = async () => {
     });
 
     const [mainOrg] = await Organization.findOrCreate({
-      where: { name: 'Hospital Central MedicalCare 888' },
+      where: { name: 'Hospital Central Metropolitano' },
       defaults: {
-        name: 'Hospital Central MedicalCare 888',
+        name: 'Hospital Central Metropolitano',
         type: 'HOSPITAL',
         subscriptionStatus: 'ACTIVE',
         ownerId: superAdmin.id

@@ -1,27 +1,44 @@
-name: Deploy to Vercel
+name: CI/CD Build & Test - Clínica SaaS
 
 on:
   push:
     branches:
       - master
+      - develop
+  pull_request:
+    branches:
+      - master
+      - develop
 
 jobs:
-  deploy:
+  build-and-test:
+    name: Build & Test Monorepo
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 20 LTS
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci || npm install
 
-      - name: Deploy to Vercel (Remote Cloud Build)
-        run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+      - name: Build Frontend Client (Angular 21)
+        run: |
+          cd client
+          npm ci || npm install
+          npm run build
+
+      - name: Run Backend Unit Tests (Express)
+        run: |
+          cd server
+          npm ci || npm install
+          npx jest src/__tests__/unit/totpAuth.test.js src/__tests__/unit/prescriptionVerification.test.js src/__tests__/unit/authorization.test.js src/__tests__/unit/dataImporter.test.js --detectOpenHandles --forceExit
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          NODE_ENV: test
+          JWT_SECRET: test_jwt_secret_github_actions_2026

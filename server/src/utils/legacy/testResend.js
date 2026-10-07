@@ -14,12 +14,12 @@ async function testResend() {
 
   try {
     const result = await sendEmail({
-      email: 'edwar@cgk888.com', // Change this to your personal email for the test
-      subject: '🚀 Prueba de Resend - MedicalCare 888',
+      email: 'admin@clinica-saas.com', // Change this to your personal email for the test
+      subject: '🚀 Prueba de Resend - Clínica SaaS',
       html: `
         <div style="font-family: sans-serif; padding: 20px; color: #333;">
           <h1>¡Prueba de Resend Exitosa!</h1>
-          <p>Este es un correo de prueba enviado desde el sistema de <strong>MedicalCare 888</strong> usando la infraestructura de <strong>Resend SDK</strong>.</p>
+          <p>Este es un correo de prueba enviado desde el sistema de <strong>Clínica SaaS</strong> usando la infraestructura de <strong>Resend SDK</strong>.</p>
           <hr>
           <p style="font-size: 12px; color: #666;">Enviado el ${new Date().toLocaleString()}</p>
         </div>
