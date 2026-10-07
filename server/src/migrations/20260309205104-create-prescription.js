@@ -3,7 +3,10 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
-    await queryInterface.createTable('Prescriptions', {
+    try {
+      const desc = await queryInterface.describeTable('Prescriptions').catch(() => null);
+      if (desc) return;
+      await queryInterface.createTable('Prescriptions', {
       id: {
         allowNull: false,
         primaryKey: true,
@@ -55,6 +58,9 @@ module.exports = {
         defaultValue: Sequelize.literal('NOW()')
       }
     });
+    } catch (e) {
+      console.warn('Migration note for Prescriptions table:', e.message);
+    }
   },
 
   async down(queryInterface, Sequelize) {

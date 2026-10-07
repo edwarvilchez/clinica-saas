@@ -13,7 +13,7 @@ const Payment = require('./Payment');
 const sequelize = require('../config/db.config');
 const VideoConsultation = require('./VideoConsultation');
 const Organization = require('./Organization');
-const AuditLog = require('./auditLog');
+const AuditLog = require('./AuditLog');
 const Drug = require('./Drug');
 const Prescription = require('./Prescription');
 const LabTest = require('./LabTest');
@@ -335,6 +335,13 @@ InventoryMovement.belongsTo(Doctor, { foreignKey: 'doctorId' });
 
 DoctorFee.hasOne(InventoryMovement, { foreignKey: 'doctorFeeId' });
 InventoryMovement.belongsTo(DoctorFee, { foreignKey: 'doctorFeeId' });
+
+// Organization & User - AuditLog Associations
+Organization.hasMany(AuditLog, { foreignKey: 'organizationId' });
+AuditLog.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+User.hasMany(AuditLog, { foreignKey: 'actorUserId' });
+AuditLog.belongsTo(User, { foreignKey: 'actorUserId' });
 
 // Global Isolation Hook (SaaS Multi-tenant)
 const context = require('../utils/context');

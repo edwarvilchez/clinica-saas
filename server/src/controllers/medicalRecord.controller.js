@@ -1,4 +1,5 @@
 const { MedicalRecord, Patient, Doctor, User, Prescription, Drug } = require('../models');
+const auditService = require('../services/audit.service');
 
 const validatePatientAccess = async (patientId, organizationId, role) => {
   const isSuperAdmin = role === 'SUPERADMIN' || role === 'SUPERADMIN';
@@ -42,6 +43,21 @@ exports.createRecord = async (req, res) => {
       await Prescription.bulkCreate(prescriptionsData, { individualHooks: true });
     }
 
+    // Tamper-evident Audit Log: Clinical record creation
+    auditService.logClinicalAccess({
+      action: 'CREATE_MEDICAL_RECORD',
+      actorUserId: req.user.id,
+      patientId,
+      medicalRecordId: record.id,
+      organizationId,
+      req,
+      newValues: {
+        diagnosis: record.diagnosis,
+        treatment: record.treatment,
+        notes: record.notes
+      }
+    }).catch(err => console.error('Audit clinical create error:', err));
+
     res.status(201).json(record);
   } catch (error) {
     console.error('Error creating record:', error);
@@ -68,6 +84,16 @@ exports.getPatientHistory = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
     
+    // Tamper-evident Audit Log: Clinical history access (HIPAA access tracking)
+    auditService.logClinicalAccess({
+      action: 'VIEW_MEDICAL_RECORD',
+      actorUserId: req.user.id,
+      patientId,
+      organizationId,
+      req,
+      details: { recordCount: records.length }
+    }).catch(err => console.error('Audit clinical view error:', err));
+
     res.json(records);
   } catch (error) {
     console.error('Error fetching history:', error);
@@ -99,6 +125,16 @@ exports.getAISummary = async (req, res) => {
       ],
       order: [['createdAt', 'DESC']]
     });
+
+    // Tamper-evident Audit Log: AI summary query access
+    auditService.logClinicalAccess({
+      action: 'VIEW_AI_SUMMARY',
+      actorUserId: req.user.id,
+      patientId,
+      organizationId,
+      req,
+      details: { patientName }
+    }).catch(err => console.error('Audit AI summary view error:', err));
 
     const summary = await aiCopilot.generatePatientSummary(patientName, records);
     res.json(summary);

@@ -1,6 +1,7 @@
 const { User, Role, Patient, Organization, sequelize } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
+const auditService = require('../services/audit.service');
 
 /**
  * Genera una contraseña temporal que cumple con el patrón de seguridad:
@@ -211,6 +212,15 @@ exports.register = async (req, res) => {
       console.error('Error al enviar correo de bienvenida:', emailError.message);
     }
 
+    // Tamper-evident Audit Log: User Registration
+    auditService.logAuthEvent({
+      action: 'CREATE_USER',
+      user: { ...user.toJSON(), role: role.name },
+      req,
+      success: true,
+      metadata: { accountType: finalAccountType, registeredRole: role.name }
+    }).catch(err => console.error('Audit registration error:', err));
+
     res.status(201).json({
       message: 'Cuenta creada con éxito. Se ha enviado un correo con tu contraseña temporal.',
       token,
@@ -283,6 +293,13 @@ exports.login = async (req, res) => {
 
     if (!user) {
       console.log(`[LOGIN] Usuario no encontrado: ${email}`);
+      auditService.logAuthEvent({
+        action: 'FAILED_LOGIN',
+        user: { email },
+        req,
+        success: false,
+        reason: 'User not found'
+      }).catch(err => console.error('Audit login error:', err));
       return res.status(401).json({ message: 'Credenciales inválidas (Usuario no encontrado)' });
     }
 
@@ -296,6 +313,13 @@ exports.login = async (req, res) => {
     
     if (!isMatch) {
       console.warn(`[LOGIN FAIL] Password mismatch para: ${email}`);
+      auditService.logAuthEvent({
+        action: 'FAILED_LOGIN',
+        user,
+        req,
+        success: false,
+        reason: 'Incorrect password'
+      }).catch(err => console.error('Audit login error:', err));
       return res.status(401).json({ message: 'Credenciales inválidas (Contraseña incorrecta)' });
     }
 
@@ -305,11 +329,25 @@ exports.login = async (req, res) => {
     
     if (user.isActive === false) {
       log(`[LOGIN FAIL] Account inactive for: ${email}`);
+      auditService.logAuthEvent({
+        action: 'FAILED_LOGIN',
+        user,
+        req,
+        success: false,
+        reason: 'Account inactive'
+      }).catch(err => console.error('Audit login error:', err));
       return res.status(401).json({ message: 'Tu cuenta ha sido desactivada. Por favor, contacta al administrador.' });
     }
 
     if (user.twoFactorEnabled) {
       log(`[LOGIN 2FA REQUIRED] 2FA enabled for: ${email}`);
+      auditService.logAuthEvent({
+        action: '2FA_CHALLENGE_ISSUED',
+        user,
+        req,
+        success: true
+      }).catch(err => console.error('Audit login error:', err));
+
       const tempToken = jwt.sign(
         { id: user.id, role: user.Role.name, is2FAPending: true },
         process.env.JWT_SECRET,
@@ -330,6 +368,14 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '8h' }
     );
+
+    // Tamper-evident Audit Log: Successful Login
+    auditService.logAuthEvent({
+      action: 'LOGIN',
+      user,
+      req,
+      success: true
+    }).catch(err => console.error('Audit login error:', err));
 
     log(`Token Generated. Sending Response.`);
     res.json({
@@ -552,6 +598,13 @@ exports.verify2FALogin = async (req, res) => {
 
     const isValid = totp.verifyTOTP(user.twoFactorSecret, code);
     if (!isValid) {
+      auditService.logAuthEvent({
+        action: '2FA_VERIFICATION_FAILED',
+        user,
+        req,
+        success: false,
+        reason: 'Invalid 2FA TOTP code'
+      }).catch(err => console.error('Audit 2FA error:', err));
       return res.status(401).json({ message: 'Código de autenticación inválido o expirado' });
     }
 
@@ -560,6 +613,13 @@ exports.verify2FALogin = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '8h' }
     );
+
+    auditService.logAuthEvent({
+      action: '2FA_LOGIN_SUCCESS',
+      user,
+      req,
+      success: true
+    }).catch(err => console.error('Audit 2FA error:', err));
 
     res.json({
       token,
@@ -620,6 +680,13 @@ exports.enable2FA = async (req, res) => {
     user.twoFactorSecret = secret;
     await user.save();
 
+    auditService.logAuthEvent({
+      action: '2FA_ENABLED',
+      user,
+      req,
+      success: true
+    }).catch(err => console.error('Audit 2FA error:', err));
+
     res.json({ message: '✅ Autenticación de doble factor activada con éxito.', twoFactorEnabled: true });
   } catch (error) {
     res.status(500).json({ message: 'Error al activar 2FA', error: error.message });
@@ -641,12 +708,26 @@ exports.disable2FA = async (req, res) => {
     }
 
     if (!isAuthorized) {
+      auditService.logAuthEvent({
+        action: '2FA_DISABLE_ATTEMPT_FAILED',
+        user,
+        req,
+        success: false,
+        reason: 'Invalid credentials'
+      }).catch(err => console.error('Audit 2FA error:', err));
       return res.status(401).json({ message: 'Código TOTP o contraseña incorrecta' });
     }
 
     user.twoFactorEnabled = false;
     user.twoFactorSecret = null;
     await user.save();
+
+    auditService.logAuthEvent({
+      action: '2FA_DISABLED',
+      user,
+      req,
+      success: true
+    }).catch(err => console.error('Audit 2FA error:', err));
 
     res.json({ message: 'Autenticación de doble factor desactivada.', twoFactorEnabled: false });
   } catch (error) {

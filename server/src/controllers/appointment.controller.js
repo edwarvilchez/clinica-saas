@@ -2,6 +2,7 @@ const { Appointment, Patient, Doctor, User } = require('../models');
 const { Op } = require('sequelize');
 const whatsapp = require('../utils/whatsapp.service');
 const { validateAppointment } = require('../utils/appointmentValidator');
+const auditService = require('../services/audit.service');
 
 exports.createAppointment = async (req, res) => {
   try {
@@ -49,6 +50,23 @@ exports.createAppointment = async (req, res) => {
       appointmentId: appointment.id,
       rawDate: appointmentDate
     }).catch(err => console.error('WhatsApp Error:', err));
+
+    // Tamper-evident Audit Log: Appointment creation
+    auditService.logEvent({
+      action: 'CREATE_APPOINTMENT',
+      entity: 'Appointment',
+      entityId: appointment.id,
+      organizationId,
+      actorUserId: req.user?.id,
+      newValues: {
+        patientId,
+        doctorId,
+        date,
+        reason,
+        status: 'Confirmed'
+      },
+      ip: req.ip
+    }).catch(err => console.error('Audit create appointment error:', err));
 
     res.status(201).json(appointmentDetails);
   } catch (error) {
@@ -167,6 +185,18 @@ exports.updateStatus = async (req, res) => {
         }
     }
 
+    // Tamper-evident Audit Log: Status update
+    auditService.logEvent({
+      action: 'UPDATE_APPOINTMENT_STATUS',
+      entity: 'Appointment',
+      entityId: id,
+      organizationId,
+      actorUserId: req.user?.id,
+      oldValues: { status: oldAppointment.status },
+      newValues: { status },
+      ip: req.ip
+    }).catch(err => console.error('Audit update appointment error:', err));
+
     res.json({ message: 'Status updated' });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -202,6 +232,18 @@ exports.cancelAppointment = async (req, res) => {
             date: dateObj.toLocaleDateString(),
             time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
+
+        // Tamper-evident Audit Log: Appointment cancellation
+        auditService.logEvent({
+          action: 'CANCEL_APPOINTMENT',
+          entity: 'Appointment',
+          entityId: id,
+          organizationId,
+          actorUserId: req.user?.id,
+          oldValues: { status: oldValues.status },
+          newValues: { status: 'Cancelled' },
+          ip: req.ip
+        }).catch(err => console.error('Audit cancel appointment error:', err));
 
         res.json({ message: 'Cita cancelada con éxito' });
     } catch (error) {
