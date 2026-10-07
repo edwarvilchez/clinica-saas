@@ -3,7 +3,7 @@
 ## ✅ Estado del Ecosistema CGK 888
 
 **Versión:** v4.3.12 - "Production Ready"
-**Plataforma:** MedicalCare 888 Professional Clinics
+**Plataforma:** MedicusVE  Professional Clinics
 **Stack:** Angular 21 + Node.js/Express + PostgreSQL (Supabase) + Resend SDK + Docker
 
 ---
@@ -81,4 +81,4 @@ PORT=5000
 ---
 
 **Última actualización:** 9 de Abril, 2026
-**Equipos:** CGK 888 Digital Ecosystem + Antigravity (Advanced Agentic Coding Team)
+**Equipos:** Piridawly Software
