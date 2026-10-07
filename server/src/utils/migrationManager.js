@@ -34,12 +34,6 @@ const syncDatabase = () => {
 };
 
 const initializeDatabase = async () => {
-  // CRITICAL: Bypass all migration/sync logic on Vercel to avoid Function Invocation Failed (500)
-  if (process.env.VERCEL) {
-    logger.info('Vercel environment detected: Skipping automatic migrations/sync to prevent crashes.');
-    return true;
-  }
-
   if (isProduction) {
     try {
       await runMigrations();

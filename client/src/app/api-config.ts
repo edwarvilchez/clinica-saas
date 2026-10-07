@@ -18,19 +18,7 @@ const getBaseUrl = (): string => {
     return 'http://localhost:5000';
   }
   
-  // 2. Entorno Vercel / Monorepo (Rutas relativas dentro del mismo dominio)
-  // Detecta subdominios de despliegue de Vercel o el nombre base del proyecto
-  if (host.includes('vercel.app') || host.includes('clinica-888')) {
-    return ''; // Uso de rutas relativas (/api/...)
-  }
-
-  // 3. Dominio Oficial MedicalCare 888
-  // Si se prefiere usar rutas relativas en producción (como en Vercel)
-  if (host.includes('medicalcare-888.com')) {
-    return ''; // Uso de rutas relativas (/api/...) ya que el backend está en el mismo host
-  }
-
-  // Por defecto para cualquier otro entorno de producción, usamos rutas relativas
+  // 2. Entorno de Producción VPS (Rutas relativas bajo Nginx / Reverse Proxy)
   return '';
 };
 

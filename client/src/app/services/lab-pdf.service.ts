@@ -126,7 +126,7 @@ export class LabPdfService {
       doc.setFont('helvetica', 'bold');
       doc.text(section.title.toUpperCase(), 23, y + 5);
       
-      doc.setDrawColor(16, 185, 129); // MedicalCare Emerald Green line
+      doc.setDrawColor(16, 185, 129); // Accent Emerald Green line
       doc.setLineWidth(1);
       doc.line(23, y + 7, 60, y + 7); 
 

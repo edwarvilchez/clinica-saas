@@ -4,13 +4,10 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const logger = require('../utils/logger');
 
-// In-memory cache — helps concurrent requests within the same instance.
-// On Vercel serverless, instances are ephemeral; this won't survive cold starts.
+// In-memory cache for exchange rates
 let cachedRate = { rate: 0, timestamp: 0 };
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 const FALLBACK_RATE = 36.50;
-
-// Hard cap so we never exceed Vercel's 10s function timeout
 const TOTAL_BUDGET_MS = 8000;
 
 const withTimeout = (promise, ms) =>

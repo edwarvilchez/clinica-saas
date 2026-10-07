@@ -33,7 +33,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false
 });
 
-const INIT_SECRET = process.env.INIT_SECRET || 'v888-dev';
+const INIT_SECRET = process.env.INIT_SECRET || 'clinica-saas-dev-secret';
 app.use(globalLimiter);
 app.use(cors(corsOptions));
 app.use(compression());
@@ -41,9 +41,8 @@ app.use(compression());
 // Boot diagnostics (Canary routes)
 app.get('/api/health', (req, res) => {
   res.json({ 
-    status: 'ok v4.3.1', 
+    status: 'ok v4.3.13', 
     env: process.env.NODE_ENV,
-    vercel: !!process.env.VERCEL,
     time: new Date().toISOString() 
   });
 });
@@ -52,11 +51,11 @@ app.get('/api/health', (req, res) => {
  * 🛠️ EMERGENCY DATABASE INITIALIZER (Standalone)
  * SOLO disponible en desarrollo - DESHABILITADO en producción
  */
-const isDevMode = process.env.NODE_ENV !== 'production' && !process.env.VERCEL;
+const isDevMode = process.env.NODE_ENV !== 'production';
 const allowReset = process.env.ALLOW_DB_RESET === 'true' && isDevMode;
 
 if (allowReset) {
-  app.get('/api/system/init-888', async (req, res) => {
+  app.get('/api/system/init-demo', async (req, res) => {
     const { key } = req.query;
     if (key !== INIT_SECRET) return res.status(403).json({ error: 'Unauthorized Access Key' });
 
@@ -104,12 +103,10 @@ if (allowReset) {
 const fs = require('fs');
 const path = require('path');
 
-if (!process.env.VERCEL) {
-  const uploadDir = path.resolve(__dirname, '../uploads');
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-    console.log('📁 Local upload directory ensured.');
-  }
+const uploadDir = path.resolve(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+  console.log('📁 Local upload directory ensured.');
 }
 
 // --- LAZY LOADING CONTEXT (Performance & Compatibility) ---
@@ -211,10 +208,9 @@ app.use((err, req, res, next) => {
 });
 
 /**
- * 🛰️ LOCAL BOOT (Socket.io Signaling)
- * Only runs if NOT on Vercel
+ * 🛰️ SERVER BOOT (Socket.io Signaling & Express)
  */
-if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test') {
   const http = require('http');
   const server = http.createServer(app);
   
@@ -228,8 +224,8 @@ if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
 
   const PORT = process.env.PORT || 5000;
   server.listen(PORT, () => {
-    console.log(`\n🚀 Server running on port ${PORT} (Unified Mode)`);
-    console.log(`🏥 Clinica - SaaS Backend - v4.3.1\n`);
+    console.log(`\n🚀 Server running on port ${PORT} (VPS / Standalone Mode)`);
+    console.log(`🏥 Clinica - SaaS Backend - v4.3.13\n`);
   });
 }
 

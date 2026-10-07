@@ -37,7 +37,7 @@ const seedCleanData = async () => {
     const [org] = await Organization.findOrCreate({
       where: { ownerId: admin.id },
       defaults: {
-        name: 'MedicalCare 888 HQ',
+        name: 'Sede Central Clínica SaaS',
         type: 'HOSPITAL',
         ownerId: admin.id,
         subscriptionStatus: 'ACTIVE'

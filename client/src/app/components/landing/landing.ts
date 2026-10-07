@@ -47,7 +47,7 @@ export class LandingComponent {
     {
       name: 'Dr. Alejandro Ruiz',
       role: 'Director Médico',
-      comment: 'MedicalCare 888 transformó la operativa de nuestra clínica. La videoconsulta es fluida y fácil de usar.'
+      comment: 'Clínica SaaS transformó la operativa de nuestra clínica. La videoconsulta es fluida y fácil de usar.'
     },
     {
       name: 'Lic. María Elena',

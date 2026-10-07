@@ -50,7 +50,7 @@ const seedProductionData = async () => {
     if (created) {
       // Create their main organization
       await Organization.create({
-        name: 'MedicalCare 888 Global',
+        name: 'Organización Principal Clínica SaaS',
         type: 'HOSPITAL',
         ownerId: admin.id,
         subscriptionStatus: 'ACTIVE'

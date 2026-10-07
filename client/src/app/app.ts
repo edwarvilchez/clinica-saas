@@ -18,7 +18,7 @@ import { APP_VERSION } from './api-config';
   styleUrl: './app.css'
 })
 export class App implements OnInit {
-  protected readonly title = signal('MedicalCare 888');
+  protected readonly title = signal('Clínica SaaS');
   isSidebarOpen = false;
   isSidebarCollapsed = false;
   currentYear = new Date().getFullYear();

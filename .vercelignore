@@ -1,6 +1,0 @@
-node_modules
-.git
-.github
-.vercel
-*.log
-# Hemos quitado 'client' y 'server' de aquí para evitar el error de "Directorio no existe"
