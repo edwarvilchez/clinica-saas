@@ -1,6 +1,6 @@
-# MedicalCare 888 - Guía de Despliegue v4.3.12 (Vercel + Supabase)
+# MedicusVE - Guía de Despliegue v4.3.12 (Vercel + Supabase)
 
-Esta guía documenta la infraestructura profesionalizada para el monorepo de MedicalCare 888.
+Esta guía documenta la infraestructura profesionalizada para el monorepo de MedicusVE .
 
 ## 🏗️ Arquitectura de Despliegue
 
