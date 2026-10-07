@@ -7,22 +7,63 @@ const configs = {
   development: {
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
+    database: process.env.DB_NAME || 'clinica_saas_dev',
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
-    logging: false
+    logging: false,
+    dialectOptions: process.env.DB_SCHEMA ? { searchPath: process.env.DB_SCHEMA } : {}
+  },
+  staging: {
+    username: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || 'clinica_saas_qa',
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: process.env.DB_PORT || 5432,
+    dialect: 'postgres',
+    logging: false,
+    dialectOptions: {
+      ...(process.env.DB_SSL === 'true' ? { ssl: { require: true, rejectUnauthorized: false } } : {}),
+      ...(process.env.DB_SCHEMA ? { searchPath: process.env.DB_SCHEMA } : {})
+    },
+    pool: {
+      max: parseInt(process.env.DB_POOL_MAX || '15', 10),
+      min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+      acquire: 30000,
+      idle: 10000
+    }
+  },
+  qa: {
+    username: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME || 'clinica_saas_qa',
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: process.env.DB_PORT || 5432,
+    dialect: 'postgres',
+    logging: false,
+    dialectOptions: {
+      ...(process.env.DB_SSL === 'true' ? { ssl: { require: true, rejectUnauthorized: false } } : {}),
+      ...(process.env.DB_SCHEMA ? { searchPath: process.env.DB_SCHEMA } : {})
+    },
+    pool: {
+      max: parseInt(process.env.DB_POOL_MAX || '15', 10),
+      min: parseInt(process.env.DB_POOL_MIN || '2', 10),
+      acquire: 30000,
+      idle: 10000
+    }
   },
   production: {
     username: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    host: process.env.DB_HOST,
+    database: process.env.DB_NAME || 'clinica_saas_prod',
+    host: process.env.DB_HOST || '127.0.0.1',
     port: process.env.DB_PORT || 5432,
     dialect: 'postgres',
     logging: false,
-    dialectOptions: process.env.DB_SSL === 'true' ? {
-      ssl: { require: true, rejectUnauthorized: false }
-    } : {},
+    dialectOptions: {
+      ...(process.env.DB_SSL === 'true' ? { ssl: { require: true, rejectUnauthorized: false } } : {}),
+      ...(process.env.DB_SCHEMA ? { searchPath: process.env.DB_SCHEMA } : {})
+    },
     pool: {
       max: parseInt(process.env.DB_POOL_MAX || '20', 10),
       min: parseInt(process.env.DB_POOL_MIN || '2', 10),

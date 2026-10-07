@@ -7,10 +7,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ## [4.5.0] — 2026-10-07
 
-### 🚀 VPS Production Deployment & Legacy Cleanup
-- **VPS Architecture Transition**: Refactorización completa del monorepo para despliegue en servidor VPS dedicado (Ubuntu + Nginx + PM2 + PostgreSQL).
-- **WebSockets Enabled**: Activación de señalización en tiempo real para videoconsultas con Socket.IO en producción.
-- **Legacy Cleanup**: Eliminación definitiva de artefactos y dependencias de serverless/Vercel y Supabase.
+- **Multi-Environment Architecture**: Configuración de bases de datos y esquemas independientes para `develop` (`clinica_saas_dev`), `qa`/`staging` (`clinica_saas_qa`) y `production` (`clinica_saas_prod`).
+- **QA & Prod Coexistence**: Orquestación simultánea en VPS mediante PM2 (puertos 5000 y 5001) y Nginx (`tu-dominio.com` y `qa.tu-dominio.com`).
+- **Tenant Migration Engine (QA -> Prod)**: Herramienta CLI (`migrateTenantQaToProd.js`) para migrar atómicamente clínicas desde el ambiente de pruebas a producción al momento de contratar el servicio.
 - **PM2 & Nginx Orchestration**: Incorporación de `ecosystem.config.js` y `nginx.conf.example` para clusterización, compresión gzip y SSL.
 - **Branding Unificado**: Estandarización de la marca a **Clínica SaaS** en toda la interfaz de usuario, exportadores PDF, correos electrónicos y documentación.
 

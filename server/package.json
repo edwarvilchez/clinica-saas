@@ -13,6 +13,7 @@
     "test:coverage": "jest --coverage",
     "test:old": "node test/runTests.js",
     "migrate": "npx sequelize-cli db:migrate",
+    "migrate:tenant-qa-to-prod": "node src/scripts/migrateTenantQaToProd.js",
     "test-email": "node src/utils/testEmail.js"
   },
   "keywords": [],
