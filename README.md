@@ -11,6 +11,7 @@ Para consultar las especificaciones técnicas completas y manuales operativos:
 - [**Guía Completa de Despliegue en VPS (Ubuntu + Nginx + PM2 + SSL)**](DEPLOYMENT.md)
 - [**Guía Rápida de Comandos para Puesta en Marcha**](DEPLOYMENT_GUIDE.md)
 - [**Arquitectura Técnica del Sistema y Stack Tecnológico**](ARCHITECTURE.md)
+- [**Guía de Entornos Separados (Dev / QA / Prod) y Migración de Datos (QA -> Prod)**](docs/GUIA_ENTORNOS_Y_MIGRACION_QA_PROD.md)
 - [**Arquitectura Multi-Tenant y Aislamiento Estricto de Datos**](docs/ARQUITECTURA_MULTITENANT.md)
 - [**Esquema DDL de Base de Datos PostgreSQL**](server/schema_postgres.sql)
 - [**Historial de Versiones y Cambios (Changelog)**](CHANGELOG.md)
