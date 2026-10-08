@@ -46,6 +46,7 @@ const ClinicalPackage = require('./ClinicalPackage');
 const RefreshToken = require('./RefreshToken');
 const Lead = require('./Lead');
 const WaitlistEntry = require('./WaitlistEntry');
+const ClinicalAiDraft = require('./ClinicalAiDraft');
 
 // User - RefreshToken
 User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -476,6 +477,22 @@ WaitlistEntry.belongsTo(Specialty, { foreignKey: 'specialtyId' });
 Appointment.hasOne(WaitlistEntry, { as: 'waitlistOrigin', foreignKey: 'convertedAppointmentId' });
 WaitlistEntry.belongsTo(Appointment, { as: 'convertedAppointment', foreignKey: 'convertedAppointmentId' });
 
+// ClinicalAiDraft associations
+Patient.hasMany(ClinicalAiDraft, { foreignKey: 'patientId' });
+ClinicalAiDraft.belongsTo(Patient, { foreignKey: 'patientId' });
+
+Doctor.hasMany(ClinicalAiDraft, { foreignKey: 'doctorId' });
+ClinicalAiDraft.belongsTo(Doctor, { foreignKey: 'doctorId' });
+
+Organization.hasMany(ClinicalAiDraft, { foreignKey: 'organizationId' });
+ClinicalAiDraft.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+MedicalRecord.hasOne(ClinicalAiDraft, { foreignKey: 'medicalRecordId' });
+ClinicalAiDraft.belongsTo(MedicalRecord, { foreignKey: 'medicalRecordId' });
+
+User.hasMany(ClinicalAiDraft, { foreignKey: 'reviewedBy', as: 'reviewedAiDrafts' });
+ClinicalAiDraft.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
+
 module.exports = {
   User,
   Role,
@@ -519,5 +536,6 @@ module.exports = {
   RefreshToken,
   Lead,
   WaitlistEntry,
+  ClinicalAiDraft,
   sequelize
 };

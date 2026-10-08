@@ -66,7 +66,13 @@ const DOMAIN_EVENTS = Object.freeze({
   // Patient Portal (Fase 23)
   PORTAL_PROFILE_UPDATED: 'Portal.ProfileUpdated',
   PORTAL_APPOINTMENT_BOOKED: 'Portal.AppointmentBooked',
-  PORTAL_APPOINTMENT_CANCELLED: 'Portal.AppointmentCancelled'
+  PORTAL_APPOINTMENT_CANCELLED: 'Portal.AppointmentCancelled',
+
+  // Clinical AI Decision Support (Fase 24)
+  AI_CLINICAL_BRIEF_GENERATED: 'AI.ClinicalBriefGenerated',
+  AI_CLINICAL_SUGGESTION_GENERATED: 'AI.ClinicalSuggestionGenerated',
+  AI_CLINICAL_DRAFT_APPROVED: 'AI.ClinicalDraftApproved',
+  AI_CLINICAL_DRAFT_REJECTED: 'AI.ClinicalDraftRejected'
 });
 
 module.exports = {

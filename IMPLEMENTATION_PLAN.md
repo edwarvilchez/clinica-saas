@@ -396,8 +396,30 @@ flowchart TD
     - 19/19 pruebas pasando exitosamente.
   - Verificación global de regresión: **44/44 suites pasando, 353/353 tests en verde (100%)**.
 
-#### Fases 24 a 26 — Resto de Funcionalidades de Negocio
-- **Fase 24:** Fundamentos de IA Clínica (asistente con paradigma *Doctor reviews & approves*, sin diagnósticos autónomos).
+#### Fase 24 — Fundamentos de IA Clínica y CDSS (Paradigma Doctor Reviews & Approves) `[COMPLETADA]`
+- **Objetivo:** Implementar un sistema de soporte a la decisión clínica computarizado (CDSS) bajo estricto principio de *no diagnósticos autónomos*, operando bajo el paradigma obligatorio *Doctor reviews & approves*, con avisos médico-legales preceptivos, generación de notas SOAP, hipótesis diferenciales CIE-11 y detección de interacciones/alergias farmacológicas.
+- **Entregables Implementados:**
+  - Modelo de Datos de Borradores Clínicos ([server/src/models/ClinicalAiDraft.js](file:///d:/projects/clinica-saas/server/src/models/ClinicalAiDraft.js) y [server/src/models/index.js](file:///d:/projects/clinica-saas/server/src/models/index.js)):
+    - Tipos de borrador: `PRE_CONSULTATION_BRIEF`, `CIE11_DIFFERENTIAL`, `SOAP_NOTE`, `PRESCRIPTION_SAFETY_CHECK`.
+    - Ciclo de vida estricto: `PROPOSED` -> `DOCTOR_APPROVED` | `DOCTOR_MODIFIED` | `DOCTOR_REJECTED`.
+    - Descargo legal obligatorio (`disclaimer` preceptivo CDSS) y bandera `isAiGenerated: true`.
+  - Servicio de Negocio CDSS ([server/src/services/clinicalAi.service.js](file:///d:/projects/clinica-saas/server/src/services/clinicalAi.service.js)):
+    - `generatePreConsultationBrief`: síntesis ejecutiva del paciente previo a consulta con banderas de riesgo clínico (alergias de alto impacto, comorbilidades crónicas y polifarmacia activa).
+    - `suggestDifferentialDiagnoses`: catálogo expandido CIE-11 con puntuación de confianza, fundamentación clínica y conducta diagnóstica complementaria requerida (`requiresDoctorEvaluation: true`).
+    - `generateSoapNoteDraft`: generación de nota estructurada en formato SOAP (Subjetivo, Objetivo con signos vitales, Análisis e Impresión diagnóstica, Plan terapéutico sugerido).
+    - `evaluatePrescriptionSafety`: análisis de seguridad farmacológica frente a alergias documentadas (alerta crítica para betalactámicos/AINEs/sulfas) y contraindicaciones con enfermedades de base.
+    - `reviewAiDraft`: flujo de revisión y aprobación formal médica. Si se aprueba o modifica con solicitud de historia clínica, crea automáticamente el registro oficial en `MedicalRecord` firmado por el médico tratante. Inmutabilidad de ciclo de vida (bloquea re-procesamiento de borradores ya decididos).
+  - Controlador y Rutas Seguras ([server/src/controllers/clinicalAi.controller.js](file:///d:/projects/clinica-saas/server/src/controllers/clinicalAi.controller.js) y [server/src/routes/clinicalAi.routes.js](file:///d:/projects/clinica-saas/server/src/routes/clinicalAi.routes.js)):
+    - Montadas en `/api/clinical-ai` (`/patients/:id/brief`, `/patients/:id/cie11`, `/patients/:id/soap`, `/patients/:id/prescription-safety`, `/drafts/:id/review`, `/patients/:id/drafts`, `/drafts/:id`).
+    - Permisos RBAC (`clinical-ai:read`, `clinical-ai:write`, `clinical-ai:review`) en `authorization.middleware.js` restringidos a `DOCTOR`, `ADMIN`, `PLATFORM_ADMIN`, `SUPER_ADMIN`, bloqueando con `403 Forbidden` a pacientes, enfermeras y recepcionistas.
+  - Trazabilidad y Eventos de Dominio ([server/src/events/domainEvents.js](file:///d:/projects/clinica-saas/server/src/events/domainEvents.js)):
+    - Registro inmutable en `AuditLog` (`AI_CLINICAL_BRIEF_GENERATED`, `AI_CIE11_SUGGESTION_REQUESTED`, `AI_SOAP_DRAFT_GENERATED`, `AI_PRESCRIPTION_SAFETY_CHECKED`, `AI_CLINICAL_DRAFT_APPROVED`, `AI_CLINICAL_DRAFT_REJECTED`).
+    - Eventos canónicos: `AI.ClinicalBriefGenerated`, `AI.ClinicalSuggestionGenerated`, `AI.ClinicalDraftApproved`, `AI.ClinicalDraftRejected`.
+  - Suite de Pruebas de Seguridad y CDSS ([server/src/__tests__/security/clinicalAiSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/clinicalAiSecurity.test.js)):
+    - 17/17 pruebas pasando exitosamente.
+  - Verificación global de regresión: **45/45 suites pasando, 370/370 tests en verde (100%)**.
+
+#### Fases 25 a 26 — Resto de Funcionalidades de Negocio
 - **Fase 25:** Abstracción de Comunicaciones / WhatsApp (proveedores desacoplados de la lógica de negocio).
 - **Fase 26:** Endurecimiento de Telemedicina (seguridad en salas WebRTC y auditoría de sesiones).
 
