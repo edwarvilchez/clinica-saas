@@ -373,8 +373,30 @@ flowchart TD
     - 20/20 pruebas pasando exitosamente.
   - Verificación global de regresión: **43/43 suites pasando, 334/334 tests en verde (100%)**.
 
-#### Fases 23 a 26 — Resto de Funcionalidades de Negocio
-- **Fase 23:** Portal del Paciente (acceso seguro de mínimo privilegio para consulta de citas y resultados).
+#### Fase 23 — Portal del Paciente (Autoservicio Seguro, Anti-IDOR y Mínimo Privilegio) `[COMPLETADA]`
+- **Objetivo:** Proveer a los pacientes de un portal seguro de autogestión de citas, resultados verificados de laboratorio, recetas digitales activas, recibos de pago y carnet digital de salud bajo principio de mínimo privilegio y protección estricta Anti-IDOR.
+- **Entregables Implementados:**
+  - Servicio de Negocio Portal ([server/src/services/patientPortal.service.js](file:///d:/projects/clinica-saas/server/src/services/patientPortal.service.js)):
+    - `getPatientProfile`: consulta demográfica y clínica básica con registro de auditoría (`PORTAL_PROFILE_ACCESSED`).
+    - `updatePatientProfile`: actualización de campos no sensibles (`phone`, `address`, `allergies`, `familyInfo`), con bloqueo anti-tampering para identificadores clave (`medicalRecordNumber`, `documentId`, `userId`, `organizationId`).
+    - `getPatientAppointments`: desglose de citas pasadas y futuras (`upcoming`, `past`) filtradas estrictamente al paciente autenticado.
+    - `bookAppointment`: agendamiento de autoservicio con verificación de colisiones (`validateAppointment`), validación de fechas futuras y pertenencia a la organización.
+    - `cancelAppointment`: cancelación segura con protección Anti-IDOR (bloquea cancelación de citas ajenas con `403 Forbidden`, citas de otras organizaciones con `404 Not Found`, citas completadas y citas ya canceladas con `400 Bad Request`).
+    - `getPatientLabResults`: visibilidad restringida estrictamente a exámenes en estatus `Completed` y verificados, ocultando borradores o estados en progreso.
+    - `getPatientPrescriptions`: consulta de prescripciones activas ligadas a historias médicas con detalles del médico firmante.
+    - `getPatientPayments`: historial de pagos y recibos del paciente autenticado.
+    - `getDigitalHealthCard`: carnet digital de salud consolidado con grupo sanguíneo, alergias, aseguradora, contacto de emergencia, conteo de recetas activas y última consulta realizada.
+  - Controlador y Rutas Seguras ([server/src/controllers/patientPortal.controller.js](file:///d:/projects/clinica-saas/server/src/controllers/patientPortal.controller.js) y [server/src/routes/patientPortal.routes.js](file:///d:/projects/clinica-saas/server/src/routes/patientPortal.routes.js)):
+    - Montadas en `/api/portal` (`/profile`, `/appointments`, `/appointments/:id/cancel`, `/lab-results`, `/prescriptions`, `/payments`, `/health-card`).
+    - Permisos RBAC registrados en `authorization.middleware.js`: `portal:read` y `portal:write` asignados a `PATIENT`, `ADMIN`, `PLATFORM_ADMIN`, `SUPER_ADMIN`.
+  - Trazabilidad y Eventos de Dominio ([server/src/events/domainEvents.js](file:///d:/projects/clinica-saas/server/src/events/domainEvents.js)):
+    - Registro inmutable en `AuditLog` (`PORTAL_PROFILE_ACCESSED`, `PORTAL_PROFILE_UPDATED`, `PORTAL_APPOINTMENT_BOOKED`, `PORTAL_APPOINTMENT_CANCELLED`).
+    - Eventos canónicos: `Portal.ProfileUpdated`, `Portal.AppointmentBooked`, `Portal.AppointmentCancelled`.
+  - Suite de Pruebas de Seguridad y Anti-IDOR ([server/src/__tests__/security/patientPortalSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/patientPortalSecurity.test.js)):
+    - 19/19 pruebas pasando exitosamente.
+  - Verificación global de regresión: **44/44 suites pasando, 353/353 tests en verde (100%)**.
+
+#### Fases 24 a 26 — Resto de Funcionalidades de Negocio
 - **Fase 24:** Fundamentos de IA Clínica (asistente con paradigma *Doctor reviews & approves*, sin diagnósticos autónomos).
 - **Fase 25:** Abstracción de Comunicaciones / WhatsApp (proveedores desacoplados de la lógica de negocio).
 - **Fase 26:** Endurecimiento de Telemedicina (seguridad en salas WebRTC y auditoría de sesiones).

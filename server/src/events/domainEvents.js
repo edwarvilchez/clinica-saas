@@ -61,7 +61,12 @@ const DOMAIN_EVENTS = Object.freeze({
   // Hospitalization
   ADMISSION_OPENED: 'Hospital.AdmissionOpened',
   ADMISSION_DISCHARGED: 'Hospital.AdmissionDischarged',
-  PATIENT_AREA_TRANSFERRED: 'Hospital.PatientAreaTransferred'
+  PATIENT_AREA_TRANSFERRED: 'Hospital.PatientAreaTransferred',
+
+  // Patient Portal (Fase 23)
+  PORTAL_PROFILE_UPDATED: 'Portal.ProfileUpdated',
+  PORTAL_APPOINTMENT_BOOKED: 'Portal.AppointmentBooked',
+  PORTAL_APPOINTMENT_CANCELLED: 'Portal.AppointmentCancelled'
 });
 
 module.exports = {
