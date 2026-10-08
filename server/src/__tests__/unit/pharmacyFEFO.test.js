@@ -22,6 +22,8 @@ describe('💊 Pharmacy FEFO (First Expired, First Out) Engine', () => {
 
   beforeAll(async () => {
     await sequelize.authenticate();
+    await PharmacyItem.sync();
+    await PharmacyBatch.sync();
 
     // Create test pharmacy item
     testItem = await PharmacyItem.create({
