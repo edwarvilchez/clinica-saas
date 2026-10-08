@@ -8,9 +8,9 @@ router.get('/', authMiddleware, authorize('patients:read'), patientController.ge
 router.get('/record/:recordNumber', authMiddleware, authorize('patients:read'), patientController.getPatientByMedicalRecord);
 router.get('/user/:userId', authMiddleware, authorize('patients:read'), patientController.getPatientByUserId);
 router.get('/:id', authMiddleware, authorize('patients:read'), patientController.getPatientById);
-router.post('/', authMiddleware, authorize('patients:read'), patientController.createPatient);
-router.put('/:id', authMiddleware, authorize('patients:read'), patientController.updatePatient);
-router.post('/express-admission', authMiddleware, authorize('patients:read'), patientController.expressAdmission);
+router.post('/', authMiddleware, authorize('patients:create'), patientController.createPatient);
+router.put('/:id', authMiddleware, authorize('patients:update'), patientController.updatePatient);
+router.post('/express-admission', authMiddleware, authorize('patients:create'), patientController.expressAdmission);
 router.post('/:id/verify-coverage', authMiddleware, authorize('patients:read'), patientController.verifyInsuranceCoverage);
 router.delete('/:id', authMiddleware, authorize('patients:delete'), patientController.deletePatient);
 

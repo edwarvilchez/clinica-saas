@@ -3,6 +3,7 @@ const router = express.Router();
 const drugController = require('../controllers/drug.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const roleMiddleware = require('../middlewares/role.middleware');
+const { authorize } = require('../middlewares/authorization.middleware');
 const checkSubscription = require('../middlewares/subscription.middleware');
 
 const STAFF_ROLES = ['SUPERADMIN', 'DOCTOR', 'NURSE', 'RECEPTIONIST', 'ADMINISTRATIVE'];
@@ -19,7 +20,7 @@ router.use(roleMiddleware(STAFF_ROLES));
  *     summary: List drugs with search and filtering
  *     tags: [Drugs]
  */
-router.get('/', drugController.getAllDrugs);
+router.get('/', authorize('drugs:read'), drugController.getAllDrugs);
 
 /**
  * @swagger
@@ -28,7 +29,7 @@ router.get('/', drugController.getAllDrugs);
  *     summary: Get drug by ID
  *     tags: [Drugs]
  */
-router.get('/:id', drugController.getDrugById);
+router.get('/:id', authorize('drugs:read'), drugController.getDrugById);
 
 /**
  * @swagger
@@ -37,7 +38,7 @@ router.get('/:id', drugController.getDrugById);
  *     summary: Create new drug (SuperAdmin/Doctor/Nurse)
  *     tags: [Drugs]
  */
-router.post('/', roleMiddleware(['SUPERADMIN', 'DOCTOR', 'NURSE']), drugController.createDrug);
+router.post('/', authorize('drugs:write'), drugController.createDrug);
 
 /**
  * @swagger
@@ -46,7 +47,7 @@ router.post('/', roleMiddleware(['SUPERADMIN', 'DOCTOR', 'NURSE']), drugControll
  *     summary: Update drug
  *     tags: [Drugs]
  */
-router.put('/:id', roleMiddleware(['SUPERADMIN', 'DOCTOR', 'NURSE']), drugController.updateDrug);
+router.put('/:id', authorize('drugs:write'), drugController.updateDrug);
 
 /**
  * @swagger
@@ -55,6 +56,6 @@ router.put('/:id', roleMiddleware(['SUPERADMIN', 'DOCTOR', 'NURSE']), drugContro
  *     summary: Delete drug
  *     tags: [Drugs]
  */
-router.delete('/:id', roleMiddleware(['SUPERADMIN']), drugController.deleteDrug);
+router.delete('/:id', authorize('drugs:delete'), drugController.deleteDrug);
 
 module.exports = router;

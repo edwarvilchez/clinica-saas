@@ -154,3 +154,41 @@ exports.suggestICD11 = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+exports.signRecord = async (req, res) => {
+  try {
+    const { organizationId, role } = req.user;
+    const { id } = req.params;
+
+    const record = await MedicalRecord.findByPk(id);
+    if (!record) {
+      return res.status(404).json({ message: 'Historia médica no encontrada' });
+    }
+
+    const hasAccess = await validatePatientAccess(record.patientId, organizationId, role);
+    if (!hasAccess) {
+      return res.status(403).json({ message: 'No tienes acceso a este paciente' });
+    }
+
+    record.isSigned = true;
+    record.signedAt = new Date();
+    record.signedByDoctorId = req.user.id;
+    await record.save();
+
+    auditService.logClinicalAccess({
+      action: 'SIGN_MEDICAL_RECORD',
+      actorUserId: req.user.id,
+      patientId: record.patientId,
+      medicalRecordId: record.id,
+      organizationId,
+      req,
+      details: { signedAt: record.signedAt }
+    }).catch(err => console.error('Audit sign error:', err));
+
+    res.json({ success: true, message: 'Historia médica firmada digitalmente', record });
+  } catch (error) {
+    console.error('Error signing record:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+

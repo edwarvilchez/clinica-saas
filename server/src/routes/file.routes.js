@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const fileController = require('../controllers/file.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
+const { authorize } = require('../middlewares/authorization.middleware');
 const { secureMemoryUpload } = require('../middlewares/upload.middleware');
 
 /**
@@ -24,12 +25,12 @@ const conditionalAuthForDownload = (req, res, next) => {
 router.get('/download', conditionalAuthForDownload, fileController.downloadFile);
 
 // 2. Upload file with memory storage and magic bytes analysis
-router.post('/upload', authMiddleware, secureMemoryUpload.single('file'), fileController.uploadFile);
+router.post('/upload', authMiddleware, authorize('files:upload'), secureMemoryUpload.single('file'), fileController.uploadFile);
 
 // 3. Download Payment Receipt
-router.get('/payments/:id/receipt', authMiddleware, fileController.getPaymentReceipt);
+router.get('/payments/:id/receipt', authMiddleware, authorize('payments:read'), fileController.getPaymentReceipt);
 
 // 4. Generate short-lived signed URL
-router.post('/sign-url', authMiddleware, fileController.generateSignedUrl);
+router.post('/sign-url', authMiddleware, authorize('files:read'), fileController.generateSignedUrl);
 
 module.exports = router;

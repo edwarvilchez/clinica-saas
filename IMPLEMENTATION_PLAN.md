@@ -84,12 +84,15 @@ flowchart TD
   - Activación de `HSTS`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Cross-Origin-Resource-Policy: cross-origin`, `Cross-Origin-Opener-Policy: same-origin`, y protección contra Clickjacking (`X-Frame-Options: SAMEORIGIN`).
   - Suites de pruebas completas de CORS y cabeceras de seguridad (`corsSecurity.test.js` y `securityHeaders.test.js`).
 
-#### Fase 6 — RBAC Granular por Verbo y Recurso
+#### Fase 6 — RBAC Granular por Verbo y Recurso [COMPLETADA]
 - **Objetivo:** Asegurar que cada ruta valide acciones específicas y evitar escalamiento de privilegios.
 - **Entregables:**
-  - Matriz de permisos granulares por dominio (`patients:read`, `patients:create`, `patients:export`, `medical_records:sign`, `billing:approve`).
-  - Aplicación exhaustiva del middleware `authorize(permission)` en todas las rutas protegidas.
-  - Pruebas de escalamiento de privilegios (ej. enfermero intentando firmar historia médica o modificar facturación).
+  - Matriz de permisos granulares por dominio (`patients:read`, `patients:create`, `patients:update`, `patients:delete`, `patients:export`, `medical-records:sign`, `billing:approve`, `billing:reconcile`, `prescriptions:write`, `accounting:write`, `hospital:discharge`, `files:upload`, etc.) en `server/src/middlewares/authorization.middleware.js`.
+  - Normalización de roles a mayúsculas y mapeo inteligente de alias (guiones y guiones bajos).
+  - Aplicación exhaustiva del middleware `authorize(permission)` en todas las rutas protegidas (patients, medical-records, payments, accounting, doctor-fees, inventory, nurses, employees, hospital, insurance, sales, specialties, staff, stats, team, prescriptions, files, organizations).
+  - Endpoint seguro de firma de historias clínicas (`POST /api/medical-records/:id/sign`) con registro inmutable de auditoría y restricción exclusiva a médicos.
+  - Corrección de escalamiento de privilegios en creación/modificación de pacientes (reemplazo de `patients:read` por `patients:create` y `patients:update`).
+  - Suite de pruebas de seguridad y escalamiento de privilegios (`rbacGranularSecurity.test.js`) con 14 pruebas pasando.
 
 ---
 
