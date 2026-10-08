@@ -463,11 +463,25 @@ flowchart TD
 
 ### 🌐 BLOQUE 5: PREPARACIÓN DE MICROSERVICIOS Y READINESS (Fases 27 y 28)
 
-#### Fase 27 — Documentación y Diseño de Futuros Microservicios
+#### Fase 27 — Documentación y Diseño de Futuros Microservicios [COMPLETADA]
 - **Objetivo:** Definir con rigor qué módulos se extraerán y bajo qué disparadores operacionales.
-- **Entregables:**
-  - Creación de `FUTURE_MICROSERVICES.md` analizando los 6 candidatos: Notifications, AI, File Storage, Telemedicine, Audit, Analytics.
-  - Especificación de interfaces, contratos de datos y disparadores de escalado.
+- **Entregables Implementados:**
+  - Creación de [`FUTURE_MICROSERVICES.md`](file:///d:/projects/clinica-saas/FUTURE_MICROSERVICES.md) analizando en profundidad los 6 candidatos a microservicios:
+    1. `svc-notifications` (Comunicaciones omnicanal, WhatsApp Cloud API, SMTP/Resend, webhooks de entrega).
+    2. `svc-clinical-ai` (Soporte a la decisión médica CDSS, CIE-11, orquestador LLM / CrewAI con hardware GPU).
+    3. `svc-file-storage` (Almacenamiento y custodia encriptada AES-256 en S3/MinIO, presigned URLs, escaneo antivirus).
+    4. `svc-telemedicine` (Señalización WebRTC, tokens criptográficos, SFU/TURN y tolerancia a desconexiones).
+    5. `svc-audit-compliance` (Almacenamiento append-only WORM, hash-chaining SHA-256, retención HIPAA/SOC-2).
+    6. `svc-analytics-billing` (Motor analítico OLAP sobre ClickHouse, liquidación de comisiones médicas y series temporales).
+  - Especificación exhaustiva de **disparadores operacionales cuantitativos** (throughput, SLAs, cuellos de botella de hardware y blast radius).
+  - Definición de **contratos de datos síncronos** (REST / gRPC con esquemas Protocol Buffers v3) y **event-driven asíncronos** con payloads tipados basados en los eventos de dominio canónicos de [`domainEvents.js`](file:///d:/projects/clinica-saas/server/src/events/domainEvents.js).
+  - Estrategia de migración de datos con cero tiempo de inactividad (**Zero-Downtime**) mediante el patrón *Strangler Fig* y Change Data Capture (CDC con Debezium/Kafka).
+  - Arquitectura **Zero-Trust** con autenticación mutua (mTLS), Service-to-Service JWTs y propagación obligatoria de cabeceras de contexto (`X-Tenant-ID`, `X-Correlation-ID`, `X-User-ID`, `X-User-Role`).
+  - Matriz de resiliencia con Circuit Breakers, Dead Letter Queues (DLQ) y políticas de degeneración agraciada (*Graceful Degradation*).
+  - Diagramas de arquitectura globales y de secuencia en sintaxis Mermaid.
+  - Suite de Pruebas de Integridad Arquitectónica ([server/src/__tests__/security/futureMicroservicesArchitecturalIntegrity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/futureMicroservicesArchitecturalIntegrity.test.js)):
+    - 15/15 pruebas pasando exitosamente.
+  - Verificación global de regresión: **48/48 suites pasando, 414/414 tests en verde (100%)**.
 
 #### Fase 28 — Production Readiness Check
 - **Objetivo:** Auditoría automatizada previa al pase a producción.
