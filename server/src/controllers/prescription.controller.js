@@ -1,5 +1,6 @@
 const { Prescription, Drug, MedicalRecord, Patient, User } = require('../models');
 const logger = require('../utils/logger');
+const appConfig = require('../config/app.config');
 
 const validatePrescriptionAccess = async (prescriptionId, organizationId, role) => {
   const isSuperAdmin = role === 'SUPERADMIN' || role === 'SUPERADMIN';
@@ -41,7 +42,7 @@ exports.createPrescription = async (req, res) => {
     }
 
     const crypto = require('crypto');
-    const secret = process.env.JWT_SECRET || 'clinica_saas_prescription_secret_2026';
+    const secret = appConfig.auth.jwtSecret;
     const timestamp = Date.now();
     const verificationHash = crypto.createHash('sha256').update(`${medicalRecordId}-${req.body.drugName}-${timestamp}-${Math.random()}`).digest('hex');
     const digitalSignature = crypto.createHmac('sha256', secret).update(`${verificationHash}:${medicalRecordId}:${req.user.id}:${timestamp}`).digest('hex');

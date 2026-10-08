@@ -5,6 +5,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const logger = require('../utils/logger');
+const appConfig = require('../config/app.config');
 
 /**
  * 🔒 Dangerous extensions strictly blocked from upload
@@ -45,11 +46,8 @@ const MAGIC_NUMBERS = {
 class FileStorageService {
   constructor() {
     // Private storage directory outside public web root
-    this.baseDir = process.env.STORAGE_DIR
-      ? path.resolve(process.env.STORAGE_DIR)
-      : path.resolve(__dirname, '../../storage/secure');
-
-    this.signingSecret = process.env.FILE_SIGNING_SECRET || process.env.JWT_SECRET || 'clinica_secure_file_signing_secret_2026';
+    this.baseDir = appConfig.storage.dir;
+    this.signingSecret = appConfig.storage.signingSecret;
     this.defaultExpirySeconds = 3600; // 1 hour
 
     this.ensureBaseDirectory();

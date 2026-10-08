@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 require('dotenv').config();
+const appConfig = require('./config/app.config');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
@@ -33,7 +34,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false
 });
 
-const INIT_SECRET = process.env.INIT_SECRET || 'clinica-saas-dev-secret';
+const INIT_SECRET = appConfig.auth.initSecret;
 app.use(globalLimiter);
 app.use(cors(corsOptions));
 app.use(compression());
@@ -42,7 +43,7 @@ app.use(compression());
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok v4.3.13', 
-    env: process.env.NODE_ENV,
+    env: appConfig.env,
     time: new Date().toISOString() 
   });
 });
@@ -51,8 +52,7 @@ app.get('/api/health', (req, res) => {
  * 🛠️ EMERGENCY DATABASE INITIALIZER (Standalone)
  * SOLO disponible en desarrollo - DESHABILITADO en producción
  */
-const isDevMode = process.env.NODE_ENV !== 'production';
-const allowReset = process.env.ALLOW_DB_RESET === 'true' && isDevMode;
+const allowReset = appConfig.security.allowDbReset;
 
 if (allowReset) {
   app.get('/api/system/init-demo', async (req, res) => {
