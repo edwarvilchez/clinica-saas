@@ -242,8 +242,22 @@ flowchart TD
 
 ### 🚀 BLOQUE 4: EVOLUCIÓN DE PRODUCTO Y SERVICIOS (Fases 17 a 26)
 
-#### Fases 17 a 26 — Funcionalidades de Negocio
-- **Fase 17:** Dashboard Operativo en tiempo real ("¿Qué está pasando hoy en mi clínica?").
+#### Fase 17 — Dashboard Operativo en Tiempo Real [COMPLETADA]
+- **Objetivo:** Proporcionar a la dirección médica y administrativa una vista operacional instantánea ("¿Qué está pasando hoy en mi clínica?"), con agregación en vivo, sin datos obsoletos y con estricto aislamiento multi-tenant.
+- **Entregables:**
+  - Controlador especializado ([server/src/controllers/stats.controller.js](file:///d:/projects/clinica-saas/server/src/controllers/stats.controller.js)) `getLiveOperationsDashboard`:
+    - Métricas del día en tiempo real: conteo de citas hoy (confirmadas, pendientes, completadas, canceladas, presenciales, telemedicina).
+    - Capacidad y ocupación hospitalaria: total de camas, camas ocupadas, disponibles, en mantenimiento, tasa de ocupación porcentual y admisiones activas.
+    - Recaudación en vivo del turno de hoy: desglose bimonetario (USD / VES) y distribución agregada por métodos de pago (`Efectivo`, `Zelle`, `Punto de Venta`, etc.).
+    - Cola activa de atención en tiempo real (*Live Queue*): listado priorizado de próximos pacientes citados con médico asignado, especialidad, horario y motivo de consulta.
+  - Endpoint seguro con control RBAC ([server/src/routes/stats.routes.js](file:///d:/projects/clinica-saas/server/src/routes/stats.routes.js)):
+    - Ruta `GET /api/stats/live-operations`.
+    - Protegida con `authMiddleware` y autorización granular `authorize('stats:read')`.
+  - Suite de pruebas de seguridad y concurrencia ([liveOperationsDashboardSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/liveOperationsDashboardSecurity.test.js)):
+    - 6/6 pruebas pasando (autenticación obligatoria 401, rechazo 403 a roles no autorizados, aislamiento estricto multi-tenant sin fuga de datos entre clínicas y soporte scoping para superadmins).
+  - Verificación global de regresión: **38/38 suites pasando, 259/259 tests en verde**.
+
+#### Fases 18 a 26 — Resto de Funcionalidades de Negocio
 - **Fase 18:** Timeline Longitudinal del Paciente (visión unificada de citas, historias, recetas y pagos con autorización estricta).
 - **Fase 19:** Fundamentos de CRM Clínico (embudo de prospectos a pacientes activos).
 - **Fase 20:** Automatización de No-Shows (recordatorios multicanal vía `NotificationService`).
