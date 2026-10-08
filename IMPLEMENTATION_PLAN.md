@@ -159,11 +159,17 @@ flowchart TD
     - Admisión hospitalaria (`createAdmission`) y egreso/liberación de camas (`dischargeAdmission`).
   - Suite de pruebas de optimización y atomicidad (`databaseOptimizationSecurity.test.js`) con 10/10 pruebas pasando exitosamente (verificación en catálogo PostgreSQL `pg_indexes`, planes de ejecución `EXPLAIN`, simulación de rollback y proyecciones de atributos).
 
-#### Fase 12 — Backups y Disaster Recovery
-- **Objetivo:** Procedimientos reproducibles de respaldo y recuperación ante desastres.
+#### Fase 12 — Backups y Disaster Recovery [COMPLETADA]
+- **Objetivo:** Procedimientos reproducibles de respaldo y recuperación ante desastres con RPO ≤ 1h y RTO ≤ 2h.
 - **Entregables:**
-  - Documentos `BACKUP_STRATEGY.md` y `DISASTER_RECOVERY.md`.
-  - Scripts de respaldo automatizado PostgreSQL (`pg_dump`) con retención y verificación de integridad.
+  - Documentos operativos de referencia hospitalaria:
+    - [BACKUP_STRATEGY.md](file:///d:/projects/clinica-saas/BACKUP_STRATEGY.md): clasificación de datos, regla 3-2-1, frecuencias (diario, semanal, mensual de archivo) y requisitos de cifrado simétrico en reposo.
+    - [DISASTER_RECOVERY.md](file:///d:/projects/clinica-saas/DISASTER_RECOVERY.md): matriz de severidad (SEV-1 a SEV-3), runbook paso a paso de restauración de emergencia e instrucciones de simulacros semestrales.
+  - Scripts ejecutables de respaldo y restauración automatizada:
+    - `server/src/scripts/backup-db.js` y `backup-db.sh`: volcado comprimido `pg_dump` (-Fc), cifrado simétrico autenticado `AES-256-CBC` mediante `BACKUP_ENCRYPTION_KEY`, cálculo de sumas de verificación `SHA-256` y purga automatizada de retención local.
+    - `server/src/scripts/restore-db.js`: verificación obligatoria de firmas criptográficas SHA-256, descifrado seguro e invocación de `pg_restore`.
+    - Comandos npm dedicados en `server/package.json`: `npm run db:backup` y `npm run db:restore`.
+  - Suite de pruebas de respaldo y DRP (`backupAndDisasterRecovery.test.js`): 8/8 pruebas pasando exitosamente (cifrado/descifrado, detección de archivos manipulados/corrompidos, purga por antigüedad y validación de runbooks).
 
 #### Fase 13 — Docker y Despliegue Consistente
 - **Objetivo:** Contenedores seguros y estandarizados para producción.
