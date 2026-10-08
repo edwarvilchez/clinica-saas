@@ -4,14 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { LanguageService } from '../../services/language.service';
 import { CurrencyService } from '../../services/currency.service';
-import { TranslatePipe } from '../../services/translate.pipe';
 import { API_URL } from '../../api-config';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-hospital-ops',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule],
   templateUrl: './hospital-ops.html',
   styleUrls: ['./hospital-ops.css']
 })

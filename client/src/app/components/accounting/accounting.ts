@@ -5,14 +5,13 @@ import { HttpClient } from '@angular/common/http';
 import { LanguageService } from '../../services/language.service';
 import { CurrencyService } from '../../services/currency.service';
 import { RouterModule } from '@angular/router';
-import { TranslatePipe } from '../../services/translate.pipe';
 import Swal from 'sweetalert2';
 
 // Accounting VEN-NIF component
 @Component({
   selector: 'app-accounting',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './accounting.html',
   styleUrls: ['./accounting.css']
 })
