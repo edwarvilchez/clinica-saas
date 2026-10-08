@@ -1,6 +1,7 @@
 'use strict';
 
 const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 const { validateEnv } = require('./validateEnv');
 
 // Execute validation before building the configuration object
@@ -55,6 +56,7 @@ const config = {
     jwtSecret: process.env.JWT_SECRET || (isTest ? 'test_jwt_secret_github_actions_2026' : 'dev_jwt_secret_key_clinica_saas_2026_secure'),
     jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
     initSecret: process.env.INIT_SECRET || (isTest ? 'test_init_secret' : 'clinica-saas-dev-secret'),
+    encryptionKey: process.env.ENCRYPTION_KEY || process.env.JWT_SECRET || (isTest ? 'test_aes_encryption_key_2026_gh_actions' : 'dev_aes_encryption_key_clinica_saas_2026'),
     bcryptRounds: 10
   },
 

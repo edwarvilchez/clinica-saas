@@ -48,7 +48,7 @@ const User = sequelize.define('User', {
     allowNull: true
   },
   resetToken: {
-    type: DataTypes.STRING,
+    type: DataTypes.STRING(128),
     allowNull: true
   },
   resetExpires: {
@@ -86,8 +86,13 @@ const User = sequelize.define('User', {
     defaultValue: false
   },
   twoFactorSecret: {
-    type: DataTypes.STRING,
+    type: DataTypes.TEXT,
     allowNull: true
+  },
+  twoFactorRecoveryCodes: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: []
   }
 }, {
   hooks: {

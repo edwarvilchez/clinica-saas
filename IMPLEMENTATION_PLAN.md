@@ -108,12 +108,17 @@ flowchart TD
   - Corrección de enumeración de usuarios en login (respuesta genérica: "Credenciales inválidas" tanto para usuario no encontrado como para contraseña errónea).
   - Suite de pruebas completa (`refreshTokenSecurity.test.js`) con 10 pruebas pasando.
 
-#### Fase 8 — Password Reset Seguro y Cifrado 2FA
+#### Fase 8 — Password Reset Seguro y Cifrado 2FA [COMPLETADA]
 - **Objetivo:** Proteger la recuperación de cuentas y las claves TOTP en reposo.
 - **Entregables:**
-  - Hash SHA-256 para `resetToken` y expiración estricta de 15 minutos de un solo uso.
-  - Cifrado simétrico `AES-256-GCM` de `twoFactorSecret` en base de datos utilizando `ENCRYPTION_KEY`.
-  - Códigos de recuperación de respaldo (recovery codes) de un solo uso.
+  - Helper criptográfico desacoplado (`server/src/utils/crypto.utils.js`) con soporte de cifrado autenticado `AES-256-GCM`, hash de tokens `SHA-256` y generación segura de recovery codes.
+  - Almacenamiento de `resetToken` como hash unidireccional `SHA-256` en base de datos con expiración estricta de 15 minutos y consumo de un solo uso.
+  - Prevención de enumeración de usuarios en `forgotPassword` (respuesta genérica idéntica de 200 exista o no el correo solicitado).
+  - Invalidación masiva de sesiones activas (`revokeAllUserTokens`) tras el restablecimiento exitoso de contraseñas y en cambio voluntario de clave.
+  - Cifrado simétrico autenticado `AES-256-GCM` de `twoFactorSecret` (formato `iv:authTag:ciphertext`) en base de datos utilizando `ENCRYPTION_KEY` con fallback transparente de migración para secretos legados.
+  - Generación de 8 códigos de recuperación alfanuméricos de respaldo (formato `XXXX-XXXX`), almacenados como hashes `SHA-256` en `user.twoFactorRecoveryCodes` y consumidos como tokens de un solo uso en `verify2FALogin`.
+  - Migración oficial de base de datos (`20261008010000-add-2fa-recovery-codes-and-secure-reset.js`).
+  - Suite de pruebas de seguridad exhaustiva (`passwordResetAnd2FASecurity.test.js`) con 18/18 pruebas pasando exitosamente.
 
 #### Fase 9 — Logging Estructurado y Observabilidad
 - **Objetivo:** Trazabilidad completa sin comprometer datos confidenciales (cero PHI en logs).
