@@ -171,11 +171,19 @@ flowchart TD
     - Comandos npm dedicados en `server/package.json`: `npm run db:backup` y `npm run db:restore`.
   - Suite de pruebas de respaldo y DRP (`backupAndDisasterRecovery.test.js`): 8/8 pruebas pasando exitosamente (cifrado/descifrado, detección de archivos manipulados/corrompidos, purga por antigüedad y validación de runbooks).
 
-#### Fase 13 — Docker y Despliegue Consistente
-- **Objetivo:** Contenedores seguros y estandarizados para producción.
+#### Fase 13 — Docker y Despliegue Consistente [COMPLETADA]
+- **Objetivo:** Contenedores seguros, estandarizados e inmutables para producción, con aislamiento de privilegios y orquestación resiliente.
 - **Entregables:**
-  - `Dockerfile` multi-stage optimizado sobre `node:20-alpine` ejecutado con usuario no-root (`USER node`).
-  - `docker-compose.yml` con healthchecks coordinados (`condition: service_healthy`) y redes aisladas.
+  - `Dockerfile` multi-stage (`server/Dockerfile` y raíz) optimizado sobre `node:20-alpine`:
+    - Etapa 1 (`dependencies`): instalación con `npm ci --only=production --ignore-scripts` para capas cacheadas ligeras.
+    - Etapa 2 (`runner`): empaquetado mínimo con `dumb-init` (gestor de procesos PID 1 para propagación correcta de señales `SIGTERM`/`SIGINT`), usuario no-root `USER node` (UID 1000) y cero secretos o archivos `.env` quemados en las capas de la imagen.
+    - Probes nativos Docker `HEALTHCHECK` consultando `/health/ready` de la Fase 10.
+  - Endurecimiento de `.dockerignore` (`server/.dockerignore`): exclusión explícita de `.env*`, tests, coverage, artefactos temporales y directorios de almacenamiento.
+  - Orquestación con `docker-compose.yml`:
+    - Segmentación de redes: red interna segura `clinica-internal-net` (Base de datos PostgreSQL aislada de internet) y red DMZ `clinica-dmz-net` (API y Web).
+    - Healthchecks coordinados en cascada (`condition: service_healthy` en `db` y `server`).
+    - Volúmenes nombrados persistentes (`postgres_data`, `uploads_data`, `storage_data`, `db_backups`).
+  - Suite de pruebas de seguridad y despliegue (`dockerDeploymentSecurity.test.js`): 9/9 pruebas pasando exitosamente.
 
 ---
 
