@@ -5,6 +5,7 @@ const auditService = require('../services/audit.service');
 const refreshTokenService = require('../services/refreshToken.service');
 const cryptoUtils = require('../utils/crypto.utils');
 const appConfig = require('../config/app.config');
+const IdentityDocumentService = require('../services/identityDocument.service');
 
 /**
  * Genera una contraseña temporal que cumple con el patrón de seguridad:
@@ -136,16 +137,38 @@ exports.register = async (req, res) => {
 
     // If registering as a patient, create patient record
     if (role.name === 'PATIENT' && patientData) {
-      // Check if documentId already exists (global check - documentId should be unique)
-      const existingPatient = await Patient.findOne({ where: { documentId: patientData.documentId } });
-      if (existingPatient) {
+      const parsedDoc = IdentityDocumentService.parse(patientData.documentId);
+      if (!parsedDoc.isValid) {
         await t.rollback();
-        return res.status(400).json({ message: 'Esta cédula/documento ya está registrado en el sistema.' });
+        return res.status(400).json({
+          code: 'INVALID_IDENTITY_DOCUMENT',
+          message: parsedDoc.error || 'El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.'
+        });
+      }
+
+      // Check if document already exists
+      const dupCheck = await IdentityDocumentService.checkDuplicate({
+        documentInput: parsedDoc.canonical,
+        organizationId,
+        PatientModel: Patient,
+        transaction: t
+      });
+
+      if (dupCheck.isDuplicate) {
+        await t.rollback();
+        return res.status(409).json({
+          code: 'IDENTITY_DOCUMENT_ALREADY_EXISTS',
+          message: 'El registro ya existe. Verifique el número de documento ingresado.'
+        });
       }
 
       await Patient.create({
         userId: user.id,
-        documentId: patientData.documentId,
+        documentId: parsedDoc.canonical,
+        documentNumberNormalized: parsedDoc.normalized,
+        documentPrefix: parsedDoc.prefix,
+        documentNumber: parsedDoc.number,
+        medicalRecordNumber: `HC-${parsedDoc.canonical}`,
         phone: patientData.phone,
         birthDate: patientData.birthDate,
         gender: patientData.gender,
@@ -245,9 +268,14 @@ exports.register = async (req, res) => {
     await t.rollback();
     console.error('Registration Error:', error);
 
+    if (IdentityDocumentService.handleUniqueViolationError(error, res)) {
+      return;
+    }
+
     if (error.name === 'SequelizeUniqueConstraintError') {
-      return res.status(400).json({
-        message: 'Error de duplicación: ' + error.errors[0].message
+      return res.status(409).json({
+        code: 'UNIQUE_CONSTRAINT_ERROR',
+        message: 'Error de duplicación: ' + (error.errors?.[0]?.message || 'Registro duplicado.')
       });
     }
 

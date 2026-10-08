@@ -7,6 +7,7 @@ const { authorize } = require('../middlewares/authorization.middleware');
 router.get('/', authMiddleware, authorize('patients:read'), patientController.getPatients);
 router.get('/record/:recordNumber', authMiddleware, authorize('patients:read'), patientController.getPatientByMedicalRecord);
 router.get('/user/:userId', authMiddleware, authorize('patients:read'), patientController.getPatientByUserId);
+router.get('/check-document', authMiddleware, authorize('patients:read'), patientController.checkDocumentAvailability);
 router.get('/:id/timeline', authMiddleware, patientController.getPatientTimeline);
 router.get('/:id', authMiddleware, authorize('patients:read'), patientController.getPatientById);
 router.post('/', authMiddleware, authorize('patients:create'), patientController.createPatient);

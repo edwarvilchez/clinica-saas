@@ -27,12 +27,52 @@ exports.importData = async (req, res) => {
     if (records.length > 5000) throw new Error('El archivo excede el máximo permitido de 5,000 filas');
 
     let rowIndex = 1;
+    const seenDocsInBatch = new Set();
+    const IdentityDocumentService = require('../services/identityDocument.service');
+
     for (const record of records) {
       rowIndex++;
       const validationErrors = validateRecord(type, record, rowIndex);
       if (validationErrors.length > 0) {
         errors.push(...validationErrors);
         continue;
+      }
+
+      if (type === 'patients') {
+        const docVal = record.documentId || record.documentNumber;
+        const parsed = IdentityDocumentService.parse(docVal);
+        if (!parsed.isValid) {
+          errors.push({ row: rowIndex, field: 'documentId', message: parsed.error });
+          continue;
+        }
+
+        // 1. Detección de duplicados dentro del mismo archivo
+        if (seenDocsInBatch.has(parsed.normalized)) {
+          errors.push({
+            row: rowIndex,
+            field: 'documentId',
+            message: `Documento de identidad duplicado dentro del mismo archivo (${parsed.canonical}).`
+          });
+          continue;
+        }
+        seenDocsInBatch.add(parsed.normalized);
+
+        // 2. Detección de duplicados contra la base de datos
+        const dupCheck = await IdentityDocumentService.checkDuplicate({
+          documentInput: parsed.canonical,
+          organizationId: userOrgId,
+          PatientModel: Patient
+        });
+        if (dupCheck.isDuplicate) {
+          errors.push({
+            row: rowIndex,
+            field: 'documentId',
+            message: `El registro ya existe. Verifique el número de documento ingresado (${parsed.canonical}).`
+          });
+          continue;
+        }
+
+        record._parsedDoc = parsed;
       }
 
       const t = await sequelize.transaction();
@@ -92,9 +132,20 @@ async function importPatient(data, transaction, organizationId) {
         organizationId
     }, { transaction });
 
+    const IdentityDocumentService = require('../services/identityDocument.service');
+    const parsed = data._parsedDoc || IdentityDocumentService.parse(data.documentId || data.documentNumber);
+    const canonicalDoc = parsed.isValid ? parsed.canonical : data.documentId;
+    const normalizedDoc = parsed.isValid ? parsed.normalized : data.documentId;
+    const prefix = parsed.isValid ? parsed.prefix : 'V';
+    const number = parsed.isValid ? parsed.number : data.documentId;
+
     await Patient.create({
         userId: user.id,
-        documentId: data.documentId,
+        documentId: canonicalDoc,
+        documentNumberNormalized: normalizedDoc,
+        documentPrefix: prefix,
+        documentNumber: number,
+        medicalRecordNumber: `HC-${canonicalDoc}`,
         birthDate: data.birthDate,
         gender: data.gender,
         phone: data.phone,

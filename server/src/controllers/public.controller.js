@@ -1,5 +1,7 @@
 const { Patient, User, Doctor, Appointment } = require('../models');
+const { Op } = require('sequelize');
 const { sendAppointmentConfirmation } = require('../utils/whatsapp.service');
+const IdentityDocumentService = require('../services/identityDocument.service');
 
 exports.createPublicAppointment = async (req, res) => {
   try {
@@ -20,15 +22,35 @@ exports.createPublicAppointment = async (req, res) => {
       
       // Update patient info if needed
       if (patient) {
+        let updateDoc = patientInfo.documentId;
+        const parsed = IdentityDocumentService.parse(patientInfo.documentId);
+        if (parsed.isValid) {
+          updateDoc = parsed.canonical;
+        }
         await patient.update({
           phone: patientInfo.phone,
-          documentId: patientInfo.documentId
+          documentId: updateDoc
         });
       }
     } else {
-      // Check by documentId
+      const parsedDoc = IdentityDocumentService.parse(patientInfo.documentId);
+      if (!parsedDoc.isValid) {
+        return res.status(400).json({
+          code: 'INVALID_IDENTITY_DOCUMENT',
+          message: parsedDoc.error || 'El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.'
+        });
+      }
+      const canonicalDoc = parsedDoc.canonical;
+      const normalizedDoc = parsedDoc.normalized;
+
+      // Check by normalized or canonical documentId
       patient = await Patient.findOne({ 
-        where: { documentId: patientInfo.documentId },
+        where: {
+          [Op.or]: [
+            { documentNumberNormalized: normalizedDoc },
+            { documentId: canonicalDoc }
+          ]
+        },
         include: [User]
       });
       
@@ -40,7 +62,7 @@ exports.createPublicAppointment = async (req, res) => {
         user = patient.User;
       } else {
         // Create new user and patient (temporary/guest account)
-        const username = `patient_${patientInfo.documentId.replace(/[^a-zA-Z0-9]/g, '')}`;
+        const username = `patient_${normalizedDoc.toLowerCase()}`;
         const tempPassword = Math.random().toString(36).slice(-8);
         
         // Find PATIENT role
@@ -58,7 +80,11 @@ exports.createPublicAppointment = async (req, res) => {
 
         patient = await Patient.create({
           userId: user.id,
-          documentId: patientInfo.documentId,
+          documentId: canonicalDoc,
+          documentNumberNormalized: normalizedDoc,
+          documentPrefix: parsedDoc.prefix,
+          documentNumber: parsedDoc.number,
+          medicalRecordNumber: `HC-${canonicalDoc}`,
           phone: patientInfo.phone
         });
       }

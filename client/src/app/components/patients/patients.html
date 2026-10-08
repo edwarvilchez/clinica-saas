@@ -388,24 +388,40 @@
                   </select>
                 </div>
 
-                <!-- Número de Documento (Solo dígitos) -->
+                <!-- Documento de Identidad (Canónico con prefijo y validación) -->
                 <div class="col-md-5">
                   <label class="form-label x-small fw-bold text-muted">
-                    {{ langService.lang() === 'es' ? 'Número de Documento (Solo dígitos, sin puntos ni guiones) *' : 'Document Number (Digits only) *' }}
+                    {{ patientForm.documentType === 'CEDULA' ? (langService.lang() === 'es' ? 'Documento de identidad *' : 'Identity Document *') : (langService.lang() === 'es' ? 'Número de Documento *' : 'Document Number *') }}
                   </label>
                   <div class="input-group input-group-sm">
-                    <span class="input-group-text font-monospace fw-bold bg-light">{{ patientForm.documentPrefix }}</span>
+                    <span class="input-group-text font-monospace fw-bold bg-light">{{ patientForm.documentPrefix }}{{ patientForm.documentType === 'CEDULA' ? '-' : '' }}</span>
                     <input 
                       type="text" 
                       class="form-control rounded-end-3 font-monospace fw-bold" 
+                      [class.is-invalid]="!!docError()"
+                      [class.is-valid]="docValid() && !docError()"
                       [ngModel]="patientForm.documentNumber"
                       (input)="onDocumentNumberInput($event)"
                       name="documentNumber" 
                       required 
-                      placeholder="Ej. 12345678"
-                      maxlength="15">
+                      [placeholder]="patientForm.documentType === 'CEDULA' ? (patientForm.documentPrefix === 'E' ? '12345678' : '12345678') : '12345678'"
+                      maxlength="8">
                   </div>
-                  <small class="text-muted x-small">{{ langService.lang() === 'es' ? 'Formato final:' : 'Final format:' }} <strong class="font-monospace text-primary">{{ patientForm.documentPrefix }}{{ patientForm.documentNumber }}</strong></small>
+                  <!-- Indicadores de ayuda y validación en tiempo real -->
+                  <div class="mt-1">
+                    <small class="text-muted x-small d-block" *ngIf="patientForm.documentType === 'CEDULA'">
+                      {{ langService.lang() === 'es' ? (patientForm.documentPrefix === 'E' ? 'Formato: E-12345678' : 'Formato: V-12345678') : (patientForm.documentPrefix === 'E' ? 'Format: E-12345678' : 'Format: V-12345678') }}
+                      &nbsp;|&nbsp;
+                      {{ langService.lang() === 'es' ? 'Formato final:' : 'Final format:' }} 
+                      <strong class="font-monospace text-primary">{{ canonicalDocPreview() }}</strong>
+                    </small>
+                    <small class="text-danger x-small d-block mt-1 fw-bold" *ngIf="docError()">
+                      <i class="bi bi-exclamation-triangle-fill me-1"></i>{{ docError() }}
+                    </small>
+                    <small class="text-success x-small d-block mt-1 fw-semibold" *ngIf="docValid() && !docError() && patientForm.documentNumber">
+                      <i class="bi bi-check-circle-fill me-1"></i>{{ langService.lang() === 'es' ? 'Documento disponible' : 'Document available' }}
+                    </small>
+                  </div>
                 </div>
               </div>
             </div>
@@ -727,7 +743,7 @@
           <!-- Footer Actions -->
           <div class="d-flex justify-content-between align-items-center pt-3 border-top mt-3">
             <span class="x-small text-muted font-monospace">
-              {{ langService.lang() === 'es' ? 'Documento Identidad:' : 'Document ID:' }} <strong>{{ patientForm.documentPrefix }}{{ patientForm.documentNumber }}</strong>
+              {{ langService.lang() === 'es' ? 'Documento Identidad:' : 'Document ID:' }} <strong class="text-primary">{{ canonicalDocPreview() }}</strong>
             </span>
 
             <div class="d-flex gap-2">

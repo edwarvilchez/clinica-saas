@@ -93,10 +93,25 @@ export class Patients implements OnInit {
     clinicalHistorySummary: ''
   };
 
+  docError = signal<string | null>(null);
+  docValid = signal<boolean>(false);
+
+  canonicalDocPreview = computed(() => {
+    const pref = this.patientForm.documentPrefix || 'V';
+    const num = this.patientForm.documentNumber || '';
+    if (this.patientForm.documentType === 'CEDULA') {
+      return num ? `${pref}-${num}` : `${pref}-########`;
+    }
+    return `${pref}${num}`;
+  });
+
   // Computed live medical record number preview
   previewMedicalRecord = computed(() => {
     const pref = this.patientForm.documentPrefix || 'V';
     const num = this.patientForm.documentNumber || '00000000';
+    if (this.patientForm.documentType === 'CEDULA') {
+      return `HC-${pref}-${num}`;
+    }
     return `HC-${pref}${num}`;
   });
 
@@ -153,11 +168,12 @@ export class Patients implements OnInit {
       });
   }
 
-  // ── Document Number Sanitation (Strictly digits only) ──
+  // ── Document Number Sanitation & Live Validation ──
   onDocumentNumberInput(event: any) {
     const rawValue = event.target.value || '';
-    const cleanValue = rawValue.replace(/[^0-9]/g, '');
+    const cleanValue = rawValue.replace(/[^0-9]/g, '').slice(0, 8);
     this.patientForm.documentNumber = cleanValue;
+    this.checkDocumentDuplicate();
   }
 
   onDocumentTypeChange(newType: 'CEDULA' | 'PASAPORTE' | 'RIF') {
@@ -169,6 +185,53 @@ export class Patients implements OnInit {
     } else if (newType === 'RIF') {
       this.patientForm.documentPrefix = 'J';
     }
+    this.checkDocumentDuplicate();
+  }
+
+  checkDocumentDuplicate() {
+    const isCedula = this.patientForm.documentType === 'CEDULA';
+    const pref = this.patientForm.documentPrefix || 'V';
+    const num = this.patientForm.documentNumber;
+
+    if (!num) {
+      this.docError.set(null);
+      this.docValid.set(false);
+      return;
+    }
+
+    if (isCedula) {
+      if (num.length < 1 || num.length > 8) {
+        this.docError.set('El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.');
+        this.docValid.set(false);
+        return;
+      }
+
+      const canonicalDoc = `${pref}-${num}`;
+      const excludeParam = this.isEditing && this.editingPatientId ? `&excludeId=${this.editingPatientId}` : '';
+
+      this.http.get<any>(`${API_URL}/patients/check-document?document=${encodeURIComponent(canonicalDoc)}${excludeParam}`, {
+        headers: this.getHeaders()
+      }).subscribe({
+        next: (res) => {
+          if (!res.isValid) {
+            this.docError.set(res.message || 'El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.');
+            this.docValid.set(false);
+          } else if (!res.isAvailable) {
+            this.docError.set(res.message || 'El registro ya existe. Verifique el número de documento ingresado.');
+            this.docValid.set(false);
+          } else {
+            this.docError.set(null);
+            this.docValid.set(true);
+          }
+        },
+        error: () => {
+          // Si hay error en la petición no bloquear edición
+        }
+      });
+    } else {
+      this.docError.set(null);
+      this.docValid.set(true);
+    }
   }
 
   // ── Modals & Actions ──
@@ -176,6 +239,8 @@ export class Patients implements OnInit {
     this.isEditing = false;
     this.editingPatientId = null;
     this.activeModalTab = 'basic';
+    this.docError.set(null);
+    this.docValid.set(false);
     this.patientForm = {
       firstName: '',
       lastName: '',
@@ -210,6 +275,8 @@ export class Patients implements OnInit {
     this.isEditing = true;
     this.editingPatientId = patient.id;
     this.activeModalTab = 'basic';
+    this.docError.set(null);
+    this.docValid.set(true);
     
     // Extract prefix and number
     let pref = patient.documentPrefix || 'V';
@@ -311,10 +378,19 @@ export class Patients implements OnInit {
       return;
     }
 
+    if (this.docError()) {
+      Swal.fire('Atención', this.docError()!, 'warning');
+      return;
+    }
+
+    const cleanNum = this.patientForm.documentNumber.replace(/[^0-9]/g, '');
+    const isCedula = this.patientForm.documentType === 'CEDULA';
+    const canonicalDoc = isCedula ? `${this.patientForm.documentPrefix}-${cleanNum}` : `${this.patientForm.documentPrefix}${cleanNum}`;
+
     const payload = {
       ...this.patientForm,
-      documentNumber: this.patientForm.documentNumber.replace(/[^0-9]/g, ''),
-      documentId: `${this.patientForm.documentPrefix}${this.patientForm.documentNumber.replace(/[^0-9]/g, '')}`
+      documentNumber: cleanNum,
+      documentId: canonicalDoc
     };
 
     if (this.isEditing && this.editingPatientId) {
@@ -326,7 +402,11 @@ export class Patients implements OnInit {
             this.loadPatients();
           },
           error: (err) => {
-            Swal.fire('Error', err.error?.message || 'No se pudo actualizar el paciente.', 'error');
+            if (err.status === 409 || err.error?.code === 'IDENTITY_DOCUMENT_ALREADY_EXISTS') {
+              Swal.fire('Registro Existente', err.error?.message || 'El registro ya existe. Verifique el número de documento ingresado.', 'error');
+            } else {
+              Swal.fire('Error', err.error?.message || 'No se pudo actualizar el paciente.', 'error');
+            }
           }
         });
     } else {
@@ -343,7 +423,11 @@ export class Patients implements OnInit {
             this.loadPatients();
           },
           error: (err) => {
-            Swal.fire('Error al Registrar', err.error?.message || 'Verifica los datos ingresados.', 'error');
+            if (err.status === 409 || err.error?.code === 'IDENTITY_DOCUMENT_ALREADY_EXISTS') {
+              Swal.fire('Registro Existente', err.error?.message || 'El registro ya existe. Verifique el número de documento ingresado.', 'error');
+            } else {
+              Swal.fire('Error al Registrar', err.error?.message || 'Verifica los datos ingresados.', 'error');
+            }
           }
         });
     }

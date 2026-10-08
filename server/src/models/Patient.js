@@ -31,7 +31,12 @@ const Patient = sequelize.define('Patient', {
   documentId: {
     type: DataTypes.STRING,
     allowNull: false,
-    comment: 'Documento completo formateado, ej: V12345678, PAS884912, J123456789'
+    comment: 'Documento completo formateado canónico, ej: V-12345678, PAS884912, J123456789'
+  },
+  documentNumberNormalized: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    comment: 'Documento normalizado (ej: V85397898) para unicidad e indexación rápida'
   },
   organizationId: {
     type: DataTypes.UUID,
@@ -134,7 +139,9 @@ const Patient = sequelize.define('Patient', {
   paranoid: true,
   indexes: [
     {
-      unique: true,
+      fields: ['documentNumberNormalized']
+    },
+    {
       fields: ['documentId']
     },
     {
@@ -155,7 +162,36 @@ const Patient = sequelize.define('Patient', {
     {
       fields: ['organizationId', 'createdAt']
     }
-  ]
+  ],
+  hooks: {
+    beforeValidate: (patient) => {
+      const IdentityDocumentService = require('../services/identityDocument.service');
+      const docRaw = patient.documentId || (patient.documentPrefix && patient.documentNumber ? `${patient.documentPrefix}${patient.documentNumber}` : null);
+      if (docRaw) {
+        const isCedula = !patient.documentType || patient.documentType === 'CEDULA';
+        if (isCedula) {
+          const parsed = IdentityDocumentService.parse(docRaw);
+          if (parsed.isValid) {
+            patient.documentPrefix = parsed.prefix;
+            patient.documentNumber = parsed.number;
+            patient.documentId = parsed.canonical;
+            patient.documentNumberNormalized = parsed.normalized;
+            if (!patient.medicalRecordNumber) {
+              patient.medicalRecordNumber = `HC-${parsed.canonical}`;
+            }
+          } else {
+            // fallback safe normalization
+            const clean = String(docRaw).toUpperCase().replace(/[^A-Z0-9]/g, '');
+            patient.documentNumberNormalized = clean;
+          }
+        } else {
+          const clean = String(docRaw).toUpperCase().replace(/[^A-Z0-9]/g, '');
+          patient.documentNumberNormalized = clean;
+          patient.documentId = patient.documentId ? patient.documentId.trim() : clean;
+        }
+      }
+    }
+  }
 });
 
 module.exports = Patient;

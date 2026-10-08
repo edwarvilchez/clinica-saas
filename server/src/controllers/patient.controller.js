@@ -16,6 +16,7 @@ const {
 } = require('../models');
 const { Op } = require('sequelize');
 const { hasPermission } = require('../middlewares/authorization.middleware');
+const IdentityDocumentService = require('../services/identityDocument.service');
 
 /**
  * Clean document helper: removes dots, commas, hyphens, slashes, spaces.
@@ -51,8 +52,10 @@ exports.getPatients = async (req, res) => {
 
     if (search) {
       const s = search.trim();
+      const sClean = s.toUpperCase().replace(/[^A-Z0-9]/g, '');
       patientWhere[Op.or] = [
         { documentId: { [Op.iLike]: `%${s}%` } },
+        { documentNumberNormalized: { [Op.iLike]: `%${sClean || s}%` } },
         { medicalRecordNumber: { [Op.iLike]: `%${s}%` } },
         { phone: { [Op.iLike]: `%${s}%` } },
         { '$User.firstName$': { [Op.iLike]: `%${s}%` } },
@@ -124,11 +127,13 @@ exports.getPatientByMedicalRecord = async (req, res) => {
     const { organizationId, role } = req.user;
     const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
 
+    const cleanNorm = recordNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
     const patient = await Patient.findOne({
       where: {
         [Op.or]: [
           { medicalRecordNumber: recordNumber },
-          { documentId: recordNumber.replace(/[^A-Za-z0-9]/g, '').toUpperCase() }
+          { documentId: recordNumber },
+          { documentNumberNormalized: cleanNorm }
         ]
       },
       include: [
@@ -211,42 +216,77 @@ exports.createPatient = async (req, res) => {
       clinicalHistorySummary
     } = req.body;
 
-    if (!firstName || !lastName || !documentNumber) {
+    const rawInput = req.body.documentId || ((documentPrefix && documentNumber) ? `${documentPrefix}${documentNumber}` : documentNumber);
+
+    if (!firstName || !lastName || !rawInput) {
       await t.rollback();
       return res.status(400).json({ message: 'Nombres, apellidos y número de documento son obligatorios.' });
     }
 
-    // Clean format: strictly numbers for documentNumber
-    const cleanNum = cleanDocNumber(documentNumber);
-    if (!cleanNum) {
-      await t.rollback();
-      return res.status(400).json({ message: 'El número de documento debe contener solo dígitos numéricos.' });
+    const isCedula = !documentType || documentType === 'CEDULA';
+    let cleanPref = (documentPrefix || 'V').toUpperCase();
+    let cleanNum = '';
+    let formattedDocumentId = '';
+    let normalizedDocumentId = '';
+    let medicalRecordNumber = '';
+
+    if (isCedula) {
+      const parsedDoc = IdentityDocumentService.parse(rawInput);
+      if (!parsedDoc.isValid) {
+        await t.rollback();
+        return res.status(400).json({
+          code: 'INVALID_IDENTITY_DOCUMENT',
+          message: parsedDoc.error || 'El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.'
+        });
+      }
+      cleanPref = parsedDoc.prefix;
+      cleanNum = parsedDoc.number;
+      formattedDocumentId = parsedDoc.canonical;
+      normalizedDocumentId = parsedDoc.normalized;
+      medicalRecordNumber = `HC-${formattedDocumentId}`;
+    } else {
+      cleanNum = cleanDocNumber(documentNumber || rawInput);
+      cleanPref = (documentPrefix || 'PAS').toUpperCase();
+      formattedDocumentId = `${cleanPref}${cleanNum}`;
+      normalizedDocumentId = formattedDocumentId;
+      medicalRecordNumber = `HC-${formattedDocumentId}`;
     }
 
-    const cleanPref = (documentPrefix || 'V').toUpperCase();
-    const formattedDocumentId = `${cleanPref}${cleanNum}`;
-    const medicalRecordNumber = `HC-${formattedDocumentId}`;
-
-    // 1. DUPLICATE CHECK: Verify if patient with documentId or medicalRecordNumber already exists
-    const existingPatient = await Patient.findOne({
-      where: {
-        [Op.or]: [
-          { documentId: formattedDocumentId },
-          { medicalRecordNumber }
-        ]
-      }
+    // 1. DUPLICATE CHECK: Verify if patient with documentId or normalized document already exists in this organization
+    const dupCheck = await IdentityDocumentService.checkDuplicate({
+      documentInput: formattedDocumentId,
+      organizationId,
+      PatientModel: Patient,
+      transaction: t
     });
 
-    if (existingPatient) {
+    if (dupCheck.isDuplicate) {
       await t.rollback();
-      return res.status(409).json({ 
-        message: `⚠️ Ya existe un paciente registrado con el documento ${formattedDocumentId} (Nro. de Historia Médica: ${existingPatient.medicalRecordNumber || medicalRecordNumber}). Se evitan registros duplicados.` 
+      return res.status(409).json({
+        code: 'IDENTITY_DOCUMENT_ALREADY_EXISTS',
+        message: 'El registro ya existe. Verifique el número de documento ingresado.'
       });
     }
 
-    // 2. DUPLICATE CHECK: Verify if User email already exists
-    const userEmail = email ? email.trim().toLowerCase() : `pac.${formattedDocumentId.toLowerCase()}@medicusve.com`;
-    const existingUser = await User.findOne({ where: { email: userEmail } });
+    // 2. DUPLICATE CHECK: Verify if medicalRecordNumber already exists in this organization
+    const existingMedRec = await Patient.findOne({
+      where: {
+        medicalRecordNumber,
+        organizationId: organizationId || null
+      },
+      transaction: t
+    });
+    if (existingMedRec) {
+      await t.rollback();
+      return res.status(409).json({
+        code: 'IDENTITY_DOCUMENT_ALREADY_EXISTS',
+        message: 'El registro ya existe. Verifique el número de documento ingresado.'
+      });
+    }
+
+    // 3. DUPLICATE CHECK: Verify if User email already exists
+    const userEmail = email ? email.trim().toLowerCase() : `pac.${normalizedDocumentId.toLowerCase()}@medicusve.com`;
+    const existingUser = await User.findOne({ where: { email: userEmail }, transaction: t });
     if (existingUser) {
       await t.rollback();
       return res.status(409).json({ 
@@ -259,7 +299,7 @@ exports.createPatient = async (req, res) => {
 
     // Create User
     const user = await User.create({
-      username: email ? email.split('@')[0] : `pac.${formattedDocumentId.toLowerCase()}`,
+      username: email ? email.split('@')[0] : `pac.${normalizedDocumentId.toLowerCase()}`,
       email: userEmail,
       password: password || 'MedicusvePatient123!',
       firstName: firstName.trim(),
@@ -278,6 +318,7 @@ exports.createPatient = async (req, res) => {
       documentPrefix: cleanPref,
       documentNumber: cleanNum,
       documentId: formattedDocumentId,
+      documentNumberNormalized: normalizedDocumentId,
       birthDate: birthDate || null,
       gender,
       phone: phone || null,
@@ -316,6 +357,9 @@ exports.createPatient = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error('Error in createPatient:', error);
+    if (IdentityDocumentService.handleUniqueViolationError(error, res)) {
+      return;
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -370,26 +414,52 @@ exports.updatePatient = async (req, res) => {
 
     // If document is being changed, check for duplicates
     let documentId = patient.documentId;
+    let documentNumberNormalized = patient.documentNumberNormalized;
     let medicalRecordNumber = patient.medicalRecordNumber;
     let cleanNum = patient.documentNumber;
     let cleanPref = patient.documentPrefix;
 
-    if (documentNumber) {
-      cleanNum = cleanDocNumber(documentNumber);
-      cleanPref = (documentPrefix || patient.documentPrefix || 'V').toUpperCase();
-      documentId = `${cleanPref}${cleanNum}`;
-      medicalRecordNumber = `HC-${documentId}`;
+    if (documentNumber || req.body.documentId) {
+      const rawInput = req.body.documentId || ((documentPrefix || patient.documentPrefix || 'V') + documentNumber);
+      const isCedula = (documentType || patient.documentType || 'CEDULA') === 'CEDULA';
 
-      const duplicate = await Patient.findOne({
-        where: {
-          documentId,
-          id: { [Op.ne]: id }
+      if (isCedula) {
+        const parsedDoc = IdentityDocumentService.parse(rawInput);
+        if (!parsedDoc.isValid) {
+          await t.rollback();
+          return res.status(400).json({
+            code: 'INVALID_IDENTITY_DOCUMENT',
+            message: parsedDoc.error || 'El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.'
+          });
         }
+        cleanPref = parsedDoc.prefix;
+        cleanNum = parsedDoc.number;
+        documentId = parsedDoc.canonical;
+        documentNumberNormalized = parsedDoc.normalized;
+        medicalRecordNumber = `HC-${documentId}`;
+      } else {
+        cleanNum = cleanDocNumber(documentNumber || rawInput);
+        cleanPref = (documentPrefix || patient.documentPrefix || 'PAS').toUpperCase();
+        documentId = `${cleanPref}${cleanNum}`;
+        documentNumberNormalized = documentId;
+        medicalRecordNumber = `HC-${documentId}`;
+      }
+
+      // Validar si existe otro paciente con este mismo documento en esta organización
+      const dupCheck = await IdentityDocumentService.checkDuplicate({
+        documentInput: documentId,
+        organizationId: patient.organizationId,
+        excludePatientId: id,
+        PatientModel: Patient,
+        transaction: t
       });
 
-      if (duplicate) {
+      if (dupCheck.isDuplicate) {
         await t.rollback();
-        return res.status(409).json({ message: `Ya existe otro paciente con el documento ${documentId}` });
+        return res.status(409).json({
+          code: 'IDENTITY_DOCUMENT_ALREADY_EXISTS',
+          message: 'El registro ya existe. Verifique el número de documento ingresado.'
+        });
       }
     }
 
@@ -416,6 +486,7 @@ exports.updatePatient = async (req, res) => {
       documentPrefix: cleanPref,
       documentNumber: cleanNum,
       documentId,
+      documentNumberNormalized,
       medicalRecordNumber,
       birthDate: birthDate !== undefined ? birthDate : patient.birthDate,
       gender: gender || patient.gender,
@@ -454,6 +525,9 @@ exports.updatePatient = async (req, res) => {
   } catch (error) {
     await t.rollback();
     console.error('Error updating patient:', error);
+    if (IdentityDocumentService.handleUniqueViolationError(error, res)) {
+      return;
+    }
     res.status(500).json({ error: error.message });
   }
 };
@@ -490,16 +564,27 @@ exports.expressAdmission = async (req, res) => {
       return res.status(400).json({ message: 'Cédula/DNI, nombres y apellidos son obligatorios' });
     }
 
-    const cleanNum = cleanDocNumber(documentId);
-    const formattedDoc = documentId.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const parsedDoc = IdentityDocumentService.parse(documentId);
+    if (!parsedDoc.isValid) {
+      return res.status(400).json({
+        code: 'INVALID_IDENTITY_DOCUMENT',
+        message: parsedDoc.error || 'El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.'
+      });
+    }
+
+    const cleanNum = parsedDoc.number;
+    const formattedDoc = parsedDoc.canonical;
+    const normalizedDoc = parsedDoc.normalized;
     const medRec = `HC-${formattedDoc}`;
 
     let patient = await Patient.findOne({
       where: {
         [Op.or]: [
+          { documentNumberNormalized: normalizedDoc },
           { documentId: formattedDoc },
           { medicalRecordNumber: medRec }
-        ]
+        ],
+        ...(organizationId ? { organizationId } : { organizationId: null })
       },
       include: [User]
     });
@@ -508,8 +593,8 @@ exports.expressAdmission = async (req, res) => {
       const patientRole = await Role.findOne({ where: { name: 'PATIENT' } });
 
       const user = await User.create({
-        username: email || `pac.${formattedDoc.toLowerCase()}`,
-        email: email || `pac.${formattedDoc.toLowerCase()}@medicusve.com`,
+        username: email || `pac.${normalizedDoc.toLowerCase()}`,
+        email: email || `pac.${normalizedDoc.toLowerCase()}@medicusve.com`,
         password: 'MedicusvePatient123!',
         firstName: firstName.trim(),
         lastName: lastName.trim(),
@@ -521,7 +606,8 @@ exports.expressAdmission = async (req, res) => {
         userId: user.id,
         documentId: formattedDoc,
         documentNumber: cleanNum,
-        documentPrefix: formattedDoc.charAt(0) || 'V',
+        documentPrefix: parsedDoc.prefix,
+        documentNumberNormalized: normalizedDoc,
         medicalRecordNumber: medRec,
         phone,
         insuranceProvider: insuranceProvider || 'Particular',
@@ -900,3 +986,54 @@ exports.getPatientTimeline = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+/**
+ * 🔍 Endpoint para validación y verificación de duplicados de cédula en tiempo real
+ * GET /api/patients/check-document?document=...&excludeId=...
+ */
+exports.checkDocumentAvailability = async (req, res) => {
+  try {
+    const { document, excludeId } = req.query;
+    const { organizationId } = req.user;
+
+    if (!document) {
+      return res.status(400).json({ isValid: false, message: 'Documento requerido.' });
+    }
+
+    const parsed = IdentityDocumentService.parse(document);
+    if (!parsed.isValid) {
+      return res.status(200).json({
+        isValid: false,
+        isAvailable: false,
+        message: parsed.error || 'El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.'
+      });
+    }
+
+    const dupCheck = await IdentityDocumentService.checkDuplicate({
+      documentInput: parsed.canonical,
+      organizationId,
+      excludePatientId: excludeId || null
+    });
+
+    if (dupCheck.isDuplicate) {
+      return res.status(200).json({
+        isValid: true,
+        isAvailable: false,
+        canonical: parsed.canonical,
+        normalized: parsed.normalized,
+        message: 'El registro ya existe. Verifique el número de documento ingresado.'
+      });
+    }
+
+    return res.status(200).json({
+      isValid: true,
+      isAvailable: true,
+      canonical: parsed.canonical,
+      normalized: parsed.normalized,
+      message: 'Documento disponible.'
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+

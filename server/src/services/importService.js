@@ -26,6 +26,22 @@ function validateRecord(type, record, rowIndex = 1) {
     if (!record.username || !record.email) errors.push({ row: rowIndex, field: 'username/email', message: 'Falta nombre de usuario o correo electrónico' });
     if (type === 'doctors' && !record.licenseNumber) errors.push({ row: rowIndex, field: 'licenseNumber', message: 'Falta la licencia médica obligatoria' });
     if (record.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(record.email)) errors.push({ row: rowIndex, field: 'email', message: `Formato de correo electrónico inválido: '${record.email}'` });
+    if (type === 'patients') {
+      const docVal = record.documentId || record.documentNumber;
+      if (!docVal) {
+        errors.push({ row: rowIndex, field: 'documentId', message: 'Falta documento de identidad obligatorio' });
+      } else {
+        const IdentityDocumentService = require('./identityDocument.service');
+        const parsed = IdentityDocumentService.parse(docVal);
+        if (!parsed.isValid) {
+          errors.push({
+            row: rowIndex,
+            field: 'documentId',
+            message: parsed.error || 'El documento de identidad no tiene un formato válido. Utilice V-12345678 o E-12345678.'
+          });
+        }
+      }
+    }
   } else if (type === 'lab_catalog') {
     if (!record.name) errors.push({ row: rowIndex, field: 'name', message: 'Falta el nombre de la prueba de laboratorio' });
     if (!record.price || isNaN(parseFloat(record.price))) errors.push({ row: rowIndex, field: 'price', message: 'Falta el precio o valor numérico inválido' });
