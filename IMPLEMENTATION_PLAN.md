@@ -275,8 +275,26 @@ flowchart TD
     - 9/9 pruebas pasando (autenticación 401, autorización legítima de paciente 200, bloqueo anti-IDOR intra-tenant 403, rechazo anti-enumeración cross-tenant 404, autorización médica/admin 200, scoping superadmin 200, ordenamiento cronológico y filtros por tipo).
   - Verificación global de regresión: **39/39 suites pasando, 268/268 tests en verde**.
 
-#### Fases 19 a 26 — Resto de Funcionalidades de Negocio
-- **Fase 19:** Fundamentos de CRM Clínico (embudo de prospectos a pacientes activos).
+#### Fase 19 — Fundamentos de CRM Clínico [COMPLETADA]
+- **Objetivo:** Gestión integral del ciclo de vida del prospecto/lead clínico, trazabilidad de canales de origen y conversión atómica en paciente activo sin duplicación ni fugas en el embudo.
+- **Entregables:**
+  - Modelo relacional ([server/src/models/Lead.js](file:///d:/projects/clinica-saas/server/src/models/Lead.js)) con índices optimizados y soporte multi-tenant:
+    - Etapas del embudo (`NEW`, `CONTACTED`, `SCHEDULED`, `CONVERTED`, `LOST`).
+    - Atributos clave: canal/origen (`WHATSAPP`, `WEB_FORM`, `CALL_INBOUND`, etc.), especialidad requerida, usuario asignado, valor monetario estimado, tags y motivo de descarte.
+  - Controlador de CRM ([server/src/controllers/crm.controller.js](file:///d:/projects/clinica-saas/server/src/controllers/crm.controller.js)):
+    - `getLeads`: listado paginado con filtros por estado, fuente, especialidad y búsqueda textual.
+    - `getLeadStats`: métricas del embudo en tiempo real (conteo por etapa, tasa de conversión porcentual, distribución por fuentes y finanzas estimadas vs convertidas).
+    - `createLead` y `updateLead`: gestión y seguimiento de prospectos con emisión de eventos de dominio (`crm.leadCreated`, `crm.leadStatusChanged`).
+    - `convertLeadToPatient`: conversión atómica transaccional (`sequelize.transaction`), creación de `User` (rol `PATIENT`) y `Patient` con asignación de número de historia médica y prevención estricta de re-conversiones duplicadas.
+  - Endpoints y autorización granular RBAC ([server/src/routes/crm.routes.js](file:///d:/projects/clinica-saas/server/src/routes/crm.routes.js) montados en `/api/crm` en `server/src/index.js`):
+    - Permisos específicos: `crm:read`, `crm:create`, `crm:update`, `crm:convert`, `crm:delete`.
+    - Bloqueo de acceso no autorizado (roles como `PATIENT` reciben `403 Forbidden`).
+    - Aislamiento multi-tenant estricto entre clínicas.
+  - Suite de pruebas de seguridad y lógica de negocio ([clinicalCrmSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/clinicalCrmSecurity.test.js)):
+    - 10/10 pruebas pasando exitosamente.
+  - Verificación global de regresión: **40/40 suites pasando, 278/278 tests en verde**.
+
+#### Fases 20 a 26 — Resto de Funcionalidades de Negocio
 - **Fase 20:** Automatización de No-Shows (recordatorios multicanal vía `NotificationService`).
 - **Fase 21:** Smart Waitlist (reasignación ágil de citas liberadas).
 - **Fase 22:** Revenue Intelligence (analítica financiera desagregada sin cruzar permisos clínicos).

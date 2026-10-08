@@ -159,6 +159,7 @@ const loadFullApp = async (req, res, next) => {
     app.use('/api/inventory', protectedRoutes, require('./routes/inventory.routes'));
     app.use('/api/employees', protectedRoutes, require('./routes/employee.routes'));
     app.use('/api/hospital', protectedRoutes, require('./routes/hospital.routes'));
+    app.use('/api/crm', protectedRoutes, require('./routes/crm.routes'));
     app.use('/api/bulk', protectedRoutes, require('./routes/bulk.routes'));
     app.use('/api/public', require('./routes/public.routes'));
     app.use('/api/files', require('./routes/file.routes'));

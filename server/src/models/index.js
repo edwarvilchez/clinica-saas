@@ -39,6 +39,7 @@ const InventoryItem = require('./InventoryItem');
 const InventoryMovement = require('./InventoryMovement');
 const ClinicalPackage = require('./ClinicalPackage');
 const RefreshToken = require('./RefreshToken');
+const Lead = require('./Lead');
 
 // User - RefreshToken
 User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -440,6 +441,19 @@ sequelize.addHook('beforeBulkDestroy', function(options) {
   }
 });
 
+// CRM & Leads Funnel Associations
+Organization.hasMany(Lead, { foreignKey: 'organizationId' });
+Lead.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+User.hasMany(Lead, { as: 'assignedLeads', foreignKey: 'assignedUserId' });
+Lead.belongsTo(User, { as: 'assignedUser', foreignKey: 'assignedUserId' });
+
+Specialty.hasMany(Lead, { foreignKey: 'specialtyId' });
+Lead.belongsTo(Specialty, { foreignKey: 'specialtyId' });
+
+Patient.hasOne(Lead, { as: 'leadSource', foreignKey: 'convertedPatientId' });
+Lead.belongsTo(Patient, { as: 'convertedPatient', foreignKey: 'convertedPatientId' });
+
 module.exports = {
   User,
   Role,
@@ -481,5 +495,6 @@ module.exports = {
   InventoryMovement,
   ClinicalPackage,
   RefreshToken,
+  Lead,
   sequelize
 };
