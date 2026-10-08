@@ -16,7 +16,7 @@ describe('💰 Medicusve Doctor Fee Reconciliation & Pharmacy Discount Engine', 
   let testPayment;
 
   beforeAll(async () => {
-    await sequelize.sync();
+    await sequelize.authenticate();
 
     testPayment = await Payment.create({
       amount: 100.00,

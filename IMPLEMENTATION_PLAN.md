@@ -324,8 +324,36 @@ flowchart TD
     - 13/13 pruebas pasando (autenticación 401, rechazo 403 a pacientes, aislamiento multi-tenant, reconciliación automática, idempotencia y métricas).
   - Verificación global del monorepo: **41/41 suites pasando, 291/291 tests en verde**.
 
-#### Fases 21 a 26 — Resto de Funcionalidades de Negocio
-- **Fase 21:** Smart Waitlist (reasignación ágil de citas liberadas).
+#### Fase 21 — Smart Waitlist (Lista de Espera Inteligente y Reasignación Ágil de Turnos) [COMPLETADA]
+- **Objetivo:** Optimizar la ocupación clínica y reducir huecos en la agenda mediante una lista de espera con priorización FIFO ponderada por triaje/urgencia (`URGENT` > `HIGH` > `MEDIUM` > `LOW`), oferta interactiva de cupos liberados con tiempo de expiración, conversión atómica transaccional a cita confirmada (`Appointment`), protección anti-IDOR para pacientes, registro de auditoría inmutable y publicación de eventos de dominio.
+- **Entregables:**
+  - Modelo relacional y migración PostgreSQL ([server/src/models/WaitlistEntry.js](file:///d:/projects/clinica-saas/server/src/models/WaitlistEntry.js) y [server/src/migrations/20261008040000-create-waitlist-entries.js](file:///d:/projects/clinica-saas/server/src/migrations/20261008040000-create-waitlist-entries.js)):
+    - Estados del ciclo de vida (`WAITING`, `OFFERED`, `ACCEPTED`, `EXPIRED`, `CANCELLED`).
+    - Niveles de prioridad ponderados (`URGENT`, `HIGH`, `MEDIUM`, `LOW`).
+    - Atributos: `organizationId` (UUID), `patientId` (UUID), `doctorId` (UUID), `specialtyId` (INTEGER compatible con esquema relacional), `offeredAppointmentDate`, `offerExpiresAt`, `convertedAppointmentId`, `preferredDays`, `preferredTimeRange`, `notes`.
+    - Índices compuestos de optimización y eliminación lógica (`paranoid: true`).
+  - Servicio de Negocio `SmartWaitlistService` ([server/src/services/smartWaitlist.service.js](file:///d:/projects/clinica-saas/server/src/services/smartWaitlist.service.js)):
+    - `addToWaitlist`: registro de paciente con asignación de prioridad y prevención de duplicados en espera para el mismo médico/especialidad.
+    - `findEligibleCandidates`: consulta priorizada por triaje (`URGENT` primero) y FIFO (`createdAt` ascendente).
+    - `offerSlotToCandidate`: reserva provisional de turno por ventana de tiempo (`expirationMinutes`) con despacho multicanal (`notificationService.sendWaitlistOfferNotice`).
+    - `acceptOffer`: conversión atómica transaccional (`sequelize.transaction`), validación de conflictos de horario (`validateAppointment`), creación de cita médica confirmada (`Appointment`), actualización de la lista de espera y emisión de eventos de dominio.
+    - `declineOffer`: rechazo de turno con opción de permanecer en lista de espera (`WAITING`) o cancelar solicitud (`CANCELLED`).
+    - `expireStaleOffers`: expiración masiva de turnos no respondidos.
+    - `autoMatchOnSlotReleased`: reconciliación reactiva ante cancelaciones o inasistencias (`NoShow`).
+    - `getWaitlistStats`: métricas operacionales agregadas (total de solicitudes, distribución por prioridad y tasa de conversión %).
+  - Controlador y Rutas Seguras ([server/src/controllers/waitlist.controller.js](file:///d:/projects/clinica-saas/server/src/controllers/waitlist.controller.js) y [server/src/routes/waitlist.routes.js](file:///d:/projects/clinica-saas/server/src/routes/waitlist.routes.js)):
+    - Montadas en `/api/waitlist` con `protectedRoutes`.
+    - Permisos granulares RBAC (`waitlist:read`, `waitlist:write`, `waitlist:create`, `waitlist:accept`, `waitlist:delete`).
+    - Blindaje Anti-IDOR: los pacientes únicamente pueden añadir y consultar sus propias entradas y aceptar/rechazar ofertas destinadas exclusivamente a ellos.
+    - Aislamiento multi-tenant estricto con mitigación de enumeración cross-tenant (retorno de 404).
+  - Trazabilidad y Eventos de Dominio ([server/src/events/domainEvents.js](file:///d:/projects/clinica-saas/server/src/events/domainEvents.js)):
+    - Eventos canónicos: `waitlist.entryCreated`, `waitlist.offerSent`, `waitlist.offerAccepted`, `waitlist.offerDeclined`.
+    - Registro inmutable en `AuditLog` para auditoría clínica.
+  - Suite de Pruebas de Seguridad y Lógica ([server/src/__tests__/security/smartWaitlistSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/smartWaitlistSecurity.test.js)):
+    - 23/23 pruebas pasando exitosamente.
+  - Verificación global de regresión: **42/42 suites pasando, 314/314 tests en verde (100%)**.
+
+#### Fases 22 a 26 — Resto de Funcionalidades de Negocio
 - **Fase 22:** Revenue Intelligence (analítica financiera desagregada sin cruzar permisos clínicos).
 - **Fase 23:** Portal del Paciente (acceso seguro de mínimo privilegio para consulta de citas y resultados).
 - **Fase 24:** Fundamentos de IA Clínica (asistente con paradigma *Doctor reviews & approves*, sin diagnósticos autónomos).

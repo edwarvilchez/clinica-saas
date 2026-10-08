@@ -223,6 +223,72 @@ class NotificationService {
       }).catch(err => logger.warn({ err: err.message, msg: '[NotificationService] WhatsApp cancellation failed' }));
     }
   }
+
+  /**
+   * Send Smart Waitlist slot offer notice to patient
+   */
+  async sendWaitlistOfferNotice(waitlistEntry, options = {}) {
+    const patientUser = waitlistEntry?.Patient?.User || {};
+    const doctorUser = waitlistEntry?.Doctor?.User || {};
+    const patientName = `${patientUser.firstName || ''} ${patientUser.lastName || ''}`.trim() || 'Paciente';
+    const doctorName = `${doctorUser.firstName || ''} ${doctorUser.lastName || ''}`.trim() || 'Especialista';
+    const patientPhone = waitlistEntry?.Patient?.phone || patientUser.phone || '';
+    const patientEmail = patientUser.email || '';
+    const { dateStr, timeStr } = this._formatDateInfo(waitlistEntry.offeredAppointmentDate || new Date());
+    const expiresAt = waitlistEntry.offerExpiresAt ? new Date(waitlistEntry.offerExpiresAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '2 horas';
+
+    const results = {
+      waitlistEntryId: waitlistEntry.id,
+      notice: 'WAITLIST_OFFER',
+      channels: { whatsapp: { success: false }, email: { success: false } }
+    };
+
+    if (patientPhone) {
+      try {
+        const message = `🎉 *¡Turno Liberado Disponible!*\n\nHola ${patientName}, se ha abierto un espacio en lista de espera para tu consulta:\n\n📅 *Fecha:* ${dateStr}\n⏰ *Hora:* ${timeStr}\n👨‍⚕️ *Doctor:* Dr. ${doctorName}\n⏳ *Tiempo límite:* ${expiresAt}\n\nIngresa para confirmar:\n${this.clientUrl}/waitlist/offers/${waitlistEntry.id}`;
+        const waRes = await whatsapp._sendMessage(patientPhone, message);
+        results.channels.whatsapp = { success: !!waRes?.success };
+      } catch (err) {
+        logger.warn({ err: err.message, waitlistEntryId: waitlistEntry.id, msg: '[NotificationService] WhatsApp waitlist offer failed' });
+      }
+    }
+
+    if (patientEmail) {
+      try {
+        const subject = `¡Turno liberado disponible en lista de espera! - ${this.appName}`;
+        const html = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 8px;">
+            <h2 style="color: #2b6cb0;">¡Tenemos un turno disponible para ti!</h2>
+            <p>Hola <strong>${patientName}</strong>,</p>
+            <p>Se ha liberado un espacio en la agenda médica y eres el siguiente en nuestra lista de espera:</p>
+            <div style="background-color: #ebf8ff; border-left: 4px solid #3182ce; padding: 16px; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 4px 0;">📅 <strong>Fecha:</strong> ${dateStr}</p>
+              <p style="margin: 4px 0;">⏰ <strong>Hora:</strong> ${timeStr}</p>
+              <p style="margin: 4px 0;">👨‍⚕️ <strong>Médico:</strong> Dr. ${doctorName}</p>
+              <p style="margin: 4px 0; color: #c53030;">⏳ <strong>Oferta válida hasta:</strong> ${expiresAt}</p>
+            </div>
+            <div style="margin: 24px 0; text-align: center;">
+              <a href="${this.clientUrl}/waitlist/offers/${waitlistEntry.id}" style="background-color: #38a169; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+                Aceptar y Confirmar mi Cita
+              </a>
+            </div>
+          </div>
+        `;
+        await sendEmail({
+          email: patientEmail,
+          subject,
+          html,
+          message: `Turno disponible en lista de espera el ${dateStr} a las ${timeStr} con Dr. ${doctorName}. Acepta antes de ${expiresAt}.`
+        });
+        results.channels.email = { success: true };
+      } catch (err) {
+        logger.warn({ err: err.message, waitlistEntryId: waitlistEntry.id, msg: '[NotificationService] Email waitlist offer failed' });
+      }
+    }
+
+    results.success = results.channels.whatsapp.success || results.channels.email.success || false;
+    return results;
+  }
 }
 
 module.exports = new NotificationService();

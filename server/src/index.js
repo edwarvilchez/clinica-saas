@@ -161,6 +161,7 @@ const loadFullApp = async (req, res, next) => {
     app.use('/api/hospital', protectedRoutes, require('./routes/hospital.routes'));
     app.use('/api/crm', protectedRoutes, require('./routes/crm.routes'));
     app.use('/api/bulk', protectedRoutes, require('./routes/bulk.routes'));
+    app.use('/api/waitlist', protectedRoutes, require('./routes/waitlist.routes'));
     app.use('/api/public', require('./routes/public.routes'));
     app.use('/api/files', require('./routes/file.routes'));
     app.use('/api/admin', [...protectedRoutes, roleMiddleware(['SUPERADMIN', 'PLATFORM_ADMIN'])], require('./routes/admin.routes'));

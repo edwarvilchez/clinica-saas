@@ -45,6 +45,7 @@ const InventoryMovement = require('./InventoryMovement');
 const ClinicalPackage = require('./ClinicalPackage');
 const RefreshToken = require('./RefreshToken');
 const Lead = require('./Lead');
+const WaitlistEntry = require('./WaitlistEntry');
 
 // User - RefreshToken
 User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -459,6 +460,22 @@ Lead.belongsTo(Specialty, { foreignKey: 'specialtyId' });
 Patient.hasOne(Lead, { as: 'leadSource', foreignKey: 'convertedPatientId' });
 Lead.belongsTo(Patient, { as: 'convertedPatient', foreignKey: 'convertedPatientId' });
 
+// --- Smart Waitlist (Fase 21) ---
+Organization.hasMany(WaitlistEntry, { foreignKey: 'organizationId' });
+WaitlistEntry.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Patient.hasMany(WaitlistEntry, { foreignKey: 'patientId' });
+WaitlistEntry.belongsTo(Patient, { foreignKey: 'patientId' });
+
+Doctor.hasMany(WaitlistEntry, { foreignKey: 'doctorId' });
+WaitlistEntry.belongsTo(Doctor, { foreignKey: 'doctorId' });
+
+Specialty.hasMany(WaitlistEntry, { foreignKey: 'specialtyId' });
+WaitlistEntry.belongsTo(Specialty, { foreignKey: 'specialtyId' });
+
+Appointment.hasOne(WaitlistEntry, { as: 'waitlistOrigin', foreignKey: 'convertedAppointmentId' });
+WaitlistEntry.belongsTo(Appointment, { as: 'convertedAppointment', foreignKey: 'convertedAppointmentId' });
+
 module.exports = {
   User,
   Role,
@@ -501,5 +518,6 @@ module.exports = {
   ClinicalPackage,
   RefreshToken,
   Lead,
+  WaitlistEntry,
   sequelize
 };

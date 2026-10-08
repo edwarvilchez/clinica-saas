@@ -44,6 +44,12 @@ const DOMAIN_EVENTS = Object.freeze({
   APPOINTMENT_NO_SHOW: 'Appointment.NoShow',
   APPOINTMENT_REMINDER_SENT: 'Appointment.ReminderSent',
 
+  // Smart Waitlist
+  WAITLIST_ENTRY_CREATED: 'Waitlist.EntryCreated',
+  WAITLIST_OFFER_SENT: 'Waitlist.OfferSent',
+  WAITLIST_OFFER_ACCEPTED: 'Waitlist.OfferAccepted',
+  WAITLIST_OFFER_DECLINED: 'Waitlist.OfferDeclined',
+
   // Billing & Financial
   PAYMENT_RECEIVED: 'Billing.PaymentReceived',
   PAYMENT_COLLECTED: 'Billing.PaymentCollected',
