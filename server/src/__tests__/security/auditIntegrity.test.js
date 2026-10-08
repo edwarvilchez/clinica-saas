@@ -282,4 +282,55 @@ describe('🛡️ FASE 2: Audit Integrity & Tamper-Evidence Security Suite', () 
       expect(directLogB).toBeNull();
     });
   });
+
+  // =========================================================================
+  // 6. AUDIT CHAIN CONCURRENCY & FORK PREVENTION
+  // =========================================================================
+
+  test('🔒 Concurrent audit events serialize deterministically without branching forks', async () => {
+    const concurrentOrg = await Organization.create({
+      id: uuidv4(),
+      name: `Concurrent Audit Clinic ${Date.now()}`,
+      type: 'CLINIC',
+      ownerId: testUserA.id,
+      subscriptionStatus: 'ACTIVE'
+    });
+
+    const numEvents = 5;
+    const promises = [];
+
+    for (let i = 0; i < numEvents; i++) {
+      promises.push(
+        auditService.logEvent({
+          organizationId: concurrentOrg.id,
+          actorUserId: testUserA.id,
+          action: `CONCURRENT_EVENT_${i}`,
+          entity: 'TestEntity',
+          entityId: `id_${i}`
+        })
+      );
+    }
+
+    const createdLogs = await Promise.all(promises);
+    expect(createdLogs.length).toBe(numEvents);
+    expect(createdLogs.every(l => l && l.currentHash)).toBe(true);
+
+    // Retrieve full chain ordered by timestamp, id ASC
+    const fullChain = await AuditLog.findAll({
+      where: { organizationId: concurrentOrg.id },
+      order: [['timestamp', 'ASC'], ['id', 'ASC']]
+    });
+
+    expect(fullChain.length).toBe(numEvents);
+
+    // Verify each previousHash is unique except if genesis
+    const previousHashes = fullChain.map(l => l.previousHash);
+    const uniquePreviousHashes = new Set(previousHashes);
+    expect(uniquePreviousHashes.size).toBe(numEvents);
+
+    // Verify each record's previousHash matches the preceding record's currentHash
+    for (let i = 1; i < fullChain.length; i++) {
+      expect(fullChain[i].previousHash).toBe(fullChain[i - 1].currentHash);
+    }
+  });
 });

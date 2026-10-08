@@ -45,9 +45,17 @@ const COLORS = {
 
 class ProductionReadinessChecker {
   constructor(options = {}) {
-    this.isStrict = options.strict || process.argv.includes('--strict');
-    this.isJson = options.json || process.argv.includes('--json');
-    this.skipDb = options.skipDb || process.argv.includes('--skip-db');
+    if (options.strict !== undefined) {
+      this.isStrict = Boolean(options.strict);
+    } else if (process.argv.includes('--non-strict')) {
+      this.isStrict = false;
+    } else if (process.argv.includes('--strict')) {
+      this.isStrict = true;
+    } else {
+      this.isStrict = false;
+    }
+    this.isJson = options.json !== undefined ? Boolean(options.json) : process.argv.includes('--json');
+    this.skipDb = options.skipDb !== undefined ? Boolean(options.skipDb) : process.argv.includes('--skip-db');
     this.results = [];
     this.startTime = Date.now();
   }
@@ -322,15 +330,15 @@ class ProductionReadinessChecker {
         this.record(
           category,
           'Row-Level Security (RLS)',
-          'WARN',
-          `RLS active on [${enabledTables.join(', ')}], not set on [${disabledTables.join(', ')}]. Application-level tenant scoping must be verified.`
+          'FAIL',
+          `RLS missing or disabled on critical tables: [${disabledTables.join(', ')}]. Database multi-tenant isolation requires RLS.`
         );
       }
     } catch (err) {
       this.record(
         category,
         'Row-Level Security (RLS)',
-        'WARN',
+        'FAIL',
         `Could not inspect pg_class RLS catalog: ${err.message}`
       );
     }
@@ -380,15 +388,15 @@ class ProductionReadinessChecker {
         this.record(
           category,
           'Append-Only Protection',
-          'WARN',
-          'Table audit_logs exists; ensure tamper-evident trigger (trg_prevent_audit_log_mutation) is active'
+          'FAIL',
+          'Table audit_logs exists; tamper-evident trigger (trg_prevent_audit_log_mutation) is NOT active'
         );
       }
     } catch (err) {
       this.record(
         category,
         'Audit Trail Check',
-        'WARN',
+        'FAIL',
         `Error checking audit log immutability: ${err.message}`
       );
     }
@@ -615,7 +623,8 @@ class ProductionReadinessChecker {
 
 // CLI Runner execution
 if (require.main === module) {
-  const checker = new ProductionReadinessChecker();
+  const isNonStrict = process.argv.includes('--non-strict');
+  const checker = new ProductionReadinessChecker({ strict: !isNonStrict });
   checker
     .runAll()
     .then(report => {

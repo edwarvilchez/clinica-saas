@@ -518,13 +518,10 @@ exports.resetPassword = async (req, res) => {
     const { Op } = require('sequelize');
     const hashedToken = cryptoUtils.hashToken(token);
 
-    // Look up by SHA-256 hashed token (or plaintext fallback for legacy migration)
+    // Look up strictly by SHA-256 hashed token (eliminated legacy plaintext fallback for production hardening)
     const user = await User.findOne({
       where: {
-        [Op.or]: [
-          { resetToken: hashedToken },
-          { resetToken: token }
-        ],
+        resetToken: hashedToken,
         resetExpires: { [Op.gt]: new Date() }
       }
     });
@@ -533,8 +530,6 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Token inválido o expirado' });
     }
 
-    console.log(`[RESET PASSWORD] Valid token for user: ${user.email}`);
-    
     user.password = password;
     user.resetToken = null;
     user.resetExpires = null;
@@ -544,7 +539,6 @@ exports.resetPassword = async (req, res) => {
 
     // Invalidate all active user sessions and refresh tokens across all devices
     await refreshTokenService.revokeAllUserTokens(user.id);
-    console.log(`[RESET PASSWORD] Sessions revoked successfully for: ${user.email}`);
 
     // Send confirmation email
     const sendEmail = require('../utils/sendEmail');

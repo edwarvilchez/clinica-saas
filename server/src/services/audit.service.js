@@ -11,6 +11,17 @@ const sequelize = require('../config/db.config');
  */
 const GENESIS_HASH = '0000000000000000000000000000000000000000000000000000000000000000';
 
+const CRITICAL_ACTIONS = new Set([
+  'MEDICAL_RECORD_SIGN',
+  'PRESCRIPTION_SIGN',
+  'ROLE_CHANGE',
+  'PERMISSION_CHANGE',
+  'FINANCIAL_MODIFICATION',
+  'SENSITIVE_DOCUMENT_ACCESS',
+  'PATIENT_DATA_DELETION',
+  'ORGANIZATION_ADMIN'
+]);
+
 class AuditService {
   constructor() {
     this.ignoredDiffFields = ['createdAt', 'updatedAt', 'password', 'deletedAt'];
@@ -123,11 +134,21 @@ class AuditService {
 
   /**
    * Main audit logging method. Creates an immutable, hash-chained audit record.
+   * Concurrency-safe: utilizes transactional advisory locks to prevent chain branching.
    * 
    * @param {Object} params
    * @returns {Promise<AuditLog>}
    */
-  async logEvent({
+  async logEvent(params) {
+    if (params?.transaction) {
+      return this._executeLogEvent(params, params.transaction);
+    }
+    return sequelize.transaction(async (t) => {
+      return this._executeLogEvent(params, t);
+    });
+  }
+
+  async _executeLogEvent({
     organizationId,
     actorUserId,
     action,
@@ -140,12 +161,28 @@ class AuditService {
     ip = null,
     userAgent = null,
     requestId = null,
-    transaction = null
-  }) {
+    isCritical = false
+  }, transaction) {
     try {
       const ctx = context.get() || {};
-
       const resolvedOrgId = organizationId !== undefined ? organizationId : (ctx.organizationId || null);
+
+      // 🔒 Concurrency lock: Acquire transaction-scoped PostgreSQL advisory lock per organization
+      // Hashing the string into an integer prevents concurrent race conditions and chain forking
+      try {
+        const lockKeyStr = `audit_chain_${resolvedOrgId || 'global'}`;
+        await sequelize.query(
+          `SELECT pg_advisory_xact_lock(hashtext(:lockKey));`,
+          {
+            replacements: { lockKey: lockKeyStr },
+            transaction,
+            logging: false
+          }
+        );
+      } catch (lockErr) {
+        // Continue if advisory lock is not supported or during test fallback
+      }
+
       const resolvedActorId = actorUserId !== undefined ? actorUserId : (ctx.userId || null);
       const resolvedIp = ip || ctx.ip || null;
       const resolvedUserAgent = userAgent || ctx.userAgent || null;
@@ -158,7 +195,7 @@ class AuditService {
 
       const timestamp = new Date();
 
-      // Retrieve previous hash in this organization's chain
+      // Retrieve previous hash in this organization's chain (strictly serialized under advisory lock)
       const previousHash = await this.getLatestHash(resolvedOrgId, transaction);
 
       // Compute current cryptographic SHA-256 hash
@@ -212,7 +249,14 @@ class AuditService {
         entity,
         entityId
       }, '❌ Failed to record tamper-evident audit log');
-      // In compliance environments, audit logging failures can be critical
+
+      // Failure policy: critical actions roll back the business transaction
+      if (isCritical || CRITICAL_ACTIONS.has(action)) {
+        const auditErr = new Error(`Critical audit logging failure for ${action}: ${error.message}`);
+        auditErr.code = 'CRITICAL_AUDIT_LOG_FAILED';
+        throw auditErr;
+      }
+
       return null;
     }
   }

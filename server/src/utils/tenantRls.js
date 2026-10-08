@@ -37,18 +37,47 @@ async function setTenantContext(sequelize, { organizationId, isSuperAdmin = fals
 }
 
 /**
+ * Clears PostgreSQL session variables for RLS to prevent leakage in connection pools
+ * @param {import('sequelize').Sequelize} sequelize 
+ * @param {object} [options]
+ * @param {import('sequelize').Transaction} [options.transaction]
+ */
+async function clearTenantContext(sequelize, { transaction } = {}) {
+  const query = `
+    SELECT 
+      set_config('app.current_organization_id', '', :isLocal),
+      set_config('app.is_super_admin', 'false', :isLocal);
+  `;
+
+  await sequelize.query(query, {
+    replacements: {
+      isLocal: !!transaction
+    },
+    transaction,
+    logging: false
+  });
+}
+
+/**
  * Executes a callback within a tenant-scoped database transaction with RLS guaranteed
  * @param {import('sequelize').Sequelize} sequelize 
- * @param {object} options
- * @param {string} [options.organizationId]
- * @param {boolean} [options.isSuperAdmin]
- * @param {function(import('sequelize').Transaction): Promise<any>} callback
+ * @param {object|function} optionsOrCallback
+ * @param {string} [optionsOrCallback.organizationId]
+ * @param {boolean} [optionsOrCallback.isSuperAdmin]
+ * @param {function(import('sequelize').Transaction): Promise<any>} [maybeCallback]
  */
-async function withTenantTransaction(sequelize, { organizationId, isSuperAdmin } = {}, callback) {
-  if (typeof options === 'function') {
-    callback = options;
+async function withTenantTransaction(sequelize, optionsOrCallback, maybeCallback) {
+  let options = {};
+  let callback;
+  if (typeof optionsOrCallback === 'function') {
+    callback = optionsOrCallback;
     options = {};
+  } else {
+    options = optionsOrCallback || {};
+    callback = maybeCallback;
   }
+
+  const { organizationId, isSuperAdmin } = options;
 
   return sequelize.transaction(async (t) => {
     await setTenantContext(sequelize, {
@@ -62,5 +91,6 @@ async function withTenantTransaction(sequelize, { organizationId, isSuperAdmin }
 
 module.exports = {
   setTenantContext,
+  clearTenantContext,
   withTenantTransaction
 };

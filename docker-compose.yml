@@ -16,13 +16,13 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-clinica_saas_bd}
       POSTGRES_USER: ${DB_USER:-clinica_saas_admin}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-clinica_saas_secure_pass_2026}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - db_backups:/var/backups
-    ports:
-      - "${DB_PORT:-5432}:5432"
+    # 🔒 PostgreSQL is strictly isolated to the internal Docker network.
+    # No public port mapping to host or Internet in production.
     networks:
       - clinica-internal-net
     healthcheck:
@@ -50,10 +50,10 @@ services:
       DB_PORT: 5432
       DB_NAME: ${DB_NAME:-clinica_saas_bd}
       DB_USER: ${DB_USER:-clinica_saas_admin}
-      DB_PASSWORD: ${DB_PASSWORD:-clinica_saas_secure_pass_2026}
-      JWT_SECRET: ${JWT_SECRET:-clinica_saas_production_super_secret_jwt_key_minimum_32_chars_2026}
-      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
-      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:-clinica_saas_backup_aes_encryption_key_2026}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?ENCRYPTION_KEY is required}
+      BACKUP_ENCRYPTION_KEY: ${BACKUP_ENCRYPTION_KEY:?BACKUP_ENCRYPTION_KEY is required}
       CLIENT_URL: ${CLIENT_URL:-http://localhost:4200}
       API_URL: ${API_URL:-http://localhost:5000}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:4200,http://localhost:80}
@@ -129,6 +129,6 @@ volumes:
 networks:
   clinica-internal-net:
     driver: bridge
-    internal: false
+    internal: true
   clinica-dmz-net:
     driver: bridge

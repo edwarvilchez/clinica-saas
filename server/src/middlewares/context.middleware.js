@@ -1,5 +1,5 @@
 const context = require('../utils/context');
-const { setTenantContext } = require('../utils/tenantRls');
+const { setTenantContext, clearTenantContext } = require('../utils/tenantRls');
 const sequelize = require('../config/db.config');
 
 /**
@@ -19,16 +19,25 @@ const contextMiddleware = (req, res, next) => {
   };
 
   context.storage.run(data, async () => {
+    let sessionConfigured = false;
     if (req.user?.organizationId || isSuperAdmin) {
       try {
         await setTenantContext(sequelize, {
           organizationId: req.user?.organizationId,
           isSuperAdmin
         });
+        sessionConfigured = true;
       } catch (err) {
         // Silently continue if session config encounters an error
       }
     }
+
+    if (sessionConfigured) {
+      res.on('finish', () => {
+        clearTenantContext(sequelize).catch(() => {});
+      });
+    }
+
     next();
   });
 };
