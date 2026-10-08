@@ -68,6 +68,24 @@ class FileStorageService {
   }
 
   /**
+   * 🩺 Readiness probe health check for file storage backend
+   * Validates directory access and read/write capabilities.
+   * 
+   * @returns {Promise<{ status: 'UP' | 'DOWN', driver: string, path?: string, error?: string }>}
+   */
+  async checkHealth() {
+    try {
+      if (!fs.existsSync(this.baseDir)) {
+        fs.mkdirSync(this.baseDir, { recursive: true });
+      }
+      await fs.promises.access(this.baseDir, fs.constants.R_OK | fs.constants.W_OK);
+      return { status: 'UP', driver: appConfig.storage.driver, path: this.baseDir };
+    } catch (err) {
+      return { status: 'DOWN', driver: appConfig.storage.driver, error: err.message };
+    }
+  }
+
+  /**
    * Validates file buffer magic bytes against declared MIME type.
    * Prevents disguised executable uploads (e.g. malware.exe renamed to receipt.pdf).
    * 

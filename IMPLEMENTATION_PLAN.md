@@ -131,11 +131,15 @@ flowchart TD
   - Middleware de métricas y observabilidad HTTP (`requestLoggingMiddleware`) con vinculación de contexto de sesión autenticada.
   - Suite de pruebas de seguridad y observabilidad (`observabilityLoggingSecurity.test.js`) con 12/12 pruebas pasando exitosamente.
 
-#### Fase 10 — Health Checks Rigurosos (Live & Ready)
+#### Fase 10 — Health Checks Rigurosos (Live & Ready) [COMPLETADA]
 - **Objetivo:** Integración confiable con orquestadores y balanceadores de carga.
 - **Entregables:**
-  - `/health/live`: responde 200 si el proceso Node.js responde.
-  - `/health/ready`: valida activamente ping a PostgreSQL (`SELECT 1`), conexión a Redis (si aplica) y permisos de escritura en el sistema de almacenamiento.
+  - Servicio desacoplado `HealthService` (`server/src/services/health.service.js`) para probes de liveness y readiness.
+  - Probe de vitalidad (`GET /health/live` y `/api/health/live`): responde HTTP 200 `UP` con tiempo activo (`uptimeSeconds`), versión y telemetría de memoria (`heapUsedMB`, `rssMB`).
+  - Probe de disponibilidad (`GET /health/ready` y `/api/health/ready`): valida activamente ping a PostgreSQL (`SELECT 1 AS alive`) con latencia en milisegundos, permisos de lectura/escritura en almacenamiento privado de archivos médicos (`FileStorageService.checkHealth()`), y estado opcional de caché/colas Redis.
+  - Fail-fast con HTTP 503 (`Service Unavailable`) ante degradación o indisponibilidad de PostgreSQL o almacenamiento para evitar enrutamiento erróneo por Kubernetes/ECS.
+  - Resumen consolidado retrocompatible (`GET /health` y `/api/health`).
+  - Suite de pruebas de seguridad y probes de orquestación (`healthCheckSecurity.test.js`) con 7/7 pruebas pasando exitosamente.
 
 #### Fase 11 — Optimización de Base de Datos y Performance
 - **Objetivo:** Eliminar consultas N+1 y garantizar tiempos de respuesta p95 < 200ms.

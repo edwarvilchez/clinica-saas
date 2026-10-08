@@ -36,14 +36,10 @@ app.use(corsMiddleware());
 app.use(securityHeadersMiddleware());
 app.use(compression());
 
-// Boot diagnostics (Canary routes)
-app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok v4.3.13', 
-    env: appConfig.env,
-    time: new Date().toISOString() 
-  });
-});
+// 🩺 Health Probes & System Diagnostics (Fase 10: Live, Ready, Summary)
+const healthRoutes = require('./routes/health.routes');
+app.use('/health', healthRoutes);
+app.use('/api/health', healthRoutes);
 
 /**
  * 🛠️ EMERGENCY DATABASE INITIALIZER (Standalone)
@@ -113,7 +109,7 @@ let bootError = null;
 
 const loadFullApp = async (req, res, next) => {
   // Skip for canary routes
-  if (req.path === '/api/health' || req.path.startsWith('/api/system')) return next();
+  if (req.path.startsWith('/health') || req.path.startsWith('/api/health') || req.path.startsWith('/api/system')) return next();
   
   if (isAppLoaded) return next();
   if (bootError) return res.status(500).json({ error: 'Critical Boot Failure', detail: bootError.message });
