@@ -177,7 +177,16 @@ const Admission = sequelize.define('Admission', {
     allowNull: true
   }
 }, {
-  paranoid: true
+  paranoid: true,
+  indexes: [
+    { fields: ['organizationId'] },
+    { fields: ['patientId'] },
+    { fields: ['status'] },
+    { fields: ['organizationId', 'createdAt'] },
+    { fields: ['organizationId', 'status'] },
+    { fields: ['organizationId', 'patientId'] },
+    { fields: ['patientId', 'status'] }
+  ]
 });
 
 module.exports = Admission;

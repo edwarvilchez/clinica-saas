@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { Payment, Patient, User, Appointment, Doctor, Organization } = require('../models');
+const { Payment, Patient, User, Appointment, Doctor, Organization, sequelize } = require('../models');
 const sendEmail = require('../utils/sendEmail');
 const fileStorageService = require('../services/fileStorage.service');
 
@@ -142,58 +142,67 @@ exports.getPayments = async (req, res) => {
 };
 
 exports.collectPayment = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { id } = req.params;
-    const payment = await Payment.findByPk(id);
+    const payment = await Payment.findByPk(id, { transaction: t });
     
     if (!payment) {
-        return res.status(404).json({ error: 'Payment not found' });
+      await t.rollback();
+      return res.status(404).json({ error: 'Payment not found' });
     }
 
     const oldStatus = payment.status;
     payment.status = 'Paid';
-    await payment.save();
+    await payment.save({ transaction: t });
 
     // Confirm appointment automatically if linked
     if (payment.appointmentId) {
-        await Appointment.update({ status: 'Confirmed' }, { where: { id: payment.appointmentId } });
+      await Appointment.update({ status: 'Confirmed' }, { where: { id: payment.appointmentId }, transaction: t });
     }
 
     // Handle Subscription Upgrade
+    let emailToSend = null;
     if (payment.paymentType === 'SUBSCRIPTION' && payment.planType) {
-        if (payment.organizationId) {
-            const org = await Organization.findByPk(payment.organizationId);
-            if (org) {
-                const now = new Date();
-                let newEndDate = new Date();
-                
-                if (payment.billingCycle === 'Mensual') newEndDate.setMonth(newEndDate.getMonth() + 1);
-                else if (payment.billingCycle === 'Trimestral') newEndDate.setMonth(newEndDate.getMonth() + 3);
-                else if (payment.billingCycle === 'Semestral') newEndDate.setMonth(newEndDate.getMonth() + 6);
-                else if (payment.billingCycle === 'Anual') newEndDate.setFullYear(newEndDate.getFullYear() + 1);
-                else newEndDate.setMonth(newEndDate.getMonth() + 1); 
+      if (payment.organizationId) {
+        const org = await Organization.findByPk(payment.organizationId, { transaction: t });
+        if (org) {
+          let newEndDate = new Date();
+          
+          if (payment.billingCycle === 'Mensual') newEndDate.setMonth(newEndDate.getMonth() + 1);
+          else if (payment.billingCycle === 'Trimestral') newEndDate.setMonth(newEndDate.getMonth() + 3);
+          else if (payment.billingCycle === 'Semestral') newEndDate.setMonth(newEndDate.getMonth() + 6);
+          else if (payment.billingCycle === 'Anual') newEndDate.setFullYear(newEndDate.getFullYear() + 1);
+          else newEndDate.setMonth(newEndDate.getMonth() + 1); 
 
-                await org.update({
-                    subscriptionStatus: 'ACTIVE',
-                    type: payment.planType,
-                    trialEndsAt: newEndDate
-                });
+          await org.update({
+            subscriptionStatus: 'ACTIVE',
+            type: payment.planType,
+            trialEndsAt: newEndDate
+          }, { transaction: t });
 
-                // Send Confirmation Email to Owner
-                const owner = await User.findByPk(org.ownerId);
-                if (owner && owner.email) {
-                    await sendEmail({
-                        email: owner.email,
-                        subject: '¡Plan Clinica SaaS Activado!',
-                        message: `Hola ${owner.firstName},\n\nHemos verificado con éxito tu pago de ${payment.amount} USD. Tu organización ${org.name} ahora tiene un plan ${org.type} ACTIVO hasta el ${newEndDate.toLocaleDateString()}.\n\nPlan: ${payment.planType}\nCiclo: ${payment.billingCycle}\n\nGracias por confiar en Clinica SaaS.\n\nSaludos,\nEquipo de Facturación.`
-                    });
-                }
-            }
+          // Prepare confirmation email for owner (sent after commit)
+          const owner = await User.findByPk(org.ownerId, { transaction: t });
+          if (owner && owner.email) {
+            emailToSend = {
+              email: owner.email,
+              subject: '¡Plan Clinica SaaS Activado!',
+              message: `Hola ${owner.firstName},\n\nHemos verificado con éxito tu pago de ${payment.amount} USD. Tu organización ${org.name} ahora tiene un plan ${org.type} ACTIVO hasta el ${newEndDate.toLocaleDateString()}.\n\nPlan: ${payment.planType}\nCiclo: ${payment.billingCycle}\n\nGracias por confiar en Clinica SaaS.\n\nSaludos,\nEquipo de Facturación.`
+            };
+          }
         }
+      }
+    }
+
+    await t.commit();
+
+    if (emailToSend) {
+      sendEmail(emailToSend).catch(err => console.error('Error sending confirmation email:', err));
     }
 
     res.json({ message: 'Payment marked as Paid and processed', payment });
   } catch (error) {
+    await t.rollback();
     res.status(500).json({ error: error.message });
   }
 };
@@ -260,12 +269,19 @@ exports.updatePayment = async (req, res) => {
  * Doctor Fee Reconciliation: Atomically splits payment revenue between doctor and clinic
  */
 exports.reconcileDoctorFees = async (req, res) => {
+  const t = await sequelize.transaction();
   try {
     const { paymentId, doctorFeePercentage } = req.body;
-    if (!paymentId) return res.status(400).json({ message: 'El ID del pago es obligatorio' });
+    if (!paymentId) {
+      await t.rollback();
+      return res.status(400).json({ message: 'El ID del pago es obligatorio' });
+    }
 
-    const payment = await Payment.findByPk(paymentId);
-    if (!payment) return res.status(404).json({ message: 'Registro de pago no encontrado' });
+    const payment = await Payment.findByPk(paymentId, { transaction: t });
+    if (!payment) {
+      await t.rollback();
+      return res.status(404).json({ message: 'Registro de pago no encontrado' });
+    }
 
     const splitPercent = parseFloat(doctorFeePercentage || payment.doctorFeePercentage || 70.00);
     const totalAmount = parseFloat(payment.amount || 0);
@@ -278,7 +294,9 @@ exports.reconcileDoctorFees = async (req, res) => {
       doctorFeeAmount,
       clinicFeeAmount,
       reconciliationStatus: 'RECONCILED'
-    });
+    }, { transaction: t });
+
+    await t.commit();
 
     res.json({
       message: '✅ Reconciliación de honorarios médicos completada exitosamente',
@@ -292,6 +310,7 @@ exports.reconcileDoctorFees = async (req, res) => {
       }
     });
   } catch (error) {
+    await t.rollback();
     console.error('Error in reconcileDoctorFees:', error);
     res.status(500).json({ error: error.message });
   }

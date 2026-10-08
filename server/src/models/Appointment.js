@@ -70,6 +70,21 @@ const Appointment = sequelize.define('Appointment', {
       fields: ['reminderSent']
     },
     {
+      fields: ['organizationId', 'createdAt']
+    },
+    {
+      fields: ['organizationId', 'status']
+    },
+    {
+      fields: ['organizationId', 'date']
+    },
+    {
+      fields: ['organizationId', 'doctorId']
+    },
+    {
+      fields: ['organizationId', 'patientId']
+    },
+    {
       // Índice compuesto para búsquedas comunes
       fields: ['doctorId', 'date', 'status']
     },

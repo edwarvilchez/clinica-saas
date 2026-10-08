@@ -60,7 +60,10 @@ const Prescription = sequelize.define('Prescription', {
   timestamps: true,
   indexes: [
     { fields: ['organizationId'] },
-    { fields: ['medicalRecordId'] }
+    { fields: ['medicalRecordId'] },
+    { fields: ['status'] },
+    { fields: ['organizationId', 'createdAt'] },
+    { fields: ['organizationId', 'status'] }
   ]
 });
 

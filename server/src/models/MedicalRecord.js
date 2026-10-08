@@ -63,7 +63,10 @@ const MedicalRecord = sequelize.define('MedicalRecord', {
   indexes: [
     { fields: ['organizationId'] },
     { fields: ['patientId'] },
-    { fields: ['doctorId'] }
+    { fields: ['doctorId'] },
+    { fields: ['organizationId', 'createdAt'] },
+    { fields: ['organizationId', 'patientId'] },
+    { fields: ['organizationId', 'doctorId'] }
   ]
 });
 

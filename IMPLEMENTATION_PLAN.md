@@ -141,11 +141,23 @@ flowchart TD
   - Resumen consolidado retrocompatible (`GET /health` y `/api/health`).
   - Suite de pruebas de seguridad y probes de orquestación (`healthCheckSecurity.test.js`) con 7/7 pruebas pasando exitosamente.
 
-#### Fase 11 — Optimización de Base de Datos y Performance
-- **Objetivo:** Eliminar consultas N+1 y garantizar tiempos de respuesta p95 < 200ms.
+#### Fase 11 — Optimización de Base de Datos y Performance [COMPLETADA]
+- **Objetivo:** Eliminar consultas N+1, acelerar consultas multitenant de alta frecuencia y garantizar atomicidad transaccional en operaciones financieras y clínicas críticas.
 - **Entregables:**
-  - Revisión y adición de índices compuestos en claves foráneas y búsquedas frecuentes (`[organizationId, createdAt]`, `[organizationId, status]`, `[organizationId, appointmentDate]`).
-  - Transacciones atómicas explícitas en operaciones financieras y de admisión de pacientes.
+  - Migración oficial de base de datos (`20261008020000-add-composite-performance-indexes.js`) implementando índices compuestos idempotentes:
+    - `Appointments`: `[organizationId, createdAt]`, `[organizationId, status]`, `[organizationId, date]`, `[organizationId, doctorId]`, `[organizationId, patientId]`.
+    - `Payments`: `[organizationId, createdAt]`, `[organizationId, status]`, `[organizationId, paymentType]`, `patientId`, `appointmentId`.
+    - `MedicalRecords`: `[organizationId, createdAt]`, `[organizationId, patientId]`, `[organizationId, doctorId]`.
+    - `Prescriptions`: `[organizationId, createdAt]`, `[organizationId, status]`, `medicalRecordId`.
+    - `Patients`: `[organizationId, createdAt]`.
+    - `Admissions`: `[organizationId, createdAt]`, `[organizationId, status]`, `[organizationId, patientId]`, `[patientId, status]`.
+    - `DoctorFees`: `[organizationId, createdAt]`, `[organizationId, status]`, `[organizationId, doctorId]`.
+  - Sincronización y actualización de definiciones de modelos ORM Sequelize (`Appointment`, `Payment`, `MedicalRecord`, `Prescription`, `Patient`, `Admission`, `DoctorFee`) con el bloque `indexes: [...]`.
+  - Transacciones atómicas explícitas (`sequelize.transaction`) con rollback automático ante cualquier fallo en:
+    - Cobro y confirmación de pagos (`collectPayment`), actualización automática de citas y upgrades de suscripciones.
+    - Reconciliación y división de honorarios médicos y clínica (`reconcileDoctorFees`).
+    - Admisión hospitalaria (`createAdmission`) y egreso/liberación de camas (`dischargeAdmission`).
+  - Suite de pruebas de optimización y atomicidad (`databaseOptimizationSecurity.test.js`) con 10/10 pruebas pasando exitosamente (verificación en catálogo PostgreSQL `pg_indexes`, planes de ejecución `EXPLAIN`, simulación de rollback y proyecciones de atributos).
 
 #### Fase 12 — Backups y Disaster Recovery
 - **Objetivo:** Procedimientos reproducibles de respaldo y recuperación ante desastres.

@@ -100,151 +100,160 @@ exports.createAdmission = async (req, res) => {
       return res.status(400).json({ message: 'Paciente no encontrado. Ingrese un paciente válido o un número de historia médica existente.' });
     }
 
-    // Validar que el paciente NO tenga un episodio de admisión activo
-    const { Op } = require('sequelize');
-    const activeAdmission = await Admission.findOne({
-      where: {
-        patientId: patient.id,
-        status: {
-          [Op.notIn]: ['DISCHARGED', 'CLOSED', 'CANCELLED']
+    const t = await sequelize.transaction();
+    try {
+      // Validar que el paciente NO tenga un episodio de admisión activo
+      const { Op } = require('sequelize');
+      const activeAdmission = await Admission.findOne({
+        where: {
+          patientId: patient.id,
+          status: {
+            [Op.notIn]: ['DISCHARGED', 'CLOSED', 'CANCELLED']
+          }
+        },
+        transaction: t
+      });
+
+      if (activeAdmission) {
+        await t.rollback();
+        return res.status(400).json({
+          message: `El paciente ya tiene un episodio de admisión ACTIVO (${activeAdmission.admissionNumber || activeAdmission.episodeNumber} en área "${activeAdmission.currentArea}" con estado "${activeAdmission.status}"). No se puede generar una nueva admisión sin procesar previamente el alta médica y administrativa o el cierre de la admisión anterior.`
+        });
+      }
+
+      if (!initialDiagnosis) {
+        await t.rollback();
+        return res.status(400).json({ message: 'El diagnóstico inicial es obligatorio.' });
+      }
+
+      // Check Demographics completeness:
+      const missingFields = [];
+      if (!patient.phone && !patient.User?.phone) missingFields.push('Teléfono');
+      if (!patient.address) missingFields.push('Dirección de habitación');
+      if (!patient.birthDate) missingFields.push('Fecha de nacimiento');
+      if (!patient.gender) missingFields.push('Género');
+
+      const isEmergency = admissionType === 'EMERGENCY';
+      let missingDemographicsWarning = false;
+
+      if (missingFields.length > 0) {
+        if (!isEmergency) {
+          await t.rollback();
+          return res.status(400).json({
+            message: `En admisiones no urgentes (${admissionType}) es obligatorio completar los datos demográficos del paciente. Faltan: ${missingFields.join(', ')}.`
+          });
+        } else {
+          // In Emergency, allow admission but flag warning for later completion
+          missingDemographicsWarning = true;
         }
       }
-    });
 
-    if (activeAdmission) {
-      return res.status(400).json({
-        message: `El paciente ya tiene un episodio de admisión ACTIVO (${activeAdmission.admissionNumber || activeAdmission.episodeNumber} en área "${activeAdmission.currentArea}" con estado "${activeAdmission.status}"). No se puede generar una nueva admisión sin procesar previamente el alta médica y administrativa o el cierre de la admisión anterior.`
-      });
-    }
+      const year = new Date().getFullYear();
+      const count = await Admission.count({ transaction: t });
+      const seq = String(count + 1).padStart(5, '0');
+      const admissionNumber = `ADM-${year}-${seq}`;
+      const episodeNumber = `EP-${year}-${seq}`;
 
-    if (!initialDiagnosis) {
-      return res.status(400).json({ message: 'El diagnóstico inicial es obligatorio.' });
-    }
-
-    // Check Demographics completeness:
-    const missingFields = [];
-    if (!patient.phone && !patient.User?.phone) missingFields.push('Teléfono');
-    if (!patient.address) missingFields.push('Dirección de habitación');
-    if (!patient.birthDate) missingFields.push('Fecha de nacimiento');
-    if (!patient.gender) missingFields.push('Género');
-
-    const isEmergency = admissionType === 'EMERGENCY';
-    let missingDemographicsWarning = false;
-
-    if (missingFields.length > 0) {
-      if (!isEmergency) {
-        return res.status(400).json({
-          message: `En admisiones no urgentes (${admissionType}) es obligatorio completar los datos demográficos del paciente. Faltan: ${missingFields.join(', ')}.`
-        });
-      } else {
-        // In Emergency, allow admission but flag warning for later completion
-        missingDemographicsWarning = true;
+      // Compute patient snapshot
+      let age = null;
+      if (patient.birthDate) {
+        const birth = new Date(patient.birthDate);
+        const diff = Date.now() - birth.getTime();
+        age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
       }
+
+      const patientDataSnapshot = {
+        id: patient.id,
+        medicalRecordNumber: patient.medicalRecordNumber || `HC-${patient.documentId}`,
+        fullName: `${patient.User?.firstName || ''} ${patient.User?.lastName || ''}`.trim(),
+        documentId: patient.documentId,
+        documentType: patient.documentType || 'CEDULA',
+        documentPrefix: patient.documentPrefix || 'V',
+        documentNumber: patient.documentNumber || patient.documentId.replace(/[^0-9]/g, ''),
+        birthDate: patient.birthDate,
+        age,
+        gender: patient.gender,
+        bloodType: patient.bloodType,
+        phone: patient.phone || patient.User?.phone,
+        email: patient.User?.email,
+        state: patient.state,
+        city: patient.city,
+        municipality: patient.municipality,
+        address: patient.address,
+        hasInsurance: hasInsurance !== undefined ? !!hasInsurance : patient.hasInsurance,
+        insuranceCompany: patient.InsuranceCompany?.name || patient.insuranceProvider,
+        policyNumber: patient.policyNumber || insurancePolicyNumber
+      };
+
+      const isInsured = hasInsurance !== undefined ? !!hasInsurance : patient.hasInsurance;
+      const initialAreaName = isEmergency ? 'EMERGENCIA / TRIAJE' : (initialArea || 'ADMISIÓN GENERAL');
+
+      const initialMovement = {
+        id: require('uuid').v4(),
+        fromArea: 'EXTERIOR / INGRESO',
+        toArea: initialAreaName,
+        timestamp: new Date().toISOString(),
+        performedBy: performedBy || (req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Personal de Admisión'),
+        authorizedBy: authorizedBy || 'Médico de Guardia / Tratante',
+        reason: isEmergency ? 'Ingreso Inmediato por Emergencia' : `Apertura de Episodio de Admisión (${admissionType})`,
+        notes: notes || 'Admisión registrada en sistema'
+      };
+
+      const admission = await Admission.create({
+        organizationId: orgId,
+        admissionNumber,
+        episodeNumber,
+        patientId: patient.id,
+        medicalRecordNumber: patient.medicalRecordNumber || `HC-${patient.documentId}`,
+        attendingDoctorId: attendingDoctorId || null,
+        admissionType,
+        admissionDate: admissionDate || new Date(),
+        paymentType: paymentType || (isInsured ? 'INSURANCE' : 'PRIVATE'),
+        hasInsurance: isInsured,
+        insuranceCompanyId: isInsured ? (insuranceCompanyId || patient.insuranceCompanyId || null) : null,
+        insurancePolicyNumber: isInsured ? (insurancePolicyNumber || patient.policyNumber || null) : null,
+        insurancePlan: isInsured ? insurancePlan : null,
+        insuranceHolderType: isInsured ? (insuranceHolderType || 'TITULAR') : 'TITULAR',
+        insuranceCoverageAmountUSD: isInsured ? (parseFloat(insuranceCoverageAmountUSD || 0)) : 0.00,
+        insuranceAuthorizationCode: isInsured ? insuranceAuthorizationCode : null,
+        insuranceClaimNumber: isInsured ? insuranceClaimNumber : null,
+        insuranceCartaAval: isInsured ? insuranceCartaAval : null,
+        initialDiagnosis,
+        status: 'ADMITTED',
+        currentArea: initialAreaName,
+        areaMovements: [initialMovement],
+        missingDemographicsWarning,
+        missingDemographicsFields: missingFields,
+        patientDataSnapshot,
+        titularData: titularData || {},
+        guarantorData: guarantorData || {},
+        insuredPatientData: insuredPatientData || patientDataSnapshot,
+        companionName,
+        companionPhone,
+        notes
+      }, { transaction: t });
+
+      await t.commit();
+
+      const populated = await Admission.findByPk(admission.id, {
+        include: [
+          { model: Patient, include: [{ model: User }] },
+          { model: Doctor, include: [{ model: User }] },
+          { model: InsuranceCompany }
+        ]
+      });
+
+      res.status(201).json({
+        message: '¡Admisión registrada exitosamente!',
+        admission: populated,
+        missingDemographicsWarning,
+        missingFields
+      });
+    } catch (error) {
+      await t.rollback();
+      console.error('Error in createAdmission:', error);
+      res.status(500).json({ message: error.message });
     }
-
-    const year = new Date().getFullYear();
-    const count = await Admission.count();
-    const seq = String(count + 1).padStart(5, '0');
-    const admissionNumber = `ADM-${year}-${seq}`;
-    const episodeNumber = `EP-${year}-${seq}`;
-
-    // Compute patient snapshot
-    let age = null;
-    if (patient.birthDate) {
-      const birth = new Date(patient.birthDate);
-      const diff = Date.now() - birth.getTime();
-      age = Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25));
-    }
-
-    const patientDataSnapshot = {
-      id: patient.id,
-      medicalRecordNumber: patient.medicalRecordNumber || `HC-${patient.documentId}`,
-      fullName: `${patient.User?.firstName || ''} ${patient.User?.lastName || ''}`.trim(),
-      documentId: patient.documentId,
-      documentType: patient.documentType || 'CEDULA',
-      documentPrefix: patient.documentPrefix || 'V',
-      documentNumber: patient.documentNumber || patient.documentId.replace(/[^0-9]/g, ''),
-      birthDate: patient.birthDate,
-      age,
-      gender: patient.gender,
-      bloodType: patient.bloodType,
-      phone: patient.phone || patient.User?.phone,
-      email: patient.User?.email,
-      state: patient.state,
-      city: patient.city,
-      municipality: patient.municipality,
-      address: patient.address,
-      hasInsurance: hasInsurance !== undefined ? !!hasInsurance : patient.hasInsurance,
-      insuranceCompany: patient.InsuranceCompany?.name || patient.insuranceProvider,
-      policyNumber: patient.policyNumber || insurancePolicyNumber
-    };
-
-    const isInsured = hasInsurance !== undefined ? !!hasInsurance : patient.hasInsurance;
-    const initialAreaName = isEmergency ? 'EMERGENCIA / TRIAJE' : (initialArea || 'ADMISIÓN GENERAL');
-
-    const initialMovement = {
-      id: require('uuid').v4(),
-      fromArea: 'EXTERIOR / INGRESO',
-      toArea: initialAreaName,
-      timestamp: new Date().toISOString(),
-      performedBy: performedBy || (req.user ? `${req.user.firstName} ${req.user.lastName}` : 'Personal de Admisión'),
-      authorizedBy: authorizedBy || 'Médico de Guardia / Tratante',
-      reason: isEmergency ? 'Ingreso Inmediato por Emergencia' : `Apertura de Episodio de Admisión (${admissionType})`,
-      notes: notes || 'Admisión registrada en sistema'
-    };
-
-    const admission = await Admission.create({
-      organizationId: orgId,
-      admissionNumber,
-      episodeNumber,
-      patientId: patient.id,
-      medicalRecordNumber: patient.medicalRecordNumber || `HC-${patient.documentId}`,
-      attendingDoctorId: attendingDoctorId || null,
-      admissionType,
-      admissionDate: admissionDate || new Date(),
-      paymentType: paymentType || (isInsured ? 'INSURANCE' : 'PRIVATE'),
-      hasInsurance: isInsured,
-      insuranceCompanyId: isInsured ? (insuranceCompanyId || patient.insuranceCompanyId || null) : null,
-      insurancePolicyNumber: isInsured ? (insurancePolicyNumber || patient.policyNumber || null) : null,
-      insurancePlan: isInsured ? insurancePlan : null,
-      insuranceHolderType: isInsured ? (insuranceHolderType || 'TITULAR') : 'TITULAR',
-      insuranceCoverageAmountUSD: isInsured ? (parseFloat(insuranceCoverageAmountUSD || 0)) : 0.00,
-      insuranceAuthorizationCode: isInsured ? insuranceAuthorizationCode : null,
-      insuranceClaimNumber: isInsured ? insuranceClaimNumber : null,
-      insuranceCartaAval: isInsured ? insuranceCartaAval : null,
-      initialDiagnosis,
-      status: 'ADMITTED',
-      currentArea: initialAreaName,
-      areaMovements: [initialMovement],
-      missingDemographicsWarning,
-      missingDemographicsFields: missingFields,
-      patientDataSnapshot,
-      titularData: titularData || {},
-      guarantorData: guarantorData || {},
-      insuredPatientData: insuredPatientData || patientDataSnapshot,
-      companionName,
-      companionPhone,
-      notes
-    });
-
-    const populated = await Admission.findByPk(admission.id, {
-      include: [
-        { model: Patient, include: [{ model: User }] },
-        { model: Doctor, include: [{ model: User }] },
-        { model: InsuranceCompany }
-      ]
-    });
-
-    res.status(201).json({
-      message: '¡Admisión registrada exitosamente!',
-      admission: populated,
-      missingDemographicsWarning,
-      missingFields
-    });
-  } catch (error) {
-    console.error('Error in createAdmission:', error);
-    res.status(500).json({ message: error.message });
-  }
 };
 
 // ── ACTUALIZAR ADMISIÓN (SOLO SI NO ESTÁ CERRADA/DADA DE ALTA) ──

@@ -151,6 +151,9 @@ const Patient = sequelize.define('Patient', {
     },
     {
       fields: ['organizationId']
+    },
+    {
+      fields: ['organizationId', 'createdAt']
     }
   ]
 });
