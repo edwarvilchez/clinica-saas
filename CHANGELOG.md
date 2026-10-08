@@ -5,6 +5,27 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.6.1] — 2026-10-08
+
+### 🐛 Estabilización y Correcciones Críticas (Frontend & Backend Hotfix)
+
+- **Backend (Resolución de Critical Boot Failure):**
+  - Corrección de `SyntaxError: Missing catch or finally after try` en `server/src/controllers/hospital.controller.js` originado por anidamiento redundante de bloques `try`.
+  - Unificación transaccional segura en `createAdmission`: protección atómica mediante `sequelize.transaction()` con reversión automática segura (`rollback`) en bloque `catch` unificado.
+  - Validación del 100% de la sintaxis del backend con `node --check` y verificación de la suite completa de pruebas (49 suites, 422/422 pruebas en verde).
+- **Frontend (Eliminación de Advertencias de Compilación Angular v21):**
+  - Remoción de importaciones no utilizadas de `TranslatePipe` en componentes *standalone* que utilizan directamente `LanguageService` o cadenas literales:
+    - `AccountingComponent` (`accounting.ts`)
+    - `DoctorFeesComponent` (`doctor-fees.ts`)
+    - `HospitalOpsComponent` (`hospital-ops.ts`)
+    - `InsuranceComponent` (`insurance.ts`)
+    - `InventoryComponent` (`inventory.ts`)
+    - `Patients` (`patients.ts`)
+    - `SpecialtiesComponent` (`specialties.ts`)
+  - Compilación 100% limpia sin advertencias `NG8113` durante `ng serve` y `npm run build`.
+
+---
+
 ## [4.6.0] — 2026-10-08
 
 ### 🛡️ Arquitectura Avanzada, Inteligencia Clínica, Seguridad WebRTC y Production Readiness (Fases 20 a 28)
