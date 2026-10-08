@@ -4,13 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { LanguageService } from '../../services/language.service';
 import { CurrencyService } from '../../services/currency.service';
-import { TranslatePipe } from '../../services/translate.pipe';
 import Swal from 'sweetalert2';
 
 @Component({
   selector: 'app-specialties',
   standalone: true,
-  imports: [CommonModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, FormsModule],
   templateUrl: './specialties.html',
   styleUrls: ['./specialties.css']
 })

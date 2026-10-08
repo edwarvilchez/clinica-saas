@@ -5,7 +5,6 @@ import { HttpClient } from '@angular/common/http';
 import { RouterModule } from '@angular/router';
 import { LanguageService } from '../../services/language.service';
 import { CurrencyService } from '../../services/currency.service';
-import { TranslatePipe } from '../../services/translate.pipe';
 import { API_URL } from '../../api-config';
 import Swal from 'sweetalert2';
 
@@ -48,7 +47,7 @@ interface DoctorFeeItem {
 @Component({
   selector: 'app-doctor-fees',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './doctor-fees.html',
   styleUrls: ['./doctor-fees.css']
 })

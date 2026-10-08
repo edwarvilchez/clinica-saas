@@ -8,7 +8,6 @@ import { LanguageService } from '../../services/language.service';
 import { ExportService } from '../../services/export.service';
 import { AuthService } from '../../services/auth.service';
 import { API_URL } from '../../api-config';
-import { TranslatePipe } from '../../services/translate.pipe';
 
 interface FamilyMember {
   fullName: string;
@@ -37,7 +36,7 @@ interface DiseaseItem {
 @Component({
   selector: 'app-patients',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule, TranslatePipe],
+  imports: [CommonModule, RouterModule, FormsModule],
   templateUrl: './patients.html',
   styleUrl: './patients.css',
 })
