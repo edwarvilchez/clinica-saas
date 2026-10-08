@@ -1,4 +1,14 @@
-const { Appointment, Patient, Doctor, Payment, User, Specialty, Organization } = require('../models');
+const { 
+  Appointment, 
+  Patient, 
+  Doctor, 
+  Payment, 
+  User, 
+  Specialty, 
+  Organization,
+  Admission,
+  HospitalBed
+} = require('../models');
 const { Op } = require('sequelize');
 const sequelize = require('../config/db.config');
 
@@ -222,6 +232,170 @@ exports.getStats = async (req, res) => {
     res.json(responseData);
   } catch (error) {
     console.error('Error fetching stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * 🏥 Fase 17: Operational Real-Time Clinic Dashboard
+ * "¿Qué está pasando hoy en mi clínica?"
+ * Provee métricas en tiempo real: citas del día, desglose por estado, teleconsultas,
+ * ocupación hospitalaria/camas, ingresos recaudados en el turno y lista activa de pacientes.
+ */
+exports.getLiveOperationsDashboard = async (req, res) => {
+  try {
+    const { role, organizationId, id: userId } = req.user;
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+    const effectiveOrgId = isSuperAdmin ? (req.query.organizationId || organizationId) : organizationId;
+
+    const orgFilter = effectiveOrgId ? { organizationId: effectiveOrgId } : {};
+
+    // 1. Rango del Día de Hoy (00:00:00 a 23:59:59.999 en hora local / servidor)
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
+    const todayDateFilter = {
+      date: { [Op.between]: [startOfDay, endOfDay] }
+    };
+
+    // 2. Citas del Día (Métricas agregadas)
+    const appointmentsToday = await Appointment.findAll({
+      where: {
+        ...orgFilter,
+        ...todayDateFilter
+      },
+      include: [
+        {
+          model: Patient,
+          attributes: ['id', 'medicalRecordNumber', 'documentId'],
+          include: [{ model: User, attributes: ['firstName', 'lastName'] }]
+        },
+        {
+          model: Doctor,
+          attributes: ['id'],
+          include: [
+            { model: User, attributes: ['firstName', 'lastName'] },
+            { model: Specialty, attributes: ['id', 'name'] }
+          ]
+        }
+      ],
+      order: [['date', 'ASC']]
+    });
+
+    const appointmentCounts = {
+      total: appointmentsToday.length,
+      confirmed: 0,
+      pending: 0,
+      completed: 0,
+      cancelled: 0,
+      inPerson: 0,
+      video: 0
+    };
+
+    appointmentsToday.forEach(apt => {
+      const status = apt.status;
+      if (status === 'Confirmed') appointmentCounts.confirmed++;
+      else if (status === 'Pending') appointmentCounts.pending++;
+      else if (status === 'Completed') appointmentCounts.completed++;
+      else if (status === 'Cancelled') appointmentCounts.cancelled++;
+
+      if (apt.type === 'Video') appointmentCounts.video++;
+      else appointmentCounts.inPerson++;
+    });
+
+    // 3. Ocupación Hospitalaria y Estado de Camas
+    let hospitalStats = {
+      totalBeds: 0,
+      occupiedBeds: 0,
+      availableBeds: 0,
+      maintenanceBeds: 0,
+      occupancyRatePercent: 0,
+      activeAdmissions: 0
+    };
+
+    try {
+      const beds = await HospitalBed.findAll({ where: orgFilter });
+      hospitalStats.totalBeds = beds.length;
+      beds.forEach(b => {
+        if (b.status === 'OCCUPIED') hospitalStats.occupiedBeds++;
+        else if (b.status === 'AVAILABLE') hospitalStats.availableBeds++;
+        else hospitalStats.maintenanceBeds++;
+      });
+
+      if (hospitalStats.totalBeds > 0) {
+        hospitalStats.occupancyRatePercent = parseFloat(
+          ((hospitalStats.occupiedBeds / hospitalStats.totalBeds) * 100).toFixed(1)
+        );
+      }
+
+      hospitalStats.activeAdmissions = await Admission.count({
+        where: {
+          ...orgFilter,
+          status: { [Op.notIn]: ['DISCHARGED', 'CLOSED', 'CANCELLED'] }
+        }
+      });
+    } catch (e) {
+      // Best-effort si el tenant no tiene módulo de hospitalización
+    }
+
+    // 4. Recaudación en Tiempo Real del Turno de Hoy
+    const todayPayments = await Payment.findAll({
+      where: {
+        ...orgFilter,
+        status: 'Paid',
+        createdAt: { [Op.between]: [startOfDay, endOfDay] }
+      },
+      attributes: ['amount', 'amountBs', 'currency', 'method']
+    });
+
+    let shiftRevenueUSD = 0;
+    let shiftRevenueVES = 0;
+    const paymentMethodsSummary = {};
+
+    todayPayments.forEach(p => {
+      const amtUSD = parseFloat(p.amount) || 0;
+      const amtBs = parseFloat(p.amountBs) || 0;
+      shiftRevenueUSD += amtUSD;
+      shiftRevenueVES += amtBs;
+
+      const m = p.method || 'Other';
+      paymentMethodsSummary[m] = (paymentMethodsSummary[m] || 0) + amtUSD;
+    });
+
+    // 5. Próximos Pacientes en Espera / En Curso (Live Queue)
+    const activeQueue = appointmentsToday
+      .filter(apt => ['Pending', 'Confirmed'].includes(apt.status))
+      .slice(0, 10)
+      .map(apt => ({
+        id: apt.id,
+        time: apt.date ? new Date(apt.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '00:00',
+        patientName: apt.Patient?.User ? `${apt.Patient.User.firstName} ${apt.Patient.User.lastName}`.trim() : 'Paciente',
+        medicalRecordNumber: apt.Patient?.medicalRecordNumber || 'N/A',
+        doctorName: apt.Doctor?.User ? `Dr. ${apt.Doctor.User.firstName} ${apt.Doctor.User.lastName}`.trim() : 'Médico',
+        specialty: apt.Doctor?.Specialty?.name || 'General',
+        type: apt.type,
+        status: apt.status,
+        reason: apt.reason || 'Consulta General'
+      }));
+
+    res.json({
+      timestamp: now.toISOString(),
+      organizationId: effectiveOrgId || null,
+      summary: {
+        appointments: appointmentCounts,
+        hospital: hospitalStats,
+        revenueToday: {
+          totalUSD: shiftRevenueUSD.toFixed(2),
+          totalVES: shiftRevenueVES.toFixed(2),
+          paymentsCount: todayPayments.length,
+          methods: paymentMethodsSummary
+        }
+      },
+      activeQueue
+    });
+  } catch (error) {
+    console.error('Error fetching live operations dashboard:', error);
     res.status(500).json({ error: error.message });
   }
 };

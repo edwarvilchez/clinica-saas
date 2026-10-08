@@ -53,9 +53,21 @@ const MedicalRecord = sequelize.define('MedicalRecord', {
   deletedBy: {
     type: DataTypes.UUID,
     allowNull: true
+  },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
-  paranoid: true
+  paranoid: true,
+  indexes: [
+    { fields: ['organizationId'] },
+    { fields: ['patientId'] },
+    { fields: ['doctorId'] },
+    { fields: ['organizationId', 'createdAt'] },
+    { fields: ['organizationId', 'patientId'] },
+    { fields: ['organizationId', 'doctorId'] }
+  ]
 });
 
 module.exports = MedicalRecord;

@@ -1,5 +1,21 @@
-const { Patient, User, Role, InsuranceCompany, sequelize } = require('../models');
+const { 
+  Patient, 
+  User, 
+  Role, 
+  InsuranceCompany, 
+  Appointment, 
+  MedicalRecord, 
+  Prescription, 
+  Drug, 
+  LabResult, 
+  Payment, 
+  Admission, 
+  Doctor, 
+  Specialty, 
+  sequelize 
+} = require('../models');
 const { Op } = require('sequelize');
+const { hasPermission } = require('../middlewares/authorization.middleware');
 
 /**
  * Clean document helper: removes dots, commas, hyphens, slashes, spaces.
@@ -572,6 +588,315 @@ exports.verifyInsuranceCoverage = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in verifyInsuranceCoverage:', error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * 🏥 Fase 18: Timeline Longitudinal del Paciente
+ * Visión unificada y cronológica de citas, historias clínicas, recetas,
+ * resultados de laboratorio, admisiones hospitalarias y pagos.
+ * Incluye autorización estricta contra IDOR y aislamiento multi-tenant.
+ */
+exports.getPatientTimeline = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { role, organizationId, id: userId } = req.user;
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+
+    // 1. Localizar al paciente
+    const patient = await Patient.findByPk(id, {
+      include: [
+        { model: User, attributes: ['id', 'firstName', 'lastName', 'email'] },
+        { model: InsuranceCompany, attributes: ['id', 'name'] }
+      ]
+    });
+
+    if (!patient) {
+      return res.status(404).json({ message: 'Paciente no encontrado' });
+    }
+
+    // 2. Control de Acceso: Aislamiento multi-tenant
+    if (!isSuperAdmin && patient.organizationId && patient.organizationId !== organizationId) {
+      return res.status(404).json({ message: 'Paciente no encontrado' });
+    }
+
+    // 3. Control de Autorización & Protección Anti-IDOR
+    const canReadPatients = hasPermission(role, 'patients:read');
+    const isOwnPatient = role === 'PATIENT' && patient.userId === userId;
+
+    if (!canReadPatients && !isOwnPatient) {
+      return res.status(403).json({
+        message: 'Acceso denegado: permisos insuficientes para consultar el timeline del paciente'
+      });
+    }
+
+    // 4. Parámetros de filtrado opcionales
+    const { type: typeFilter, startDate, endDate } = req.query;
+    const requestedTypes = typeFilter ? typeFilter.split(',').map(t => t.trim().toUpperCase()) : null;
+
+    const dateFilter = {};
+    if (startDate && endDate) {
+      dateFilter[Op.between] = [new Date(startDate), new Date(endDate)];
+    } else if (startDate) {
+      dateFilter[Op.gte] = new Date(startDate);
+    } else if (endDate) {
+      dateFilter[Op.lte] = new Date(endDate);
+    }
+
+    const timelineEvents = [];
+
+    // Helper para doctor
+    const formatDoctor = (doc) => {
+      if (!doc) return null;
+      const docUser = doc.User;
+      return {
+        id: doc.id,
+        name: docUser ? `Dr. ${docUser.firstName} ${docUser.lastName}`.trim() : 'Médico Tratante',
+        specialty: doc.Specialty?.name || 'Medicina General'
+      };
+    };
+
+    // 5. Cargar Citas Médicas (APPOINTMENT)
+    if (!requestedTypes || requestedTypes.includes('APPOINTMENT')) {
+      const aptWhere = { patientId: patient.id };
+      if (Object.keys(dateFilter).length > 0) aptWhere.date = dateFilter;
+
+      const appointments = await Appointment.findAll({
+        where: aptWhere,
+        include: [
+          {
+            model: Doctor,
+            attributes: ['id'],
+            include: [
+              { model: User, attributes: ['firstName', 'lastName'] },
+              { model: Specialty, attributes: ['id', 'name'] }
+            ]
+          }
+        ],
+        order: [['date', 'DESC']]
+      });
+
+      appointments.forEach(apt => {
+        timelineEvents.push({
+          id: apt.id,
+          type: 'APPOINTMENT',
+          date: apt.date,
+          title: `Cita Médica (${apt.type || 'Presencial'})`,
+          description: apt.reason || 'Consulta médica',
+          status: apt.status,
+          doctor: formatDoctor(apt.Doctor),
+          details: {
+            appointmentType: apt.type,
+            notes: apt.notes
+          }
+        });
+      });
+    }
+
+    // 6. Cargar Historias Médicas y Prescripciones (MEDICAL_RECORD / PRESCRIPTION)
+    const loadRecords = !requestedTypes || requestedTypes.includes('MEDICAL_RECORD');
+    const loadPrescriptions = !requestedTypes || requestedTypes.includes('PRESCRIPTION');
+
+    if (loadRecords || loadPrescriptions) {
+      const mrWhere = { patientId: patient.id };
+      if (Object.keys(dateFilter).length > 0) mrWhere.createdAt = dateFilter;
+
+      const medicalRecords = await MedicalRecord.findAll({
+        where: mrWhere,
+        include: [
+          {
+            model: Doctor,
+            attributes: ['id'],
+            include: [
+              { model: User, attributes: ['firstName', 'lastName'] },
+              { model: Specialty, attributes: ['id', 'name'] }
+            ]
+          },
+          {
+            model: Prescription,
+            as: 'prescriptions',
+            include: [{ model: Drug, as: 'drug', attributes: ['id', 'name', 'presentation'] }]
+          }
+        ],
+        order: [['createdAt', 'DESC']]
+      });
+
+      medicalRecords.forEach(mr => {
+        if (loadRecords) {
+          timelineEvents.push({
+            id: mr.id,
+            type: 'MEDICAL_RECORD',
+            date: mr.createdAt,
+            title: 'Evolución Clínica / Consulta',
+            description: mr.diagnosis,
+            status: 'Signed',
+            doctor: formatDoctor(mr.Doctor),
+            details: {
+              treatment: mr.treatment,
+              indications: mr.indications,
+              physicalExam: mr.physicalExam,
+              medicalLeaveDays: mr.medicalLeaveDays
+            }
+          });
+        }
+
+        if (loadPrescriptions && mr.prescriptions && mr.prescriptions.length > 0) {
+          mr.prescriptions.forEach(p => {
+            timelineEvents.push({
+              id: p.id,
+              type: 'PRESCRIPTION',
+              date: p.createdAt || mr.createdAt,
+              title: `Receta Médica: ${p.drugName || p.drug?.name || 'Medicamento'}`,
+              description: `${p.dosage || ''} - ${p.frequency || ''} (${p.duration || ''})`.trim(),
+              status: p.status,
+              doctor: formatDoctor(mr.Doctor),
+              details: {
+                drugName: p.drugName || p.drug?.name,
+                dosage: p.dosage,
+                frequency: p.frequency,
+                duration: p.duration,
+                instructions: p.instructions,
+                verificationHash: p.verificationHash
+              }
+            });
+          });
+        }
+      });
+    }
+
+    // 7. Cargar Resultados de Laboratorio (LAB_RESULT)
+    if (!requestedTypes || requestedTypes.includes('LAB_RESULT')) {
+      const labWhere = { patientId: patient.id };
+      if (Object.keys(dateFilter).length > 0) labWhere.createdAt = dateFilter;
+
+      const labResults = await LabResult.findAll({
+        where: labWhere,
+        order: [['createdAt', 'DESC']]
+      });
+
+      labResults.forEach(lab => {
+        timelineEvents.push({
+          id: lab.id,
+          type: 'LAB_RESULT',
+          date: lab.createdAt,
+          title: `Estudio de Laboratorio: ${lab.testName}`,
+          description: lab.resultValue ? `Resultado: ${lab.resultValue}` : 'En procesamiento',
+          status: lab.status,
+          doctor: null,
+          details: {
+            testName: lab.testName,
+            resultValue: lab.resultValue,
+            referenceRange: lab.referenceRange,
+            sampleStatus: lab.sampleStatus,
+            fileUrl: lab.fileUrl
+          }
+        });
+      });
+    }
+
+    // 8. Cargar Admisiones Hospitalarias (ADMISSION)
+    if (!requestedTypes || requestedTypes.includes('ADMISSION')) {
+      try {
+        const admWhere = { patientId: patient.id };
+        if (Object.keys(dateFilter).length > 0) admWhere.admissionDate = dateFilter;
+
+        const admissions = await Admission.findAll({
+          where: admWhere,
+          include: [
+            {
+              model: Doctor,
+              attributes: ['id'],
+              include: [
+                { model: User, attributes: ['firstName', 'lastName'] },
+                { model: Specialty, attributes: ['id', 'name'] }
+              ]
+            }
+          ],
+          order: [['admissionDate', 'DESC']]
+        });
+
+        admissions.forEach(adm => {
+          timelineEvents.push({
+            id: adm.id,
+            type: 'ADMISSION',
+            date: adm.admissionDate,
+            title: `Admisión Hospitalaria (${adm.admissionType || 'General'})`,
+            description: adm.initialDiagnosis || 'Hospitalización',
+            status: adm.status,
+            doctor: formatDoctor(adm.Doctor),
+            details: {
+              admissionDate: adm.admissionDate,
+              dischargeDate: adm.dischargeDate,
+              roomNumber: adm.roomNumber,
+              bedNumber: adm.bedNumber
+            }
+          });
+        });
+      } catch (e) {
+        // Best effort si el modelo no está habilitado
+      }
+    }
+
+    // 9. Cargar Pagos Realizados (PAYMENT)
+    if (!requestedTypes || requestedTypes.includes('PAYMENT')) {
+      const payWhere = { patientId: patient.id };
+      if (Object.keys(dateFilter).length > 0) payWhere.createdAt = dateFilter;
+
+      const payments = await Payment.findAll({
+        where: payWhere,
+        order: [['createdAt', 'DESC']]
+      });
+
+      payments.forEach(pay => {
+        timelineEvents.push({
+          id: pay.id,
+          type: 'PAYMENT',
+          date: pay.createdAt,
+          title: `Pago Recaudado: ${pay.amount} ${pay.currency || 'USD'}`,
+          description: `Método: ${pay.method || 'General'}`,
+          status: pay.status,
+          doctor: null,
+          details: {
+            amount: pay.amount,
+            amountBs: pay.amountBs,
+            currency: pay.currency,
+            method: pay.method
+          }
+        });
+      });
+    }
+
+    // 10. Ordenar cronológicamente descendente
+    timelineEvents.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // 11. Resumen consolidado
+    const summary = {
+      totalEvents: timelineEvents.length,
+      appointmentsCount: timelineEvents.filter(e => e.type === 'APPOINTMENT').length,
+      medicalRecordsCount: timelineEvents.filter(e => e.type === 'MEDICAL_RECORD').length,
+      prescriptionsCount: timelineEvents.filter(e => e.type === 'PRESCRIPTION').length,
+      labResultsCount: timelineEvents.filter(e => e.type === 'LAB_RESULT').length,
+      admissionsCount: timelineEvents.filter(e => e.type === 'ADMISSION').length,
+      paymentsCount: timelineEvents.filter(e => e.type === 'PAYMENT').length
+    };
+
+    res.json({
+      patient: {
+        id: patient.id,
+        fullName: patient.User ? `${patient.User.firstName} ${patient.User.lastName}`.trim() : 'Paciente',
+        medicalRecordNumber: patient.medicalRecordNumber,
+        documentId: patient.documentId,
+        gender: patient.gender,
+        bloodType: patient.bloodType,
+        allergies: patient.allergies,
+        insuranceProvider: patient.InsuranceCompany?.name || patient.insuranceProvider || 'Particular'
+      },
+      summary,
+      timeline: timelineEvents
+    });
+  } catch (error) {
+    console.error('Error fetching patient longitudinal timeline:', error);
     res.status(500).json({ error: error.message });
   }
 };

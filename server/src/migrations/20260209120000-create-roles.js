@@ -2,6 +2,14 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    try {
+      await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    } catch (_) {
+      try {
+        await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
+      } catch (__) {}
+    }
+
     await queryInterface.createTable('Roles', {
       id: {
         type: Sequelize.INTEGER,

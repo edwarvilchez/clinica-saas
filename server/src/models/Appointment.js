@@ -15,7 +15,7 @@ const Appointment = sequelize.define('Appointment', {
     type: DataTypes.STRING
   },
   status: {
-    type: DataTypes.ENUM('Pending', 'Confirmed', 'Cancelled', 'Completed'),
+    type: DataTypes.ENUM('Pending', 'Confirmed', 'Cancelled', 'Completed', 'NoShow'),
     defaultValue: 'Pending'
   },
   notes: {
@@ -40,10 +40,17 @@ const Appointment = sequelize.define('Appointment', {
   deletedBy: {
     type: DataTypes.UUID,
     allowNull: true
+  },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
   paranoid: true,
   indexes: [
+    {
+      fields: ['organizationId']
+    },
     {
       fields: ['patientId']
     },
@@ -61,6 +68,21 @@ const Appointment = sequelize.define('Appointment', {
     },
     {
       fields: ['reminderSent']
+    },
+    {
+      fields: ['organizationId', 'createdAt']
+    },
+    {
+      fields: ['organizationId', 'status']
+    },
+    {
+      fields: ['organizationId', 'date']
+    },
+    {
+      fields: ['organizationId', 'doctorId']
+    },
+    {
+      fields: ['organizationId', 'patientId']
     },
     {
       // Índice compuesto para búsquedas comunes

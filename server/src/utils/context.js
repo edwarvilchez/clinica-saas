@@ -41,6 +41,14 @@ class RequestContext {
   getRole() {
     return this.get()?.role || null;
   }
+
+  /**
+   * Check if current context is Super Admin or Platform Admin
+   * @returns {boolean}
+   */
+  isSuperAdmin() {
+    return this.get()?.isSuperAdmin || this.getRole() === 'SUPERADMIN' || this.getRole() === 'PLATFORM_ADMIN';
+  }
 }
 
 module.exports = new RequestContext();

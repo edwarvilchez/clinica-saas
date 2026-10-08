@@ -1,36 +1,38 @@
-FROM node:18-alpine
+# ==============================================================================
+# Multi-Stage Production Dockerfile - Clinica SaaS Root Build Context
+# ==============================================================================
 
-# Set working directory
+FROM node:20-alpine AS dependencies
+
 WORKDIR /usr/src/app
+RUN apk add --no-cache libc6-compat
 
-# Copy server package files (cache bust: 2026-02-15-v2)
 COPY server/package*.json ./
-
-# Install dependencies
-RUN rm -f package-lock.json && \
-    npm install --only=production && \
+RUN npm ci --only=production --ignore-scripts && \
     npm cache clean --force
 
-# Copy server source
-COPY server/ ./
+FROM node:20-alpine AS runner
 
-# Create uploads directory with correct permissions
-RUN mkdir -p uploads && \
+WORKDIR /usr/src/app
+RUN apk add --no-cache dumb-init curl
+
+COPY --from=dependencies /usr/src/app/node_modules ./node_modules
+COPY server/package*.json ./
+COPY server/src ./src
+
+RUN mkdir -p uploads storage backups && \
     chown -R node:node /usr/src/app
 
-# Switch to non-root user for security
 USER node
 
-# Environment variables
 ENV NODE_ENV=production \
-    PORT=5000
+    PORT=5000 \
+    LOG_LEVEL=info
 
-# Expose port
 EXPOSE 5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:5000/', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -f http://localhost:5000/health/ready || exit 1
 
-# Start application
-CMD ["npm", "start"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
+CMD ["node", "src/index.js"]

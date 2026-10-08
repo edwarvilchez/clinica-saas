@@ -92,7 +92,17 @@ const Payment = sequelize.define('Payment', {
     allowNull: true
   }
 }, {
-  paranoid: true
+  paranoid: true,
+  indexes: [
+    { fields: ['organizationId'] },
+    { fields: ['patientId'] },
+    { fields: ['appointmentId'] },
+    { fields: ['status'] },
+    { fields: ['paymentType'] },
+    { fields: ['organizationId', 'createdAt'] },
+    { fields: ['organizationId', 'status'] },
+    { fields: ['organizationId', 'paymentType'] }
+  ]
 });
 
 module.exports = Payment;

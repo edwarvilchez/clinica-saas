@@ -9,7 +9,6 @@ const Patient = sequelize.define('Patient', {
   },
   medicalRecordNumber: {
     type: DataTypes.STRING,
-    unique: true,
     allowNull: true,
     comment: 'Número de Historia Médica generado a partir de la CI/Documento del paciente'
   },
@@ -31,7 +30,6 @@ const Patient = sequelize.define('Patient', {
   },
   documentId: {
     type: DataTypes.STRING,
-    unique: true,
     allowNull: false,
     comment: 'Documento completo formateado, ej: V12345678, PAS884912, J123456789'
   },
@@ -153,6 +151,9 @@ const Patient = sequelize.define('Patient', {
     },
     {
       fields: ['organizationId']
+    },
+    {
+      fields: ['organizationId', 'createdAt']
     }
   ]
 });

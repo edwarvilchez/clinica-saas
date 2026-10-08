@@ -185,4 +185,9 @@ router.post('/2fa/setup', authMiddleware, authController.setup2FA);
 router.post('/2fa/enable', authMiddleware, authController.enable2FA);
 router.post('/2fa/disable', authMiddleware, authController.disable2FA);
 
+// Session and Token Management (Phase 7)
+router.post('/refresh', authController.refreshToken);
+router.post('/logout', authController.logout);
+router.post('/logout-all-devices', authMiddleware, authController.logoutAllDevices);
+
 module.exports = router;

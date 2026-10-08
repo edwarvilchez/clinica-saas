@@ -14,7 +14,10 @@
     "test:old": "node test/runTests.js",
     "migrate": "npx sequelize-cli db:migrate",
     "migrate:tenant-qa-to-prod": "node src/scripts/migrateTenantQaToProd.js",
-    "test-email": "node src/utils/testEmail.js"
+    "test-email": "node src/utils/testEmail.js",
+    "db:backup": "node src/scripts/backup-db.js",
+    "db:restore": "node src/scripts/restore-db.js",
+    "production:check": "node src/scripts/productionCheck.js"
   },
   "keywords": [],
   "author": "",
@@ -58,6 +61,7 @@
     "jest": "^30.2.0",
     "nodemon": "^3.1.11",
     "sequelize-cli": "^6.6.0",
+    "socket.io-client": "^4.8.4",
     "supertest": "^7.2.2"
   }
 }

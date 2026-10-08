@@ -13,7 +13,12 @@ const Payment = require('./Payment');
 const sequelize = require('../config/db.config');
 const VideoConsultation = require('./VideoConsultation');
 const Organization = require('./Organization');
-const AuditLog = require('./auditLog');
+let AuditLog;
+try {
+  AuditLog = require('./AuditLog');
+} catch (_) {
+  AuditLog = require('./auditLog');
+}
 const Drug = require('./Drug');
 const Prescription = require('./Prescription');
 const LabTest = require('./LabTest');
@@ -38,6 +43,15 @@ const Surgery = require('./Surgery');
 const InventoryItem = require('./InventoryItem');
 const InventoryMovement = require('./InventoryMovement');
 const ClinicalPackage = require('./ClinicalPackage');
+const RefreshToken = require('./RefreshToken');
+const Lead = require('./Lead');
+const WaitlistEntry = require('./WaitlistEntry');
+const ClinicalAiDraft = require('./ClinicalAiDraft');
+const CommunicationLog = require('./CommunicationLog');
+
+// User - RefreshToken
+User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' });
+RefreshToken.belongsTo(User, { foreignKey: 'userId' });
 
 // User - Role
 Role.hasMany(User, { foreignKey: 'roleId' });
@@ -108,6 +122,21 @@ Appointment.belongsTo(Doctor, { foreignKey: 'doctorId' });
 
 Patient.hasMany(Appointment, { foreignKey: 'patientId' });
 Appointment.belongsTo(Patient, { foreignKey: 'patientId' });
+
+Organization.hasMany(Appointment, { foreignKey: 'organizationId' });
+Appointment.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Organization.hasMany(MedicalRecord, { foreignKey: 'organizationId' });
+MedicalRecord.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Organization.hasMany(Prescription, { foreignKey: 'organizationId' });
+Prescription.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Organization.hasMany(LabResult, { foreignKey: 'organizationId' });
+LabResult.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Organization.hasMany(VideoConsultation, { foreignKey: 'organizationId' });
+VideoConsultation.belongsTo(Organization, { foreignKey: 'organizationId' });
 
 // VideoConsultation Associations
 User.hasMany(VideoConsultation, { as: 'doctorConsultations', foreignKey: 'doctorId' });
@@ -321,37 +350,153 @@ InventoryMovement.belongsTo(Doctor, { foreignKey: 'doctorId' });
 DoctorFee.hasOne(InventoryMovement, { foreignKey: 'doctorFeeId' });
 InventoryMovement.belongsTo(DoctorFee, { foreignKey: 'doctorFeeId' });
 
+// Organization & User - AuditLog Associations
+Organization.hasMany(AuditLog, { foreignKey: 'organizationId' });
+AuditLog.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+User.hasMany(AuditLog, { foreignKey: 'actorUserId' });
+AuditLog.belongsTo(User, { foreignKey: 'actorUserId' });
+
 // Global Isolation Hook (SaaS Multi-tenant)
 const context = require('../utils/context');
 const AuditTrail = require('../utils/auditTrail');
 
 /**
- * Automatically inject organizationId filter into all queries
- * Excludes SUPERADMIN or explicit unscoped queries
+ * 🛡️ COMPREHENSIVE MULTI-TENANT ISOLATION HOOKS (SaaS Hardening)
+ * Enforces organization boundary on Find, Create, Update, and Destroy operations.
+ * Excludes platform Superadmins and unscoped background migrations.
  */
-sequelize.addHook('beforeFind', (options) => {
+const shouldApplyTenantFilter = () => {
+  const orgId = context.getOrgId();
+  const role = context.getRole();
+  if (!orgId || role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN') {
+    return null;
+  }
+  return orgId;
+};
+
+// 1. SELECT Operations Isolation
+sequelize.addHook('beforeFind', function(options) {
   try {
-    const orgId = context.getOrgId();
-    const role = context.getRole();
+    const orgId = shouldApplyTenantFilter();
+    if (!orgId) return;
 
-    // Skip if no orgId in context or user is a Super Admin or Platform Admin
-    if (!orgId || role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN') {
-      return;
-    }
-
-    // Ensure 'where' exists
     options.where = options.where || {};
-
-    // If the model has an 'organizationId' attribute, inject it
-    if (options.model?.rawAttributes?.organizationId) {
+    const model = this || options?.model;
+    if (model?.rawAttributes?.organizationId) {
       if (typeof options.where.organizationId === 'undefined') {
-         options.where.organizationId = orgId;
+        options.where.organizationId = orgId;
       }
     }
   } catch (err) {
-    console.error('Sequelize beforeFind Hook Error:', err);
+    console.error('Sequelize beforeFind Tenant Isolation Hook Error:', err);
   }
 });
+
+// 2. INSERT Operations Isolation
+sequelize.addHook('beforeCreate', function(instance, options) {
+  try {
+    const orgId = shouldApplyTenantFilter();
+    if (!orgId) return;
+
+    const model = this || instance?.constructor;
+    if (model?.rawAttributes?.organizationId) {
+      if (!instance.organizationId) {
+        instance.organizationId = orgId;
+      } else if (instance.organizationId !== orgId) {
+        // Prevent forged cross-tenant creation
+        throw new Error(`[Security] Cross-tenant insertion blocked. Tenant mismatch (${instance.organizationId} vs ${orgId})`);
+      }
+    }
+  } catch (err) {
+    throw err;
+  }
+});
+
+// 3. UPDATE Operations Isolation (Bulk & Single)
+sequelize.addHook('beforeBulkUpdate', function(options) {
+  try {
+    const orgId = shouldApplyTenantFilter();
+    if (!orgId) return;
+
+    options.where = options.where || {};
+    const model = this || options?.model;
+    if (model?.rawAttributes?.organizationId) {
+      options.where.organizationId = orgId;
+      // Prevent changing organizationId to another tenant
+      if (options.attributes && options.attributes.organizationId && options.attributes.organizationId !== orgId) {
+        throw new Error('[Security] Modifying organizationId is strictly forbidden');
+      }
+    }
+  } catch (err) {
+    throw err;
+  }
+});
+
+// 4. DELETE / DESTROY Operations Isolation (Bulk & Single)
+sequelize.addHook('beforeBulkDestroy', function(options) {
+  try {
+    const orgId = shouldApplyTenantFilter();
+    if (!orgId) return;
+
+    options.where = options.where || {};
+    const model = this || options?.model;
+    if (model?.rawAttributes?.organizationId) {
+      options.where.organizationId = orgId;
+    }
+  } catch (err) {
+    throw err;
+  }
+});
+
+// CRM & Leads Funnel Associations
+Organization.hasMany(Lead, { foreignKey: 'organizationId' });
+Lead.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+User.hasMany(Lead, { as: 'assignedLeads', foreignKey: 'assignedUserId' });
+Lead.belongsTo(User, { as: 'assignedUser', foreignKey: 'assignedUserId' });
+
+Specialty.hasMany(Lead, { foreignKey: 'specialtyId' });
+Lead.belongsTo(Specialty, { foreignKey: 'specialtyId' });
+
+Patient.hasOne(Lead, { as: 'leadSource', foreignKey: 'convertedPatientId' });
+Lead.belongsTo(Patient, { as: 'convertedPatient', foreignKey: 'convertedPatientId' });
+
+// --- Smart Waitlist (Fase 21) ---
+Organization.hasMany(WaitlistEntry, { foreignKey: 'organizationId' });
+WaitlistEntry.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+Patient.hasMany(WaitlistEntry, { foreignKey: 'patientId' });
+WaitlistEntry.belongsTo(Patient, { foreignKey: 'patientId' });
+
+Doctor.hasMany(WaitlistEntry, { foreignKey: 'doctorId' });
+WaitlistEntry.belongsTo(Doctor, { foreignKey: 'doctorId' });
+
+Specialty.hasMany(WaitlistEntry, { foreignKey: 'specialtyId' });
+WaitlistEntry.belongsTo(Specialty, { foreignKey: 'specialtyId' });
+
+Appointment.hasOne(WaitlistEntry, { as: 'waitlistOrigin', foreignKey: 'convertedAppointmentId' });
+WaitlistEntry.belongsTo(Appointment, { as: 'convertedAppointment', foreignKey: 'convertedAppointmentId' });
+
+// ClinicalAiDraft associations
+Patient.hasMany(ClinicalAiDraft, { foreignKey: 'patientId' });
+ClinicalAiDraft.belongsTo(Patient, { foreignKey: 'patientId' });
+
+Doctor.hasMany(ClinicalAiDraft, { foreignKey: 'doctorId' });
+ClinicalAiDraft.belongsTo(Doctor, { foreignKey: 'doctorId' });
+
+Organization.hasMany(ClinicalAiDraft, { foreignKey: 'organizationId' });
+ClinicalAiDraft.belongsTo(Organization, { foreignKey: 'organizationId' });
+
+MedicalRecord.hasOne(ClinicalAiDraft, { foreignKey: 'medicalRecordId' });
+ClinicalAiDraft.belongsTo(MedicalRecord, { foreignKey: 'medicalRecordId' });
+
+User.hasMany(ClinicalAiDraft, { foreignKey: 'reviewedBy', as: 'reviewedAiDrafts' });
+ClinicalAiDraft.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
+
+// CommunicationLog associations
+Organization.hasMany(CommunicationLog, { foreignKey: 'organizationId' });
+CommunicationLog.belongsTo(Organization, { foreignKey: 'organizationId' });
 
 module.exports = {
   User,
@@ -393,5 +538,10 @@ module.exports = {
   InventoryItem,
   InventoryMovement,
   ClinicalPackage,
+  RefreshToken,
+  Lead,
+  WaitlistEntry,
+  ClinicalAiDraft,
+  CommunicationLog,
   sequelize
 };

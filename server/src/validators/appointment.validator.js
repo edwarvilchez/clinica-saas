@@ -27,7 +27,7 @@ const createAppointmentSchema = Joi.object({
     'string.max': 'Notas no pueden exceder 1000 caracteres',
   }),
   status: Joi.string()
-    .valid('Pending', 'Confirmed', 'Completed', 'Cancelled')
+    .valid('Pending', 'Confirmed', 'Completed', 'Cancelled', 'NoShow')
     .optional()
     .default('Pending'),
   type: Joi.string().valid('In-Person', 'Video').optional().default('In-Person'),
@@ -41,7 +41,7 @@ const updateAppointmentSchema = Joi.object({
   reason: Joi.string().max(500).optional(),
   notes: Joi.string().max(1000).optional(),
   status: Joi.string()
-    .valid('Pending', 'Confirmed', 'Completed', 'Cancelled')
+    .valid('Pending', 'Confirmed', 'Completed', 'Cancelled', 'NoShow')
     .optional(),
   type: Joi.string().valid('In-Person', 'Video').optional(),
 }).min(1); // Al menos un campo debe ser actualizado

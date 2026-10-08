@@ -1,44 +1,39 @@
+'use strict';
+
+const auditService = require('../services/audit.service');
 const logger = require('./logger');
 
 /**
- * Audit Trail Middleware
- * Logs all changes to entities for compliance and tracking
+ * Audit Trail Helper & Middleware
+ * Delegates to AuditService for SHA-256 tamper-evident append-only logging.
  */
 class AuditTrail {
   constructor() {
+    this.service = auditService;
     this.ignoredFields = ['createdAt', 'updatedAt', 'password'];
   }
 
   /**
    * Track changes to an entity
    * @param {string} entity - Entity name (e.g., 'Patient', 'Appointment')
-   * @param {string} action - Action type (CREATE, UPDATE, DELETE)
+   * @param {string} action - Action type (CREATE, UPDATE, DELETE, etc.)
    * @param {Object} data - Change data
    */
-  async log(entity, action, data) {
-    try {
-      const { AuditLog } = require('../models');
-      const context = require('./context');
-      const ctx = context.get() || {};
-      
-      await AuditLog.create({
-        entity,
-        action,
-        entityId: data.entityId || data.resourceId,
-        userId: data.userId || ctx.userId,
-        organizationId: data.organizationId || ctx.organizationId,
-        oldValues: data.oldValues || null,
-        newValues: data.newValues || null,
-        ip: data.ip || ctx.ip,
-        userAgent: data.userAgent || ctx.userAgent,
-        details: data.details || null,
-        timestamp: new Date()
-      });
-
-      logger.debug({ entity, action, entityId: data.entityId || data.resourceId }, 'Audit trail logged');
-    } catch (error) {
-      logger.error({ error, entity, action }, 'Failed to log audit trail');
-    }
+  async log(entity, action, data = {}) {
+    return this.service.logEvent({
+      entity,
+      action,
+      entityId: data.entityId || data.resourceId,
+      actorUserId: data.userId || data.actorUserId,
+      organizationId: data.organizationId,
+      oldValues: data.oldValues || null,
+      newValues: data.newValues || null,
+      changes: data.changes || null,
+      metadata: data.details || data.metadata || null,
+      ip: data.ip,
+      userAgent: data.userAgent,
+      requestId: data.requestId
+    });
   }
 
   /**
@@ -49,7 +44,7 @@ class AuditTrail {
       req.audit = {
         userId: req.user?.id,
         ip: req.ip,
-        userAgent: req.get('user-agent')
+        userAgent: req.get ? req.get('user-agent') : null
       };
       next();
     };
@@ -57,25 +52,9 @@ class AuditTrail {
 
   /**
    * Compare old and new values to find changes
-   * @param {Object} oldValues - Previous values
-   * @param {Object} newValues - New values
-   * @returns {Object} - Changed fields only
    */
   getChanges(oldValues, newValues) {
-    const changes = {};
-    
-    for (const key of Object.keys(newValues)) {
-      if (this.ignoredFields.includes(key)) continue;
-      
-      if (JSON.stringify(oldValues[key]) !== JSON.stringify(newValues[key])) {
-        changes[key] = {
-          from: oldValues[key],
-          to: newValues[key]
-        };
-      }
-    }
-    
-    return changes;
+    return this.service.calculateDiff(oldValues, newValues);
   }
 }
 

@@ -1,348 +1,172 @@
-# 🏗️ Arquitectura del Proyecto - Clínica SaaS
-
-**Clínica SaaS** es un sistema integral de gestión médica y hospitalaria diseñado para optimizar los flujos de trabajo clínicos y administrativos. Este documento detalla la arquitectura técnica, las tecnologías utilizadas y la estructura del código.
-
----
-
-## 🚀 1. Stack Tecnológico
-
-El sistema utiliza una arquitectura **Full Stack JavaScript (PERN/MEAN híbrido)** moderna:
-
-### **Frontend (Cliente)**
-
-- **Framework**: [Angular 21](https://angular.io/) (Uso de componentes **Standalone** y **Signals** para gestión de estado reactivo).
-- **Estilos**: Bootstrap 5 + CSS personalizado con Glassmorphism y temas premium.
-- **Gráficos**: Chart.js con ng2-charts.
-- **Reportes**: jsPDF + jspdf-autotable para generación de PDFs en el cliente.
-- **Notificaciones**: SweetAlert2.
-- **Iconos**: Bootstrap Icons.
-
-### **Backend (Servidor)**
-
-- **Runtime**: [Node.js](https://nodejs.org/).
-- **Framework**: [Express.js](https://expressjs.com/) para la API RESTful.
-- **ORM**: [Sequelize](https://sequelize.org/) para manejo de base de datos relacional.
-- **Seguridad**:
-  - `jsonwebtoken` (JWT) para autenticación stateless.
-  - `bcryptjs` para hashing de contraseñas.
-  - `cors` y `helmet` para seguridad HTTP.
-
-### **Base de Datos**
-
-- **Motor**: SQL Relacional (compatible con PostgreSQL / MySQL).
-- **Modelado**: Definido vía Sequelize Models.
+# 🏛️ ARCHITECTURE — CLÍNICA SAAS
+> **Arquitectura Objetivo:** Modular Monolith + Domain Boundaries + Domain Events + Service Abstractions  
+> **Enfoque Estratégico:** Máxima cohesión interna, mínimo acoplamiento y preparación para extracción selectiva a microservicios cuando el volumen lo justifique.
 
 ---
 
-## 📐 2. Patrones de Diseño
+## 1. Principio Rector: Monolito Modular Primero
 
-El sistema sigue una arquitectura **Cliente-Servidor (REST)** con separación clara de preocupaciones:
+En esta fase de evolución, la aplicación **NO se dividirá en microservicios prematuros**. Se adopta la arquitectura de **Monolito Modular**, cuyas directrices son:
 
-1.  **Modelo-Vista-Controlador (MVC) en Backend**:
-    - **Modelos**: Definen la estructura de datos y relaciones (`server/src/models`).
-    - **Controladores**: Contienen la lógica de negocio y orquestación (`server/src/controllers`).
-    - **Rutas**: Definen los endpoints de la API (`server/src/routes`).
+- **Un único proceso de ejecución principal y una base de datos central PostgreSQL**, eliminando la sobrecarga de red, fallos distribuidos y complejidad operacional innecesaria.
+- **Límites de dominio estrictos (Bounded Contexts)**: Cada módulo posee sus propias entidades, servicios de aplicación y controladores.
+- **Comunicación asíncrona mediante Eventos de Dominio**: Los módulos no se llaman directamente en cascada para efectos secundarios, sino que emiten eventos a través de un `DomainEventBus` interno.
+- **Abstracción de Servicios Externos**: Todo servicio dependiente de infraestructura (notificaciones, almacenamiento de archivos, IA, analítica) se encapsula tras una interfaz genérica.
 
-2.  **Arquitectura de Componentes en Frontend**:
-    - **Servicios**: Capa de comunicación HTTP con el backend (Singleton).
-    - **Componentes**: Lógica de presentación y UI.
-    - **Guards**: Protección de rutas basada en autenticación.
+```mermaid
+graph TD
+    subgraph "Clients"
+        WebClient["Angular 21 Client SPA"]
+        MobileClient["Mobile / Portal Paciente"]
+    end
 
----
+    subgraph "API Gateway & Security Layer"
+        ReverseProxy["Nginx Reverse Proxy + SSL"]
+        RateLimiter["Rate Limiting & Helmet"]
+        AuthMiddleware["JWT & Request Context Middleware"]
+        TenantContext["Tenant Context Injection (RLS)"]
+    end
 
-## 📂 3. Estructura del Proyecto
+    subgraph "Modular Monolith Application Core"
+        subgraph "Core Business Domains"
+            IdentityModule["Identity & Access (RBAC)"]
+            TenantModule["Organization & Multi-tenancy"]
+            PatientModule["Patient & Clinical Timeline"]
+            AppointmentModule["Appointments & Agenda"]
+            BillingModule["Billing, Quotes & Claims"]
+            ClinicalModule["Medical Records, Labs & Pharmacy"]
+        end
 
-### **Cliente (`/client`)**
+        subgraph "Internal Domain Event Bus"
+            EventBus["In-Memory Domain Event Bus"]
+        end
 
-```
-client/src/app/
-├── components/           # Componentes visuales (Páginas)
-│   ├── dashboard/        # Panel principal con estadísticas
-│   ├── doctors/          # Gestión de doctores
-│   ├── lab-results/      # Módulo de laboratorio (Nuevo)
-│   ├── login/            # Autenticación
-│   └── shared/           # Componentes reutilizables (Sidebar, Navbar)
-├── services/             # Lógica de comunicación con API y globales
-│   ├── auth.service.ts   # Login/Register
-│   ├── laboratory.service.ts # Gestión de resultados
-│   ├── payment.service.ts # Transacciones financieras
-│   ├── language.service.ts # Motor de traducción reactivo (Signals)
-│   ├── currency.service.ts # Motor de conversión monetaria
-│   └── stats.service.ts  # Datos para dashboard
-├── guards/               # Protección de rutas (AuthGuard)
-├── models/               # Interfaces TypeScript
-└── app.routes.ts         # Definición de rutas del sistema
-```
+        subgraph "Service Abstractions (Candidates for Extraction)"
+            NotificationSvc["NotificationService (Email / SMS / WhatsApp)"]
+            FileStorageSvc["FileStorageService (Local / S3 / MinIO)"]
+            AuditSvc["AuditService (Tamper-Evident SHA-256)"]
+            AISvc["AIService (Clinical Copilot / Doctor Approval)"]
+            TelemedSvc["TelemedicineService (WebRTC Signaling)"]
+            AnalyticsSvc["AnalyticsService (Reporting & BI)"]
+        end
+    end
 
-### **Servidor (`/server`)**
+    subgraph "Data & Persistence Tier"
+        PostgresDB[(PostgreSQL 16 + Row Level Security)]
+        Storage[(Secure File Storage)]
+    end
 
-```
-server/src/
-├── config/               # Configuración de BD y entorno
-├── controllers/          # Lógica de negocio (Endpoints)
-│   ├── auth.controller.js
-│   ├── stats.controller.js
-│   └── ...
-├── models/               # Definiciones de Tablas (Sequelize)
-│   ├── User.js           # Usuario base
-│   ├── Doctor.js         # Perfil extendido
-│   ├── Appointment.js    # Citas médicas
-│   └── index.js          # Relaciones (Associations)
-├── routes/               # Rutas de Express
-├── seeders/              # Scripts de carga inicial y seeders operativos
-├── utils/                # Scripts utilitarios remanentes
-│   └── legacy/           # Scripts antiguos archivados
-└── app.js                # Punto de entrada
+    WebClient --> ReverseProxy
+    MobileClient --> ReverseProxy
+    ReverseProxy --> RateLimiter
+    RateLimiter --> AuthMiddleware
+    AuthMiddleware --> TenantContext
+    TenantContext --> Core Business Domains
+
+    Core Business Domains --> EventBus
+    EventBus --> Service Abstractions
+
+    Core Business Domains --> PostgresDB
+    FileStorageSvc --> Storage
+    AuditSvc --> PostgresDB
 ```
 
 ---
 
-## 🔗 4. Modelo de Datos (Relaciones Clave)
+## 2. Definición de Límites de Dominio (Bounded Contexts)
 
-El sistema utiliza un modelo relacional centrado en el usuario:
+Cada dominio encapsula su propia lógica de negocio y expone interfaces limpias:
 
-- **User**: Entidad central (Email, Password, Rol).
-- **Roles**: `SUPERADMIN`, `DOCTOR`, `NURSE`, `ADMINISTRATIVE`, `PATIENT`.
-- **Perfiles (Polimorfismo Simulado)**:
-  - `User` 1:1 `Doctor` (Especialidad, Licencia).
-  - `User` 1:1 `Patient` (Historial, Sangre).
-  - `User` 1:1 `Nurse`.
-- **Citas (Appointments)**:
-  - Relaciona `Doctor` y `Patient`.
-  - Tiene `Status` (Pending, Confirmed, Completed).
-- **Resultados de Laboratorio**:
-  - Relacionado con `Patient`.
-
----
-
-## 🛠️ 5. Módulos y Características Clave
-
-### **1. Autenticación y Seguridad (RBAC)**
-
-El sistema implementa un control de acceso basado en roles (**RBAC**) robusto.
-
-- **Roles Soportados**: `SUPERADMIN`, `PLATFORM_ADMIN`, `DOCTOR`, `NURSE`, `ADMINISTRATIVE`, `PATIENT`.
-- **Protección Backend**: Middleware de autenticación JWT. (Nota: ACL a nivel de rutas pendiente, lógica actual en controladores).
-- **Protección Frontend**:
-  - **Guards**: `AuthGuard` protege rutas privadas.
-  - **Renderizado Condicional (User-Centric UI)**:
-    - _Staff (Docs/Admin)_: Dashboard de gestión con KPIs financieros, métricas globales y agenda completa.
-    - _Pacientes_: Interfaz simplificada y amigable centrada en "Mis Citas" y "Mis Resultados", sin ruido visual.
-
-### **2. Módulo de Laboratorio y Reportes PDF**
-
-Motor de generación de documentos clínicos dinámicos integrado en el cliente (Client-Side Rendering).
-
-- **Tecnología**: `jsPDF` + `jspdf-autotable`.
-- **Servicio Dedicado**: `LabPdfService` (Patrón Singleton).
-- **Capacidades**:
-  - **Generación On-the-fly**: Creación de Blobs PDF en memoria para visualización instantánea en nueva pestaña (sin descarga obligatoria).
-  - **Descarga de Archivos**: Opción de guardar reporte en disco.
-  - **Inteligencia Clínica**: Detección automática de valores fuera de rango (anomalías se renderizan en **rojo** y negrita).
-  - **Diseño Profesional**: Membretes corporativos, grillas alineadas y estilos tipográficos fieles a la identidad institucional.
-
-### **3. Diseño Responsivo y UI/UX**
-
-La aplicación es totalmente **Cross-Device** (Escritorio, Tablet, Móvil).
-
-- **Sidebar Off-Canvas**: Menú de navegación lateral responsivo. En móvil se oculta y desliza suavemente sobre el contenido, con _backdrop_ oscuro para cierre táctil.
-- **Adaptive Layout**: Grillas CSS y Flexbox que reordenan tarjetas y tablas según el viewport.
-- **Glassmorphism**: Estética moderna translúcida en componentes clave.
-
-### **4. Gestión Médica Integral**
-
-- **Citas**: Flujo completo de agendamiento, confirmación y ejecución.
-- **Pacientes**: Expediente clínico digital centralizado.
-- **Doctores**: Gestión de perfiles profesionales.
-
-### **5. Inteligencia Financiera y Pagos (Version 1.4.x)**
-
-Módulo avanzado para el control de ingresos y facturación de la clínica.
-
-- **Búsqueda Reactiva**: Filtrado instantáneo por referencia, paciente o concepto.
-- **Gestión de Cobros**: Flujo de estados (Pendiente/Pagado) con actualización en tiempo real.
-- **Exportación de Reportes**: Generación de archivos CSV para auditorías externas.
-- **Recibos Digitales**: Visualización de comprobantes con opción de impresión directa.
-
-### **6. Historial Médico Inteligente (Version 1.7.0)**
-
-Módulo de registro clínico evolucionado para garantizar precisión y facilidad de uso.
-
-- **Resolución Automática de Identidad**: El sistema detecta y vincula automáticamente el perfil del doctor (`doctorId`) basado en el usuario logueado, eliminando errores de asignación.
-- **Cálculo de Reposos Médicos**: Lógica inteligente que calcula automáticamente la **Fecha de Fin** de un reposo basándose en la fecha de inicio y la cantidad de días indicados, manejando correctamente las zonas horarias locales.
-- **Impresión Detallada**: Los informes impresos ahora incluyen el desglose completo del reposo (Días, Desde, Hasta) para mayor claridad del paciente.
-- **Integridad de Datos**: Esquema de base de datos reforzado con claves foráneas explícitas y tipos de datos precisos (`DATEONLY` para fechas de reposo).
-
-### **7. Globalización y Flexibilidad (i18n & Multicurrency)**
-
-El sistema ha sido diseñado para operar en entornos internacionales y mercados dinámicos.
-
-- **Soporte Multidioma (ES/EN)**: Motor de traducción basado en **Angular Signals** que permite el cambio de idioma instantáneo en toda la UI sin recargar la aplicación.
-- **Sistema Multimoneda (USD/VES)**:
-  - Conversión dinámica de montos basada en una tasa de cambio configurable.
-  - Visualización dual de precios en tablas y recibos (Moneda principal y equivalente estimado).
-  - Persistencia de preferencias del usuario mediante LocalStorage.
+| Dominio | Responsabilidad Principal | Entidades Principales | Dependencias Permitidas |
+|---|---|---|---|
+| **Identity & Access** | Autenticación, JWT, 2FA, Refresh Tokens, RBAC | `User`, `Role`, `RefreshToken` | Módulo base (sin dependencias de negocio) |
+| **Organizations** | Tenants, clínicas, planes de suscripción, cuotas | `Organization`, `Department` | Identity |
+| **Patients** | Registro demográfico, antecedentes, timeline clínico | `Patient`, `EmergencyTriage` | Organizations, Identity |
+| **Appointments** | Agenda médica, citas, recordatorios, lista de espera | `Appointment`, `Doctor` | Patients, Organizations |
+| **Clinical Records** | Historias clínicas, evoluciones, recetas, diagnósticos | `MedicalRecord`, `Prescription` | Patients, Doctors, Organizations |
+| **Lab & Pharmacy** | Catálogo de pruebas, muestras, inventario de medicamentos FEFO | `LabTest`, `LabResult`, `Drug`, `PharmacyBatch` | Patients, Organizations |
+| **Billing & Finance** | Facturación, cotizaciones, cobros, reclamos a aseguradoras | `Payment`, `Quote`, `InsuranceClaim`, `AccountChart` | Patients, Organizations |
+| **Audit & Compliance** | Trazabilidad inmutable de eventos, firmas y accesos PHI | `AuditLog` | Global (observador transversal) |
 
 ---
 
-## 🔄 6. Flujo de Datos
+## 3. Arquitectura de Eventos de Dominio (Domain Events)
 
-1.  **Login**: Usuario recibe JWT + User Profile.
-2.  **Dashboard**: Angular decide qué vista mostrar (Paciente vs Staff) basado en `user.role`.
-3.  **Consultas**: Componentes solicitan datos a API REST.
-4.  **Reportes**: Datos JSON se transforman en documentos PDF directamente en el cliente (reduciendo carga en servidor y latencia).
+Para desacoplar la ejecución inmediata de los efectos secundarios (como envíos de correo, notificaciones por WhatsApp o actualización de métricas), el sistema utiliza el patrón **Domain Events**:
 
----
+```typescript
+// Contrato base para eventos de dominio
+interface DomainEvent {
+  eventId: string;           // UUIDv4
+  eventName: string;         // e.g. "AppointmentCreated"
+  occurredOn: Date;          // Timestamp ISO
+  organizationId: string;    // UUID del Tenant
+  actorUserId?: string;      // UUID del usuario causante
+  payload: Record<string, any>;
+}
+```
 
-## 🔄 6. Flujo de Trabajo (Workflow) Reciente
-
-Para garantizar la estabilidad y funcionalidad, se han implementado scripts de mantenimiento:
-
-- **Generación de Datos**: `server/src/utils/seedOperationalData.js` (Crea citas y pagos de prueba).
-- **Reparación de Bases de Datos**: `server/src/utils/fixDatabase.js` (Agrega columnas faltantes sin borrar datos).
-- **Corrección de Datos**: `server/src/utils/fixData.js` (Asigna valores a campos nulos).
-
----
-
----
-
-## 🛡️ 7. Seguridad y Cumplimiento (Compliance)
-
-El sistema ha sido arquitectado bajo pilares de seguridad robustos, alineándose con estándares internacionales:
-
-### **1. ISO/IEC 27001 (Seguridad de la Información)**
-
-- **Confidencialidad**: Encriptación de datos sensibles y transporte vía HTTPS.
-- **Integridad**: Validación de esquemas en base de datos y sanitización de inputs.
-- **Disponibilidad**: Arquitectura desacoplada lista para escalado horizontal.
-
-### **2. GDPR / RGPD (Protección de Datos)**
-
-- **Consentimiento Explícito**: Formulario de registro con aceptación de términos.
-- **Privacidad por Diseño**: Acceso a datos médicos limitado estrictamente por roles de usuario.
-- **Transparencia**: Notificaciones claras sobre el uso y tratamiento de la información personal.
-
-### **3. ISO 9001:2015 (Gestión de Calidad)**
-
-- **Enfoque en el Usuario**: Dashboards diferenciados para optimizar la experiencia del paciente y del clínico.
-- **Mantenimiento Preventivo**: Scripts de utilería para integridad de bases de datos y estabilidad del sistema.
+### Flujo Típico de un Evento:
+1. El médico programa una cita en `AppointmentModule`.
+2. Se guarda la cita en PostgreSQL dentro de una transacción.
+3. Se publica el evento `AppointmentCreated` en el `DomainEventBus`.
+4. El suscriptor `NotificationService` recibe el evento de forma asíncrona y despacha el correo/WhatsApp de confirmación sin bloquear la respuesta HTTP al médico.
+5. El suscriptor `AuditService` registra el evento en la bitácora con hash criptográfico.
 
 ---
 
-## 🚀 Despliegue y Ejecución
+## 4. Abstracción de Servicios para Futura Extracción
 
-**Requisitos**: Node.js v18+, Base de datos SQL.
+Los servicios con alta probabilidad de extracción futura se diseñan siguiendo el principio de **Inversión de Dependencias (DIP)**:
 
-1.  **Backend**:
+### 4.1. FileStorageService
+```typescript
+interface FileStorageService {
+  uploadFile(file: Buffer, metadata: FileMetadata): Promise<StorageResult>;
+  getDownloadUrl(fileId: string, userContext: UserContext): Promise<string>;
+  deleteFile(fileId: string, userContext: UserContext): Promise<boolean>;
+}
+```
+*Implementaciones:* `LocalStorageProvider` (actual) -> `S3StorageProvider` / `R2StorageProvider` (futuro).
 
-    ```bash
-    cd server
-    npm install
-    npm run dev
-    ```
+### 4.2. NotificationService
+```typescript
+interface NotificationService {
+  sendEmail(options: EmailOptions): Promise<DeliveryResult>;
+  sendWhatsApp(options: WhatsAppOptions): Promise<DeliveryResult>;
+  sendSMS(options: SMSOptions): Promise<DeliveryResult>;
+}
+```
+*Implementaciones:* Despachador local que conecta con Resend/Twilio -> Extracción a microservicio consumidor de colas cuando el volumen supere 10,000 envíos/día.
 
-2.  **Frontend**:
-    ```bash
-    cd client
-    npm install
-    npm start
-    ```
-
----
-
----
-
-## 🚀 8. Videoconsultas (v1.6.1+)
-
-Sistema de telemedicina integrado para consultas médicas remotas.
-
-- **Tecnología**: WebRTC para comunicación en tiempo real.
-- **Servidor de Señalización**: Socket.io para coordinación de conexiones peer-to-peer.
-- **Funcionalidades**:
-  - Salas de videollamada dinámicas.
-  - Notas médicas durante la consulta.
-  - Generación de reportes PDF en tiempo real.
-  - Notas de voz adjuntas.
+### 4.3. AIService (Clinical Copilot)
+```typescript
+interface AIService {
+  generateClinicalSummary(recordData: ClinicalData): Promise<AISuggestion>;
+  extractLabFindings(rawResults: string): Promise<AILabInsights>;
+}
+```
+*Regla de Oro:* **Doctor reviews & approves**. La IA nunca persiste cambios clínicos directamente en la base de datos sin firma y confirmación médica explícita.
 
 ---
 
-## 📊 9. Gestión de Suscripciones SaaS (v1.8.4+)
+## 5. Estrategia de Persistencia y Aislamiento de Datos
 
-Sistema de monetización multi-nivel para clínicas y hospitales.
-
-- **Planes**: Consultorio, Clínica, Hospital, Enterprise.
-- **Ciclos de Facturación**: Mensual y Anual.
-- **Gestión de Pagos**: Sistema de reportes de transferencias bancarias.
-- **Activación Automática**: Upgrade de cuenta tras confirmación de pago.
-- **SuperAdmin Bypass**: Acceso ilimitado para usuarios estratégicos.
-
----
-
-## 🔐 10. Seguridad Avanzada (v2.0.1+)
-
-Refuerzos de seguridad para entornos de producción.
-
-- **Rate Limiting**: Protección contra ataques de fuerza bruta.
-- **Helmet**: Headers de seguridad HTTP (CSP, X-Frame-Options).
-- **Login Robusto**: Búsqueda case-insensitive con trim de espacios.
-- **Protección de Producción**: Seeder desactivado en entornos de producción.
-- **Respeto de Contraseñas**: El registro utiliza la contraseña elegida por el usuario.
+- **Base de Datos Unificada con Esquemas Lógicos y RLS:**  
+  Todos los datos residen en la base de datos PostgreSQL del entorno (`clinica_saas_prod`), aislados a nivel de fila mediante **PostgreSQL Row Level Security**.
+- **Variables de Sesión por Transacción:**  
+  Cada conexión ejecuta `SET LOCAL app.current_organization_id = '<uuid>'`. Esto asegura que el motor de la base de datos rechace cualquier intento de consulta fuera del tenant, protegiendo al sistema de posibles bugs en el código de aplicación o raw queries.
+- **Trazabilidad Criptográfica Inmutable:**  
+  La tabla `audit_logs` utiliza encadenamiento SHA-256 (`currentHash = H(previousHash + eventData)`), imposibilitando la alteración retroactiva de auditorías.
 
 ---
 
-## 💊 11. Guía Farmacéutica (v1.8.7+)
+## 6. Evolución Futura a Microservicios (Gatillos Operacionales)
 
-Vademécum de medicamentos integrado.
+La separación física a servicios independientes solo se justificará cuando se cumpla al menos uno de los siguientes disparadores:
 
-- **Scraper Inteligente**: Extracción automatizada de 6,000+ medicamentos desde Vademécum Venezuela.
-- **Exportación a Producción**: Herramienta para generar SQL con lógica de upsert.
-- **Datos Incluidos**: Nombres genéricos, componentes activos, indicaciones, posología, contraindicaciones.
+1. **Escalado Diferencial de Recursos:** El procesamiento de documentos o videollamadas WebRTC consume CPU/ancho de banda que degrada el rendimiento de la API transaccional.
+2. **Aislamiento de Disponibilidad Crítica:** Caídas en proveedores externos (como WhatsApp o pasarelas de pago) provocan agotamiento de hilos en el monolito.
+3. **Escala de Equipos de Ingeniería:** Múltiples equipos autónomos necesitan desplegar ciclos de release independientes sin coordinar el monolito.
 
----
-
-## 🔄 12. Sincronización de Ramas Git
-
-Workflow de promoción de código entre entornos.
-
-- **Ramas**: `develop` → `staging` → `master` → producción.
-- **CI/CD**: GitHub Actions para promoción automática.
-- **Easypanel**: Webhooks para auto-despliegue.
-
-## 🔐 13. Aislamiento Proactivo (v2.3.0+)
-
-Capa de seguridad proactiva para entornos SaaS multi-tenant que garantiza el aislamiento total de los datos.
-
-- **Tecnología**: `AsyncLocalStorage` (Node.js) + Sequelize Hooks.
-- **Funcionamiento**: Un middleware captura la identidad de la organización y la mantiene en un contexto asíncrono. Un hook global en Sequelize inyecta automáticamente el filtro `organizationId` en todas las consultas `finding`.
-- **Ventaja**: El aislamiento es gestionado por la infraestructura, eliminando el riesgo de errores humanos (olvido de filtros manuales).
-
-## 📋 14. Sistema de Auditoría AUTOMATIZADO (v4.3.0+)
-
-Registro inmutable y automático de acciones críticas para cumplimiento legal y estándares **ISO 27001**.
-
-- **Automatización mediante Hooks**: El sistema ya no depende de llamadas manuales en controladores. Se utilizan ganchos globales de Sequelize (`afterCreate`, `afterUpdate`, `afterDestroy`) para capturar cada cambio en la base de datos de forma garantizada.
-- **Audit Trail Inteligente**: El servicio captura automáticamente:
-  - **Acción**: `CREATE`, `UPDATE`, `DELETE`.
-  - **Diferencial de Datos**: Payload JSON con valores anteriores, nuevos y el detalle de los campos modificados.
-  - **Metadatos de Contexto**: Usuario, Organización, IP y User-Agent extraídos mediante `AsyncLocalStorage`.
-- **Cobertura Total**: Implementado automáticamente para Usuarios, Pacientes, Doctores, Citas, Historiales, Pagos y Organizaciones.
-
-## 🌐 15. Arquitectura de Despliegue en VPS y Microservicios (v4.3.0+)
-
-El sistema está optimizado para su ejecución continua en servidores **VPS (Linux / Ubuntu)** mediante **PM2**, **Nginx** y **PostgreSQL**.
-
-- **Single Source of Truth**: Todo el núcleo lógico reside de manera unificada en **`server/src`**.
-- **Gestión de Procesos con PM2**: Ejecución persistente con modo cluster, reinicio automático ante fallos y balanceo de carga interno.
-- **Proxy Inverso Nginx**:
-  - Enrutamiento directo de tráfico `/api/` hacia el backend en Node.js.
-  - Soporte completo de WebSockets `/socket.io/` para videollamadas médicas y notificaciones en vivo.
-  - Servido estático de alta velocidad para la aplicación Angular SPA (`client/dist/browser`).
-  - Terminación SSL/TLS con certificados automáticos Let's Encrypt (Certbot).
-- **Seguridad End-to-End**:
-  - **Rate Limiting Nativo**: Protección global y contra fuerza bruta en autenticación.
-  - **Helmet & CSP Estricto**: Cabeceras de seguridad optimizadas contra XSS y vulnerabilidades web.
-  - **Auditoría Inmutable (ISO 27001 / HIPAA)**: Trazabilidad garantizada de cada acción.
-
----
-
-_Documentación actualizada para despliegue VPS - Octubre 2026 (v4.3.13)_
+La especificación exhaustiva de contratos de datos, protocolos gRPC/REST, disparadores cuantitativos y arquitectura de eventos se encuentra formalmente definida en el documento normativo [**FUTURE_MICROSERVICES.md**](FUTURE_MICROSERVICES.md) (completado en Fase 27).

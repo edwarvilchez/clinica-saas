@@ -1,6 +1,10 @@
 const { User, Role, Patient, Organization, sequelize } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
+const auditService = require('../services/audit.service');
+const refreshTokenService = require('../services/refreshToken.service');
+const cryptoUtils = require('../utils/crypto.utils');
+const appConfig = require('../config/app.config');
 
 /**
  * Genera una contraseña temporal que cumple con el patrón de seguridad:
@@ -211,6 +215,16 @@ exports.register = async (req, res) => {
       console.error('Error al enviar correo de bienvenida:', emailError.message);
     }
 
+    // Tamper-evident Audit Log: User Registration
+    const userPayload = typeof user.toJSON === 'function' ? user.toJSON() : user;
+    auditService.logAuthEvent({
+      action: 'CREATE_USER',
+      user: { ...userPayload, role: role ? role.name : 'PATIENT' },
+      req,
+      success: true,
+      metadata: { accountType: finalAccountType, registeredRole: role.name }
+    }).catch(err => console.error('Audit registration error:', err));
+
     res.status(201).json({
       message: 'Cuenta creada con éxito. Se ha enviado un correo con tu contraseña temporal.',
       token,
@@ -283,7 +297,14 @@ exports.login = async (req, res) => {
 
     if (!user) {
       console.log(`[LOGIN] Usuario no encontrado: ${email}`);
-      return res.status(401).json({ message: 'Credenciales inválidas (Usuario no encontrado)' });
+      auditService.logAuthEvent({
+        action: 'FAILED_LOGIN',
+        user: { email },
+        req,
+        success: false,
+        reason: 'User not found'
+      }).catch(err => console.error('Audit login error:', err));
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
     // 3. Diagnóstico de contraseña (Solo visible en logs de servidor)
@@ -296,7 +317,14 @@ exports.login = async (req, res) => {
     
     if (!isMatch) {
       console.warn(`[LOGIN FAIL] Password mismatch para: ${email}`);
-      return res.status(401).json({ message: 'Credenciales inválidas (Contraseña incorrecta)' });
+      auditService.logAuthEvent({
+        action: 'FAILED_LOGIN',
+        user,
+        req,
+        success: false,
+        reason: 'Incorrect password'
+      }).catch(err => console.error('Audit login error:', err));
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
     console.log(`[LOGIN SUCCESS] Sesión iniciada para: ${user.email}`);
@@ -305,11 +333,25 @@ exports.login = async (req, res) => {
     
     if (user.isActive === false) {
       log(`[LOGIN FAIL] Account inactive for: ${email}`);
+      auditService.logAuthEvent({
+        action: 'FAILED_LOGIN',
+        user,
+        req,
+        success: false,
+        reason: 'Account inactive'
+      }).catch(err => console.error('Audit login error:', err));
       return res.status(401).json({ message: 'Tu cuenta ha sido desactivada. Por favor, contacta al administrador.' });
     }
 
     if (user.twoFactorEnabled) {
       log(`[LOGIN 2FA REQUIRED] 2FA enabled for: ${email}`);
+      auditService.logAuthEvent({
+        action: '2FA_CHALLENGE_ISSUED',
+        user,
+        req,
+        success: true
+      }).catch(err => console.error('Audit login error:', err));
+
       const tempToken = jwt.sign(
         { id: user.id, role: user.Role.name, is2FAPending: true },
         process.env.JWT_SECRET,
@@ -322,18 +364,23 @@ exports.login = async (req, res) => {
       });
     }
 
-    log(`Account active. Generating Token...`);
+    log(`Account active. Generating Access & Refresh Tokens...`);
 
-    // Incluir mustChangePassword en el token JWT para que el guard del frontend pueda verificarlo
-    const token = jwt.sign(
-      { id: user.id, role: user.Role.name, mustChangePassword: user.mustChangePassword },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
+    const tokenData = await refreshTokenService.generateTokens(user, { req });
 
-    log(`Token Generated. Sending Response.`);
+    // Tamper-evident Audit Log: Successful Login
+    auditService.logAuthEvent({
+      action: 'LOGIN',
+      user,
+      req,
+      success: true
+    }).catch(err => console.error('Audit login error:', err));
+
+    log(`Tokens Generated. Sending Response.`);
     res.json({
-      token,
+      token: tokenData.accessToken,
+      refreshToken: tokenData.refreshToken,
+      expiresIn: tokenData.expiresIn,
       user: {
         id: user.id,
         username: user.username,
@@ -373,27 +420,40 @@ exports.getMe = async (req, res) => {
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    const user = await User.findOne({ where: { email } });
-
-    if (!user) {
-      return res.status(404).json({ error: 'No existe un usuario con ese email' });
+    if (!email) {
+      return res.status(400).json({ error: 'El correo electrónico es requerido' });
     }
 
-    // Generate random token
+    const genericResponse = {
+      success: true,
+      message: 'Si el correo electrónico existe en nuestra plataforma, recibirás un enlace de recuperación en los próximos minutos.'
+    };
+
+    const user = await User.findOne({ where: { email: email.toLowerCase().trim() } });
+
+    // Anti-Enumeration: Return identical generic message if user does not exist
+    if (!user) {
+      return res.status(200).json(genericResponse);
+    }
+
+    // Generate high-entropy 256-bit cryptographic token
     const crypto = require('crypto');
-    const token = crypto.randomBytes(20).toString('hex');
-    const expires = new Date(Date.now() + 3600000); // 1 hour
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = cryptoUtils.hashToken(rawToken);
+
+    // Strict 15-minute expiration
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
 
     await user.update({
-      resetToken: token,
+      resetToken: hashedToken,
       resetExpires: expires
     });
 
-    // Create reset URL
+    // Create reset URL using rawToken (never send the DB hash to the user)
     const clientUrl = process.env.CLIENT_URL || 'http://localhost:4200';
-    const resetUrl = `${clientUrl}/reset-password/${token}`;
+    const resetUrl = `${clientUrl}/reset-password/${rawToken}`;
 
-    const message = `Hola ${user.firstName},\n\nHas solicitado restablecer tu contraseña en Clinica SaaS. Por favor, utiliza el siguiente enlace para crear una nueva clave:\n\n${resetUrl}\n\nEste enlace expirará en 1 hora por tu seguridad.\n\nSi no solicitaste este cambio, simplemente ignora este correo.\n\nSaludos,\nEquipo de Clinica SaaS.`;
+    const message = `Hola ${user.firstName || 'Usuario'},\n\nHas solicitado restablecer tu contraseña en Clinica SaaS. Por favor, utiliza el siguiente enlace para crear una nueva clave:\n\n${resetUrl}\n\nEste enlace expirará en 15 minutos por tu seguridad.\n\nSi no solicitaste este cambio, simplemente ignora este correo.\n\nSaludos,\nEquipo de Clinica SaaS.`;
 
     const sendEmail = require('../utils/sendEmail');
     const { getPasswordResetEmail } = require('../utils/emailTemplates');
@@ -403,33 +463,18 @@ exports.forgotPassword = async (req, res) => {
         email: user.email,
         subject: 'Recuperación de Contraseña - Clinica SaaS',
         message: message,
-        html: getPasswordResetEmail(user.firstName, resetUrl)
-      });
-
-      res.status(200).json({
-        success: true,
-        message: 'Correo de recuperación enviado',
-        debugToken: process.env.NODE_ENV !== 'production' ? token : undefined
+        html: getPasswordResetEmail(user.firstName || 'Usuario', resetUrl)
       });
     } catch (emailError) {
       console.error('Email send error:', emailError);
-
-      if (process.env.NODE_ENV !== 'production') {
-        return res.status(200).json({
-          success: true,
-          message: 'Error al enviar email (modo desarrollo), pero el token fue generado.',
-          debugToken: token
-        });
-      }
-
-      // If email fails in production, clear the token fields
-      await user.update({
-        resetToken: null,
-        resetExpires: null
-      });
-      return res.status(500).json({ error: 'Hubo un error enviando el correo. Intenta de nuevo más tarde.' });
     }
 
+    const responsePayload = { ...genericResponse };
+    if (process.env.NODE_ENV !== 'production') {
+      responsePayload.debugToken = rawToken;
+    }
+
+    return res.status(200).json(responsePayload);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -438,11 +483,20 @@ exports.forgotPassword = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { token, password } = req.body;
-    const { Op } = require('sequelize');
+    if (!token || !password) {
+      return res.status(400).json({ error: 'Token y nueva contraseña son requeridos' });
+    }
 
+    const { Op } = require('sequelize');
+    const hashedToken = cryptoUtils.hashToken(token);
+
+    // Look up by SHA-256 hashed token (or plaintext fallback for legacy migration)
     const user = await User.findOne({
       where: {
-        resetToken: token,
+        [Op.or]: [
+          { resetToken: hashedToken },
+          { resetToken: token }
+        ],
         resetExpires: { [Op.gt]: new Date() }
       }
     });
@@ -451,16 +505,18 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Token inválido o expirado' });
     }
 
-    console.log(`[RESET PASSWORD] Token valid for user: ${user.email}`);
+    console.log(`[RESET PASSWORD] Valid token for user: ${user.email}`);
     
     user.password = password;
     user.resetToken = null;
     user.resetExpires = null;
     user.mustChangePassword = false;
     user.temporaryPassword = null;
-    
     await user.save();
-    console.log(`[RESET PASSWORD] Success for: ${user.email}`);
+
+    // Invalidate all active user sessions and refresh tokens across all devices
+    await refreshTokenService.revokeAllUserTokens(user.id);
+    console.log(`[RESET PASSWORD] Sessions revoked successfully for: ${user.email}`);
 
     // Send confirmation email
     const sendEmail = require('../utils/sendEmail');
@@ -469,12 +525,11 @@ exports.resetPassword = async (req, res) => {
       await sendEmail({
         email: user.email,
         subject: 'Actualización de Seguridad - Cambio de Contraseña',
-        message: `Hola ${user.firstName},\n\nTe informamos que la contraseña de tu cuenta en Clinica SaaS ha sido cambiada exitosamente.\n\nSi no realizaste este cambio, por favor contacta a soporte de inmediato.\n\nSaludos,\nEquipo de Clinica SaaS.`,
-        html: getPasswordChangedEmail(user.firstName)
+        message: `Hola ${user.firstName || 'Usuario'},\n\nTe informamos que la contraseña de tu cuenta en Clinica SaaS ha sido cambiada exitosamente.\n\nSi no realizaste este cambio, por favor contacta a soporte de inmediato.\n\nSaludos,\nEquipo de Clinica SaaS.`,
+        html: getPasswordChangedEmail(user.firstName || 'Usuario')
       });
     } catch (emailError) {
       console.error('Confirmation email failed:', emailError.message);
-      // We don't block the response if confirmation email fails
     }
 
     res.json({ message: 'Contraseña actualizada exitosamente' });
@@ -503,9 +558,11 @@ exports.changePassword = async (req, res) => {
     user.password = newPassword;
     user.mustChangePassword = false;
     user.temporaryPassword = null;
-    
     await user.save();
     console.log(`[CHANGE PASSWORD] Success for: ${user.email}`);
+
+    // Invalidate all active user sessions across all devices for security
+    await refreshTokenService.revokeAllUserTokens(user.id);
 
     // Enviar correo de notificación del cambio de contraseña
     const sendEmail = require('../utils/sendEmail');
@@ -514,8 +571,8 @@ exports.changePassword = async (req, res) => {
       await sendEmail({
         email: user.email,
         subject: 'Actualización de Seguridad - Cambio de Contraseña',
-        message: `Hola ${user.firstName},\n\nTe informamos que la contraseña de tu cuenta en Clinica SaaS acaba de ser cambiada exitosamente.\n\nSi tú no realizaste este cambio, por favor contacta al administrador del sistema inmediatamente.\n\nSaludos,\nEquipo de Clinica SaaS.`,
-        html: getPasswordChangedEmail(user.firstName)
+        message: `Hola ${user.firstName || 'Usuario'},\n\nTe informamos que la contraseña de tu cuenta en Clinica SaaS acaba de ser cambiada exitosamente.\n\nSi tú no realizaste este cambio, por favor contacta al administrador del sistema inmediatamente.\n\nSaludos,\nEquipo de Clinica SaaS.`,
+        html: getPasswordChangedEmail(user.firstName || 'Usuario')
       });
     } catch (emailError) {
       console.error('Error al enviar correo de cambio de contraseña:', emailError.message);
@@ -537,10 +594,20 @@ exports.verify2FALogin = async (req, res) => {
   try {
     const { tempToken, code } = req.body;
     if (!tempToken || !code) {
-      return res.status(400).json({ message: 'Token temporal y código de 6 dígitos son requeridos' });
+      return res.status(400).json({ message: 'Token temporal y código de verificación son requeridos' });
     }
 
-    const decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+    let decoded;
+    const secretsToTry = [appConfig.auth && appConfig.auth.jwtSecret, process.env.JWT_SECRET].filter(Boolean);
+    for (const sec of secretsToTry) {
+      try {
+        decoded = jwt.verify(tempToken, sec);
+        if (decoded) break;
+      } catch (e) {
+        // Continue to next secret
+      }
+    }
+
     if (!decoded || !decoded.is2FAPending) {
       return res.status(401).json({ message: 'Token temporal inválido o expirado' });
     }
@@ -550,19 +617,55 @@ exports.verify2FALogin = async (req, res) => {
       return res.status(400).json({ message: 'El usuario no tiene 2FA activo' });
     }
 
-    const isValid = totp.verifyTOTP(user.twoFactorSecret, code);
+    // Decrypt AES-256-GCM encrypted TOTP secret
+    const decryptedSecret = cryptoUtils.decryptAesGcm(user.twoFactorSecret);
+    let isValid = totp.verifyTOTP(decryptedSecret, code);
+    let usedRecoveryCode = false;
+
+    // If TOTP failed, check single-use recovery backup codes
+    if (!isValid && Array.isArray(user.twoFactorRecoveryCodes) && user.twoFactorRecoveryCodes.length > 0) {
+      const normalizedInput = cryptoUtils.normalizeRecoveryCode(code);
+      const hashedInput = cryptoUtils.hashToken(normalizedInput);
+
+      const codes = [...user.twoFactorRecoveryCodes];
+      const matchedIdx = codes.findIndex(rc => rc.hash === hashedInput && !rc.used);
+
+      if (matchedIdx !== -1) {
+        codes[matchedIdx].used = true;
+        codes[matchedIdx].usedAt = new Date().toISOString();
+        user.twoFactorRecoveryCodes = codes;
+        user.changed('twoFactorRecoveryCodes', true);
+        await user.save();
+        isValid = true;
+        usedRecoveryCode = true;
+      }
+    }
+
     if (!isValid) {
+      auditService.logAuthEvent({
+        action: '2FA_VERIFICATION_FAILED',
+        user,
+        req,
+        success: false,
+        reason: 'Invalid 2FA TOTP code or recovery code'
+      }).catch(err => console.error('Audit 2FA error:', err));
       return res.status(401).json({ message: 'Código de autenticación inválido o expirado' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, role: user.Role.name, mustChangePassword: user.mustChangePassword },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
+    const tokenData = await refreshTokenService.generateTokens(user, { req });
+
+    auditService.logAuthEvent({
+      action: usedRecoveryCode ? '2FA_RECOVERY_CODE_LOGIN_SUCCESS' : '2FA_LOGIN_SUCCESS',
+      user,
+      req,
+      success: true
+    }).catch(err => console.error('Audit 2FA error:', err));
 
     res.json({
-      token,
+      token: tokenData.accessToken,
+      refreshToken: tokenData.refreshToken,
+      expiresIn: tokenData.expiresIn,
+      usedRecoveryCode,
       user: {
         id: user.id,
         username: user.username,
@@ -571,7 +674,7 @@ exports.verify2FALogin = async (req, res) => {
         lastName: user.lastName,
         businessName: user.businessName,
         accountType: user.accountType,
-        role: user.Role.name,
+        role: user.Role ? user.Role.name : (user.role || 'DOCTOR'),
         gender: user.gender,
         organizationId: user.organizationId,
         Organization: user.Organization,
@@ -616,11 +719,31 @@ exports.enable2FA = async (req, res) => {
     }
 
     const user = await User.findByPk(req.user.id);
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    // Encrypt TOTP secret with AES-256-GCM before persistent database storage
+    const encryptedSecret = cryptoUtils.encryptAesGcm(secret);
+
+    // Generate 8 single-use recovery backup codes
+    const { plainCodes, hashedCodes } = cryptoUtils.generateRecoveryCodes(8);
+
     user.twoFactorEnabled = true;
-    user.twoFactorSecret = secret;
+    user.twoFactorSecret = encryptedSecret;
+    user.twoFactorRecoveryCodes = hashedCodes;
     await user.save();
 
-    res.json({ message: '✅ Autenticación de doble factor activada con éxito.', twoFactorEnabled: true });
+    auditService.logAuthEvent({
+      action: '2FA_ENABLED',
+      user,
+      req,
+      success: true
+    }).catch(err => console.error('Audit 2FA error:', err));
+
+    res.json({
+      message: '✅ Autenticación de doble factor activada con éxito.',
+      twoFactorEnabled: true,
+      recoveryCodes: plainCodes
+    });
   } catch (error) {
     res.status(500).json({ message: 'Error al activar 2FA', error: error.message });
   }
@@ -634,23 +757,129 @@ exports.disable2FA = async (req, res) => {
 
     let isAuthorized = false;
     if (code && user.twoFactorSecret) {
-      isAuthorized = totp.verifyTOTP(user.twoFactorSecret, code);
+      const decryptedSecret = cryptoUtils.decryptAesGcm(user.twoFactorSecret);
+      isAuthorized = totp.verifyTOTP(decryptedSecret, code);
     }
     if (!isAuthorized && password) {
       isAuthorized = await user.comparePassword(password);
     }
 
     if (!isAuthorized) {
+      auditService.logAuthEvent({
+        action: '2FA_DISABLE_ATTEMPT_FAILED',
+        user,
+        req,
+        success: false,
+        reason: 'Invalid credentials'
+      }).catch(err => console.error('Audit 2FA error:', err));
       return res.status(401).json({ message: 'Código TOTP o contraseña incorrecta' });
     }
 
     user.twoFactorEnabled = false;
     user.twoFactorSecret = null;
+    user.twoFactorRecoveryCodes = [];
     await user.save();
+
+    auditService.logAuthEvent({
+      action: '2FA_DISABLED',
+      user,
+      req,
+      success: true
+    }).catch(err => console.error('Audit 2FA error:', err));
 
     res.json({ message: 'Autenticación de doble factor desactivada.', twoFactorEnabled: false });
   } catch (error) {
     res.status(500).json({ message: 'Error al desactivar 2FA', error: error.message });
+  }
+};
+
+/**
+ * 🔄 Refresh Token Controller
+ * Rotates the submitted refresh token, validates against family replay,
+ * and issues a fresh 15-minute access token and new refresh token.
+ */
+exports.refreshToken = async (req, res) => {
+  try {
+    const rawRefreshToken = req.body?.refreshToken || req.headers['x-refresh-token'];
+
+    if (!rawRefreshToken) {
+      return res.status(400).json({ message: 'Token de refresco requerido' });
+    }
+
+    const result = await refreshTokenService.rotateRefreshToken(rawRefreshToken, { req });
+
+    if (!result.success) {
+      const statusCode = result.reason === 'REUSE_DETECTED' ? 403 : 401;
+      return res.status(statusCode).json({
+        error: result.reason,
+        message: result.message
+      });
+    }
+
+    res.json({
+      token: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn,
+      user: result.user
+    });
+  } catch (error) {
+    console.error('[REFRESH ERROR]', error);
+    res.status(500).json({ message: 'Error al refrescar token: ' + error.message });
+  }
+};
+
+/**
+ * 🚪 Logout from all devices
+ * Invalida todos los refresh tokens activos del usuario.
+ */
+exports.logoutAllDevices = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const revokedCount = await refreshTokenService.revokeAllUserTokens(userId);
+
+    auditService.logAuthEvent({
+      action: 'LOGOUT_ALL_DEVICES',
+      user: req.user,
+      req,
+      success: true,
+      details: { revokedCount }
+    }).catch(err => console.error('Audit logout all devices error:', err));
+
+    res.json({
+      success: true,
+      message: 'Todas las sesiones activas han sido cerradas en todos los dispositivos',
+      revokedCount
+    });
+  } catch (error) {
+    console.error('[LOGOUT ALL DEVICES ERROR]', error);
+    res.status(500).json({ message: 'Error cerrando sesiones: ' + error.message });
+  }
+};
+
+/**
+ * 🚪 Logout from current session
+ */
+exports.logout = async (req, res) => {
+  try {
+    const rawRefreshToken = req.body?.refreshToken || req.headers['x-refresh-token'];
+
+    if (rawRefreshToken) {
+      await refreshTokenService.revokeToken(rawRefreshToken);
+    }
+
+    if (req.user) {
+      auditService.logAuthEvent({
+        action: 'LOGOUT',
+        user: req.user,
+        req,
+        success: true
+      }).catch(err => console.error('Audit logout error:', err));
+    }
+
+    res.json({ success: true, message: 'Sesión cerrada exitosamente' });
+  } catch (error) {
+    console.error('[LOGOUT ERROR]', error);
+    res.status(500).json({ message: 'Error cerrando sesión: ' + error.message });
   }
 };
 

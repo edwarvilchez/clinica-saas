@@ -19,7 +19,7 @@ describe('🧪 Medicusve Laboratory Express Orders & Sample Traceability Engine'
   let createdLabOrder;
 
   beforeAll(async () => {
-    await sequelize.sync();
+    await sequelize.authenticate();
 
     const [patientRole] = await Role.findOrCreate({
       where: { name: 'PATIENT' },

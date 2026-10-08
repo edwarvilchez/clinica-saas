@@ -102,6 +102,11 @@ const { checkSubscriptionActive, checkAppointmentQuota } = require('../middlewar
 
 router.post('/', authMiddleware, checkSubscriptionActive, checkAppointmentQuota, authorize('appointments:write'), validate(createAppointmentSchema), appointmentController.createAppointment);
 
+// --- Phase 20: No-Show Automation & Multi-Channel Reminders ---
+router.post('/no-shows/process-reminders', authMiddleware, authorize('appointments:write'), appointmentController.processUpcomingReminders);
+router.post('/no-shows/reconcile', authMiddleware, authorize('appointments:write'), appointmentController.reconcileOverdueNoShows);
+router.get('/no-shows/stats', authMiddleware, authorize('appointments:read'), appointmentController.getNoShowStats);
+
 /**
  * @swagger
  * /api/appointments/{id}/status:
@@ -126,12 +131,14 @@ router.post('/', authMiddleware, checkSubscriptionActive, checkAppointmentQuota,
  *             properties:
  *               status:
  *                 type: string
- *                 enum: [Pending, Confirmed, Completed, Cancelled]
+ *                 enum: [Pending, Confirmed, Completed, Cancelled, NoShow]
  *     responses:
  *       200:
  *         description: Estado actualizado
  */
 router.patch('/:id/status', authMiddleware, authorize('appointments:write'), validate(appointmentIdSchema, 'params'), appointmentController.updateStatus);
+
+router.post('/:id/no-show', authMiddleware, authorize('appointments:write'), validate(appointmentIdSchema, 'params'), appointmentController.markAppointmentAsNoShow);
 
 /**
  * @swagger

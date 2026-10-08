@@ -148,7 +148,17 @@ const DoctorFee = sequelize.define('DoctorFee', {
     allowNull: true
   }
 }, {
-  paranoid: true
+  paranoid: true,
+  indexes: [
+    { fields: ['organizationId'] },
+    { fields: ['doctorId'] },
+    { fields: ['patientId'] },
+    { fields: ['paymentId'] },
+    { fields: ['status'] },
+    { fields: ['organizationId', 'createdAt'] },
+    { fields: ['organizationId', 'status'] },
+    { fields: ['organizationId', 'doctorId'] }
+  ]
 });
 
 module.exports = DoctorFee;

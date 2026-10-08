@@ -1,4 +1,6 @@
 const socketIO = require('socket.io');
+const appConfig = require('../config/app.config');
+const { isOriginAllowed } = require('../middlewares/cors.middleware');
 
 let io;
 const activeRooms = new Map(); // roomId -> { participants: [...] }
@@ -7,7 +9,17 @@ const globalActiveUsers = new Map(); // userId -> socketId
 const initializeSocket = (server) => {
   io = socketIO(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:4200',
+      origin: (origin, callback) => {
+        const allowed = isOriginAllowed(
+          origin,
+          appConfig.server.allowedOrigins,
+          appConfig.isDevelopment || appConfig.isTest
+        );
+        if (allowed) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Socket.IO CORS blocked origin: ${origin}`));
+      },
       methods: ['GET', 'POST'],
       credentials: true
     }
@@ -39,8 +51,63 @@ const initializeSocket = (server) => {
       }
     });
 
-    // Usuario se une a una sala de videoconsulta
+    // Usuario se une a una sala de videoconsulta con token criptográfico (Anti-Eavesdropping Guard)
+    socket.on('join-room-secure', ({ roomId, roomToken }) => {
+      try {
+        const telemedicineService = require('../services/telemedicine.service');
+        const tokenData = telemedicineService.verifyRoomAccessToken(roomToken, roomId);
+
+        // Guard against room capacity overflow (max 2 participants: Doctor + Paciente)
+        const currentRoom = activeRooms.get(roomId);
+        if (currentRoom && currentRoom.participants.length >= 2) {
+          socket.emit('room-error', { code: 'ROOM_FULL', message: 'La sala de videoconsulta ya está completa (máximo 2 participantes autorizados).' });
+          return;
+        }
+
+        socket.join(roomId);
+        if (!activeRooms.has(roomId)) {
+          activeRooms.set(roomId, { participants: [] });
+        }
+
+        const room = activeRooms.get(roomId);
+        room.participants.push({
+          socketId: socket.id,
+          userId: tokenData.userId,
+          userType: tokenData.participantType,
+          organizationId: tokenData.organizationId
+        });
+
+        console.log(`🔒 [Telemedicina] ${tokenData.participantType} admitido con token seguro en sala ${roomId}`);
+
+        socket.emit('room-admitted', {
+          roomId,
+          participantType: tokenData.participantType,
+          participantsCount: room.participants.length
+        });
+
+        socket.to(roomId).emit('user-joined', {
+          userId: tokenData.userId,
+          userType: tokenData.participantType
+        });
+
+        if (room.participants.length === 2) {
+          console.log('✅ Sala completa, listos para conectar WebRTC');
+          io.to(roomId).emit('ready-to-connect');
+        }
+      } catch (err) {
+        console.warn(`⛔ [Telemedicina] Rechazo de admisión a sala ${roomId}:`, err.message);
+        socket.emit('room-error', { code: 'UNAUTHORIZED', message: err.message });
+      }
+    });
+
+    // Usuario se une a una sala de videoconsulta (Compatibilidad)
     socket.on('join-room', ({ roomId, userId, userType }) => {
+      const currentRoom = activeRooms.get(roomId);
+      if (currentRoom && currentRoom.participants.length >= 2) {
+        socket.emit('room-error', { code: 'ROOM_FULL', message: 'Sala completa' });
+        return;
+      }
+
       socket.join(roomId);
       
       if (!activeRooms.has(roomId)) {

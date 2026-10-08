@@ -48,9 +48,18 @@ const LabResult = sequelize.define('LabResult', {
     type: DataTypes.DECIMAL(12, 2),
     allowNull: true,
     defaultValue: 0.00
+  },
+  organizationId: {
+    type: DataTypes.UUID,
+    allowNull: true
   }
 }, {
-  paranoid: true
+  paranoid: true,
+  indexes: [
+    { fields: ['organizationId'] },
+    { fields: ['patientId'] },
+    { fields: ['sampleStatus'] }
+  ]
 });
 
 module.exports = LabResult;

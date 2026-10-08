@@ -17,7 +17,7 @@ describe('🏥 Medicusve Patient Express Admission & Insurance Engine', () => {
   let testUser;
 
   beforeAll(async () => {
-    await sequelize.sync();
+    await sequelize.authenticate();
 
     const [patientRole] = await Role.findOrCreate({
       where: { name: 'PATIENT' },
