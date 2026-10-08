@@ -16,7 +16,8 @@
     "migrate:tenant-qa-to-prod": "node src/scripts/migrateTenantQaToProd.js",
     "test-email": "node src/utils/testEmail.js",
     "db:backup": "node src/scripts/backup-db.js",
-    "db:restore": "node src/scripts/restore-db.js"
+    "db:restore": "node src/scripts/restore-db.js",
+    "production:check": "node src/scripts/productionCheck.js"
   },
   "keywords": [],
   "author": "",
