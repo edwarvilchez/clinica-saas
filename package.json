@@ -40,7 +40,11 @@
   "scripts": {
     "build": "cd client && npm run build",
     "start": "node server/src/index.js",
-    "test": "echo \"Error: no test specified\" && exit 0"
+    "test": "npm --prefix server test",
+    "test:security": "npm --prefix server test -- src/__tests__/security",
+    "test:unit": "npm --prefix server test -- src/__tests__/unit",
+    "test:integration": "npm --prefix server test -- src/__tests__/integration src/controllers/__tests__",
+    "test:all": "npm --prefix server test -- --runInBand"
   },
   "engines": {
     "node": ">=18.x"

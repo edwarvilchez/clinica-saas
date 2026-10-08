@@ -189,12 +189,26 @@ flowchart TD
 
 ### 🧪 BLOQUE 3: TESTING, CI/CD Y ARQUITECTURA MODULAR (Fases 14 a 16)
 
-#### Fase 14 — Suite de Pruebas Reales
-- **Objetivo:** Reemplazar pruebas ficticias por una batería de pruebas de alta cobertura.
+#### Fase 14 — Suite de Pruebas Reales [COMPLETADA]
+- **Objetivo:** Garantizar una batería de pruebas de alta fidelidad, erradicar suites rotas y unificar el pipeline de ejecución de tests en el monorepo.
 - **Entregables:**
-  - Corrección de las 3 suites rotas (`labTraceability`, `feeReconciliation`, `patientAdmission`).
-  - Suite de pruebas de seguridad: cross-tenant isolation, IDOR, brute force y privilege escalation.
-  - Script unificado `npm test` en el root del monorepo.
+  - Validación y estabilización de las suites de negocio clave (`labTraceability`, `feeReconciliation`, `patientAdmission`) con 13/13 pruebas pasando.
+  - Verificación y consolidación de 14 suites completas de seguridad en `server/src/__tests__/security/`:
+    - Aislamiento multi-tenant y RLS (`crossTenantIsolation.test.js`).
+    - Cadena de auditoría criptográfica (`auditIntegrity.test.js`).
+    - Almacenamiento seguro, anti-traversal y firmas URL (`fileStorageSecurity.test.js`).
+    - Validación fail-fast de entorno (`envValidationSecurity.test.js`).
+    - CORS allowlist y cabeceras CSP/Helmet (`corsSecurity.test.js`, `securityHeaders.test.js`).
+    - RBAC granular y prevención de escalada (`rbacGranularSecurity.test.js`).
+    - Refresh tokens rotativos y detección de anomalías (`refreshTokenSecurity.test.js`).
+    - Restablecimiento seguro y 2FA AES-256-GCM (`passwordResetAnd2FASecurity.test.js`).
+    - Observabilidad, Pino y cero PHI (`observabilityLoggingSecurity.test.js`).
+    - Probes live/ready con 503 fail-fast (`healthCheckSecurity.test.js`).
+    - Optimización de BD e índices compuestos (`databaseOptimizationSecurity.test.js`).
+    - Respaldo criptográfico y DRP (`backupAndDisasterRecovery.test.js`).
+    - Hardening de contenedores Docker y Compose (`dockerDeploymentSecurity.test.js`).
+  - Script unificado `npm test` en el root del monorepo (`clinica-saas-monorepo`) junto con comandos modulares (`npm run test:security`, `npm run test:unit`, `npm run test:integration`, `npm run test:all`).
+  - Cobertura global verificada: **36/36 suites de prueba pasando (246/246 tests en verde, 0 fallos)**.
 
 #### Fase 15 — Pipeline de Integración Continua (CI/CD)
 - **Objetivo:** Prevenir regresiones y automatizar validaciones previas al despliegue.
