@@ -72,7 +72,12 @@ const DOMAIN_EVENTS = Object.freeze({
   AI_CLINICAL_BRIEF_GENERATED: 'AI.ClinicalBriefGenerated',
   AI_CLINICAL_SUGGESTION_GENERATED: 'AI.ClinicalSuggestionGenerated',
   AI_CLINICAL_DRAFT_APPROVED: 'AI.ClinicalDraftApproved',
-  AI_CLINICAL_DRAFT_REJECTED: 'AI.ClinicalDraftRejected'
+  AI_CLINICAL_DRAFT_REJECTED: 'AI.ClinicalDraftRejected',
+
+  // Communications & Omnichannel Delivery (Fase 25)
+  COMMUNICATION_SENT: 'Communication.Sent',
+  COMMUNICATION_DELIVERED: 'Communication.Delivered',
+  COMMUNICATION_FAILED: 'Communication.Failed'
 });
 
 module.exports = {

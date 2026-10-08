@@ -47,6 +47,7 @@ const RefreshToken = require('./RefreshToken');
 const Lead = require('./Lead');
 const WaitlistEntry = require('./WaitlistEntry');
 const ClinicalAiDraft = require('./ClinicalAiDraft');
+const CommunicationLog = require('./CommunicationLog');
 
 // User - RefreshToken
 User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' });
@@ -493,6 +494,10 @@ ClinicalAiDraft.belongsTo(MedicalRecord, { foreignKey: 'medicalRecordId' });
 User.hasMany(ClinicalAiDraft, { foreignKey: 'reviewedBy', as: 'reviewedAiDrafts' });
 ClinicalAiDraft.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
 
+// CommunicationLog associations
+Organization.hasMany(CommunicationLog, { foreignKey: 'organizationId' });
+CommunicationLog.belongsTo(Organization, { foreignKey: 'organizationId' });
+
 module.exports = {
   User,
   Role,
@@ -537,5 +542,6 @@ module.exports = {
   Lead,
   WaitlistEntry,
   ClinicalAiDraft,
+  CommunicationLog,
   sequelize
 };

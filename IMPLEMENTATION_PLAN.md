@@ -419,8 +419,35 @@ flowchart TD
     - 17/17 pruebas pasando exitosamente.
   - Verificación global de regresión: **45/45 suites pasando, 370/370 tests en verde (100%)**.
 
-#### Fases 25 a 26 — Resto de Funcionalidades de Negocio
-- **Fase 25:** Abstracción de Comunicaciones / WhatsApp (proveedores desacoplados de la lógica de negocio).
+#### Fase 25 — Abstracción de Comunicaciones / WhatsApp (Proveedores Desacoplados) `[COMPLETADA]`
+- **Objetivo:** Desacoplar completamente la lógica clínica del negocio de los proveedores de mensajería (Twilio, Meta WhatsApp Cloud API, UltraMsg y Simulación en memoria), implementando arquitectura de adaptadores polimórficos, auditoría inmutable de entregas, normalización de webhooks de recepción y analíticas de entrega.
+- **Entregables Implementados:**
+  - Arquitectura de Proveedores Desacoplados ([server/src/services/communications/providers/](file:///d:/projects/clinica-saas/server/src/services/communications/providers/)):
+    - `BaseWhatsAppProvider`: contrato abstracto que define `sendTextMessage`, `sendTemplateMessage`, `parseWebhookPayload`, `isConfigured`.
+    - `SimulationWhatsAppProvider`: simulador en memoria para pruebas locales y tests con histórico de despachos.
+    - `TwilioWhatsAppProvider`: adaptador para Twilio Messaging API con autenticación básica HTTP y normalización de estados.
+    - `MetaCloudWhatsAppProvider`: adaptador oficial de Meta WhatsApp Cloud (Graph API v20.0).
+    - `UltraMsgWhatsAppProvider`: adaptador para pasarela REST API de instancias UltraMsg/Evolution.
+    - `WhatsAppProviderFactory`: registro centralizado y selector dinámico de proveedores con fallback seguro a simulación.
+  - Servicio Unificado de Comunicaciones ([server/src/services/communications/communications.service.js](file:///d:/projects/clinica-saas/server/src/services/communications/communications.service.js)):
+    - `sendMessage`: orquestador central con persistencia en bitácora y emisión de eventos.
+    - Plantillas clínicas desacopladas: `sendAppointmentConfirmation` (con enlace a Google Calendar), `sendAppointmentReminder` (recordatorio 24h), `sendWaitlistOffer` (oferta de reasignación con enlace de 15 minutos), `sendCancellationNotice`.
+    - `handleProviderWebhook`: normalización de webhooks entrantes para actualizar estados de entrega (`DELIVERED`, `READ`, `FAILED`) de forma agnóstica al proveedor.
+    - `getCommunicationStats`: consolidación de analíticas (tasa de entrega %, volumen por canal y por proveedor).
+  - Modelo de Bitácora de Mensajes ([server/src/models/CommunicationLog.js](file:///d:/projects/clinica-saas/server/src/models/CommunicationLog.js) y [server/src/models/index.js](file:///d:/projects/clinica-saas/server/src/models/index.js)):
+    - Registro inmutable por tenant de cada mensaje despachado, estatus de entrega y errores reportados.
+  - Controlador y Rutas Seguras ([server/src/controllers/communications.controller.js](file:///d:/projects/clinica-saas/server/src/controllers/communications.controller.js) y [server/src/routes/communications.routes.js](file:///d:/projects/clinica-saas/server/src/routes/communications.routes.js)):
+    - Montadas en `/api/communications` (`/send`, `/logs`, `/stats`, `/webhook/:provider`).
+    - Matriz RBAC: `communications:read` y `communications:write` restringidos a personal autorizado, bloqueando a pacientes y enfermeras con `403 Forbidden`.
+    - Endpoint público `/webhook/:provider` para recepción de confirmaciones de entrega de las pasarelas.
+  - Trazabilidad y Eventos de Dominio ([server/src/events/domainEvents.js](file:///d:/projects/clinica-saas/server/src/events/domainEvents.js)):
+    - Registro inmutable en `AuditLog` (`COMMUNICATION_SENT`).
+    - Eventos canónicos: `Communication.Sent`, `Communication.Delivered`, `Communication.Failed`.
+  - Suite de Pruebas de Seguridad y Desacoplamiento ([server/src/__tests__/security/communicationsSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/communicationsSecurity.test.js)):
+    - 16/16 pruebas pasando exitosamente.
+  - Verificación global de regresión: **46/46 suites pasando, 386/386 tests en verde (100%)**.
+
+#### Fase 26 — Endurecimiento de Telemedicina
 - **Fase 26:** Endurecimiento de Telemedicina (seguridad en salas WebRTC y auditoría de sesiones).
 
 ---
