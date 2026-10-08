@@ -120,12 +120,16 @@ flowchart TD
   - Migración oficial de base de datos (`20261008010000-add-2fa-recovery-codes-and-secure-reset.js`).
   - Suite de pruebas de seguridad exhaustiva (`passwordResetAnd2FASecurity.test.js`) con 18/18 pruebas pasando exitosamente.
 
-#### Fase 9 — Logging Estructurado y Observabilidad
+#### Fase 9 — Logging Estructurado y Observabilidad [COMPLETADA]
 - **Objetivo:** Trazabilidad completa sin comprometer datos confidenciales (cero PHI en logs).
 - **Entregables:**
-  - Logging estructurado JSON con Pino (`timestamp`, `level`, `requestId`, `organizationId`, `userId`, `route`, `status`, `durationMs`).
-  - Middleware de redacción automática de campos sensibles (`password`, `token`, `hash`, `dni`, datos médicos).
-  - Generación y propagación de `X-Request-ID`.
+  - Logging estructurado JSON de alto rendimiento con Pino (`timestamp` ISO 8601, `level`, `requestId`, `organizationId`, `userId`, `role`, `method`, `route`, `status`, `durationMs`).
+  - Prevención de open handles en Jest eliminando hilos de transporte asíncronos en entorno de tests.
+  - Middleware de redacción automática y profunda de PHI y credenciales (`redactPhiAndCredentials`), protegiendo contraseñas, tokens, claves 2FA, cédulas/DNI, diagnósticos, resúmenes clínicos y alergias con sustitución `[REDACTED]`.
+  - Configuración nativa de redacción Pino con `logger.REDACTION_PATHS`.
+  - Middleware de generación y propagación uniforme de `X-Request-ID` (`requestIdMiddleware`) en todas las solicitudes HTTP tempranas.
+  - Middleware de métricas y observabilidad HTTP (`requestLoggingMiddleware`) con vinculación de contexto de sesión autenticada.
+  - Suite de pruebas de seguridad y observabilidad (`observabilityLoggingSecurity.test.js`) con 12/12 pruebas pasando exitosamente.
 
 #### Fase 10 — Health Checks Rigurosos (Live & Ready)
 - **Objetivo:** Integración confiable con orquestadores y balanceadores de carga.

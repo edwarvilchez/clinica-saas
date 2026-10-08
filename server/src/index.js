@@ -4,6 +4,7 @@ require('dotenv').config();
 const appConfig = require('./config/app.config');
 const { corsMiddleware } = require('./middlewares/cors.middleware');
 const { securityHeadersMiddleware } = require('./middlewares/securityHeaders.middleware');
+const { requestIdMiddleware, requestLoggingMiddleware } = require('./middlewares/observability.middleware');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const compression = require('compression');
@@ -26,6 +27,10 @@ const authLimiter = rateLimit({
 });
 
 const INIT_SECRET = appConfig.auth.initSecret;
+
+// 📊 Global Observability, Security & Performance Pipeline
+app.use(requestIdMiddleware);
+app.use(requestLoggingMiddleware);
 app.use(globalLimiter);
 app.use(corsMiddleware());
 app.use(securityHeadersMiddleware());
