@@ -13,7 +13,12 @@ const Payment = require('./Payment');
 const sequelize = require('../config/db.config');
 const VideoConsultation = require('./VideoConsultation');
 const Organization = require('./Organization');
-const AuditLog = require('./AuditLog');
+let AuditLog;
+try {
+  AuditLog = require('./AuditLog');
+} catch (_) {
+  AuditLog = require('./auditLog');
+}
 const Drug = require('./Drug');
 const Prescription = require('./Prescription');
 const LabTest = require('./LabTest');

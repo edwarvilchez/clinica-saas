@@ -5,7 +5,8 @@ WORKDIR /app
 
 # Install dependencies
 COPY package*.json ./
-RUN npm install
+RUN (npm ci --no-audit || npm install --legacy-peer-deps --no-audit) && \
+    npm cache clean --force
 
 # Copy source and build
 COPY . .
