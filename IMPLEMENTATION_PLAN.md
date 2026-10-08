@@ -257,8 +257,25 @@ flowchart TD
     - 6/6 pruebas pasando (autenticación obligatoria 401, rechazo 403 a roles no autorizados, aislamiento estricto multi-tenant sin fuga de datos entre clínicas y soporte scoping para superadmins).
   - Verificación global de regresión: **38/38 suites pasando, 259/259 tests en verde**.
 
-#### Fases 18 a 26 — Resto de Funcionalidades de Negocio
-- **Fase 18:** Timeline Longitudinal del Paciente (visión unificada de citas, historias, recetas y pagos con autorización estricta).
+#### Fase 18 — Timeline Longitudinal del Paciente [COMPLETADA]
+- **Objetivo:** Proporcionar una visión unificada, cronológica y multi-dominio de la vida médica del paciente (citas, evoluciones clínicas, prescripciones, estudios de laboratorio, hospitalizaciones y pagos), con estricta autorización anti-IDOR y aislamiento multi-tenant.
+- **Entregables:**
+  - Controlador especializado ([server/src/controllers/patient.controller.js](file:///d:/projects/clinica-saas/server/src/controllers/patient.controller.js)) `getPatientTimeline`:
+    - Agregación multi-dominio: citas (`APPOINTMENT`), notas clínicas (`MEDICAL_RECORD`), recetas (`PRESCRIPTION`), exámenes de laboratorio (`LAB_RESULT`), admisiones hospitalarias (`ADMISSION`) y pagos (`PAYMENT`).
+    - Ordenamiento cronológico descendente garantizado (eventos más recientes primero).
+    - Metadatos del paciente (grupo sanguíneo, alergias, aseguradora, historia médica).
+    - Métricas estadísticas instantáneas (`summary`: total de eventos y desglose por dominio).
+    - Soporte de filtrado por categoría (`?type=APPOINTMENT,PAYMENT`) y rango de fechas (`startDate`, `endDate`).
+  - Endpoint y seguridad contra IDOR ([server/src/routes/patient.routes.js](file:///d:/projects/clinica-saas/server/src/routes/patient.routes.js)):
+    - Ruta `GET /api/patients/:id/timeline` protegida con `authMiddleware`.
+    - Regla de acceso anti-IDOR: un paciente (`PATIENT`) únicamente puede consultar su propio timeline (`req.user.id === patient.userId`). Si intenta consultar a otro paciente de la misma clínica recibe `403 Forbidden`.
+    - Aislamiento multi-tenant: si un usuario de otra organización intenta consultar un paciente ajeno recibe `404 Not Found` (mitigando ataques de enumeración).
+    - Acceso clínico autorizado a médicos y administradores de la organización (`patients:read`).
+  - Suite de pruebas de seguridad y agregación ([patientTimelineSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/patientTimelineSecurity.test.js)):
+    - 9/9 pruebas pasando (autenticación 401, autorización legítima de paciente 200, bloqueo anti-IDOR intra-tenant 403, rechazo anti-enumeración cross-tenant 404, autorización médica/admin 200, scoping superadmin 200, ordenamiento cronológico y filtros por tipo).
+  - Verificación global de regresión: **39/39 suites pasando, 268/268 tests en verde**.
+
+#### Fases 19 a 26 — Resto de Funcionalidades de Negocio
 - **Fase 19:** Fundamentos de CRM Clínico (embudo de prospectos a pacientes activos).
 - **Fase 20:** Automatización de No-Shows (recordatorios multicanal vía `NotificationService`).
 - **Fase 21:** Smart Waitlist (reasignación ágil de citas liberadas).
