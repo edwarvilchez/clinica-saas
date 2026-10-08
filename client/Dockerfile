@@ -18,9 +18,8 @@ FROM nginx:alpine
 # Copy custom nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Copy built files
-# Nota: Verifica que la ruta de salida sea 'dist/client/browser' o similar según tu angular.json
-COPY --from=builder /app/dist/client/browser /usr/share/nginx/html
+# Copy built files (outputs to dist/browser as per angular.json)
+COPY --from=builder /app/dist/browser /usr/share/nginx/html
 
 EXPOSE 80
 
