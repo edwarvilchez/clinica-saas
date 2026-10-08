@@ -353,8 +353,27 @@ flowchart TD
     - 23/23 pruebas pasando exitosamente.
   - Verificación global de regresión: **42/42 suites pasando, 314/314 tests en verde (100%)**.
 
-#### Fases 22 a 26 — Resto de Funcionalidades de Negocio
-- **Fase 22:** Revenue Intelligence (analítica financiera desagregada sin cruzar permisos clínicos).
+#### Fase 22 — Revenue Intelligence (Analítica Financiera Desagregada y Segregación de Privilegios) [COMPLETADA]
+- **Objetivo:** Proporcionar inteligencia financiera y analítica de ingresos clínicos multidimensional (ingresos brutos bimonetarios USD/VES, honorarios médicos devengados, margen operativo de clínica, conciliación de pasivos con médicos y flujos de caja por método de pago), aplicando el principio de mínimo privilegio para garantizar que el personal clínico (médicos, enfermeros, recepcionistas, pacientes) no tenga acceso indiscriminado a las finanzas corporativas de la clínica.
+- **Entregables:**
+  - Servicio de Inteligencia de Ingresos `RevenueIntelligenceService` ([server/src/services/revenueIntelligence.service.js](file:///d:/projects/clinica-saas/server/src/services/revenueIntelligence.service.js)):
+    - `getRevenueAnalytics`: agregación de métricas de ingresos brutos (`grossRevenueUSD`, `grossRevenueVES`), honorarios médicos retenidos (`totalDoctorFeesUSD`), ingresos de clínica (`totalClinicFeesUSD`), descuentos de farmacia (`totalPharmacyDiscountsUSD`), margen operativo neto (`netOperatingRevenueUSD`, `operatingMarginPercentage`), ticket promedio y cuentas por cobrar (`uncollectedRevenueUSD`).
+    - Desglose tridimensional: por método de pago (`revenueByPaymentMethod` con Cash, Zelle, Pago Móvil, etc. y cuota de participación %), por tipo de servicio (`revenueByServiceType`) y por departamento/especialidad médica (`revenueBySpecialty`).
+    - `getRevenueTrends`: serie temporal histórica con agregación configurable (`daily` o `monthly`) para representación gráfica.
+    - `getDoctorPayoutsLiability`: pasivo corriente y consolidado de honorarios médicos pendientes de liquidación vs pagados, retenciones de ISLR (SENIAT 3%) y balance por doctor.
+    - `exportRevenueReport`: consolidación y exportación de reportes financieros con sello de auditoría.
+  - Controlador y Rutas Seguras ([server/src/controllers/revenueIntelligence.controller.js](file:///d:/projects/clinica-saas/server/src/controllers/revenueIntelligence.controller.js) y [server/src/routes/revenue.routes.js](file:///d:/projects/clinica-saas/server/src/routes/revenue.routes.js)):
+    - Montadas en `/api/revenue` (`/analytics`, `/trends`, `/payouts-liability`, `/export`) con `protectedRoutes`.
+    - Matriz RBAC estricta: permisos `revenue:read` y `revenue:export` registrados en `authorization.middleware.js` restringidos exclusivamente a `SUPERADMIN`, `PLATFORM_ADMIN`, `ADMIN` y `ADMINISTRATIVE` (bloqueando terminantemente con `403 Forbidden` a `PATIENT`, `DOCTOR`, `NURSE` y `RECEPTIONIST`).
+    - Aislamiento multi-tenant estricto con soporte de scoping administrativo para superadmins.
+  - Trazabilidad y Eventos de Dominio ([server/src/events/domainEvents.js](file:///d:/projects/clinica-saas/server/src/events/domainEvents.js)):
+    - Registro inmutable en `AuditLog` (`REVENUE_ANALYTICS_ACCESSED` y `REVENUE_REPORT_EXPORTED`).
+    - Eventos canónicos: `Billing.RevenueAnalyticsRequested` y `Billing.RevenueReportExported`.
+  - Suite de Pruebas de Seguridad y Lógica ([server/src/__tests__/security/revenueIntelligenceSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/revenueIntelligenceSecurity.test.js)):
+    - 20/20 pruebas pasando exitosamente.
+  - Verificación global de regresión: **43/43 suites pasando, 334/334 tests en verde (100%)**.
+
+#### Fases 23 a 26 — Resto de Funcionalidades de Negocio
 - **Fase 23:** Portal del Paciente (acceso seguro de mínimo privilegio para consulta de citas y resultados).
 - **Fase 24:** Fundamentos de IA Clínica (asistente con paradigma *Doctor reviews & approves*, sin diagnósticos autónomos).
 - **Fase 25:** Abstracción de Comunicaciones / WhatsApp (proveedores desacoplados de la lógica de negocio).

@@ -55,6 +55,8 @@ const DOMAIN_EVENTS = Object.freeze({
   PAYMENT_COLLECTED: 'Billing.PaymentCollected',
   DOCTOR_FEE_RECONCILED: 'Billing.DoctorFeeReconciled',
   SUBSCRIPTION_UPGRADED: 'Billing.SubscriptionUpgraded',
+  REVENUE_ANALYTICS_REQUESTED: 'Billing.RevenueAnalyticsRequested',
+  REVENUE_REPORT_EXPORTED: 'Billing.RevenueReportExported',
 
   // Hospitalization
   ADMISSION_OPENED: 'Hospital.AdmissionOpened',
