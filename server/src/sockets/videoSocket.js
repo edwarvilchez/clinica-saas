@@ -1,4 +1,6 @@
 const socketIO = require('socket.io');
+const appConfig = require('../config/app.config');
+const { isOriginAllowed } = require('../middlewares/cors.middleware');
 
 let io;
 const activeRooms = new Map(); // roomId -> { participants: [...] }
@@ -7,7 +9,17 @@ const globalActiveUsers = new Map(); // userId -> socketId
 const initializeSocket = (server) => {
   io = socketIO(server, {
     cors: {
-      origin: process.env.CLIENT_URL || 'http://localhost:4200',
+      origin: (origin, callback) => {
+        const allowed = isOriginAllowed(
+          origin,
+          appConfig.server.allowedOrigins,
+          appConfig.isDevelopment || appConfig.isTest
+        );
+        if (allowed) {
+          return callback(null, true);
+        }
+        return callback(new Error(`Socket.IO CORS blocked origin: ${origin}`));
+      },
       methods: ['GET', 'POST'],
       credentials: true
     }

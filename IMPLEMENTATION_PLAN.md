@@ -75,12 +75,14 @@ flowchart TD
   - Configuración centralizada tipada en `server/src/config/app.config.js`.
   - Actualización limpia de `.env.example` sin secretos reales.
 
-#### Fase 5 — CORS Estricto, CSP y Cabeceras de Seguridad
+#### Fase 5 — CORS Estricto, CSP y Cabeceras de Seguridad [COMPLETADA]
 - **Objetivo:** Proteger el navegador contra XSS, clickjacking y fugas de sesión cross-origin.
 - **Entregables:**
-  - Reemplazo de `origin: true` en CORS por allowlist dinámica basada en `ALLOWED_ORIGINS`.
-  - Configuración robusta de Helmet con `Content-Security-Policy` funcional para Angular.
-  - Activación de `HSTS`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`.
+  - Reemplazo de `origin: true` en CORS por allowlist dinámica basada en `ALLOWED_ORIGINS` (`server/src/middlewares/cors.middleware.js`).
+  - Validación de origen cruzado para Socket.io WebSockets (`server/src/sockets/videoSocket.js`).
+  - Configuración robusta de Helmet con `Content-Security-Policy` funcional para Angular (`server/src/middlewares/securityHeaders.middleware.js`).
+  - Activación de `HSTS`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`, `Cross-Origin-Resource-Policy: cross-origin`, `Cross-Origin-Opener-Policy: same-origin`, y protección contra Clickjacking (`X-Frame-Options: SAMEORIGIN`).
+  - Suites de pruebas completas de CORS y cabeceras de seguridad (`corsSecurity.test.js` y `securityHeaders.test.js`).
 
 #### Fase 6 — RBAC Granular por Verbo y Recurso
 - **Objetivo:** Asegurar que cada ruta valide acciones específicas y evitar escalamiento de privilegios.

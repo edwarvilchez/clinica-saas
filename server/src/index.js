@@ -2,20 +2,11 @@ const express = require('express');
 const app = express();
 require('dotenv').config();
 const appConfig = require('./config/app.config');
-const cors = require('cors');
+const { corsMiddleware } = require('./middlewares/cors.middleware');
+const { securityHeadersMiddleware } = require('./middlewares/securityHeaders.middleware');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
-const helmet = require('helmet');
 const compression = require('compression');
-
-// Core config
-const corsOptions = {
-  origin: true,
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-auth-token', 'x-org-id', 'Accept'],
-  exposedHeaders: ['x-auth-token']
-};
 
 // Rate Limiters
 const globalLimiter = rateLimit({
@@ -36,7 +27,8 @@ const authLimiter = rateLimit({
 
 const INIT_SECRET = appConfig.auth.initSecret;
 app.use(globalLimiter);
-app.use(cors(corsOptions));
+app.use(corsMiddleware());
+app.use(securityHeadersMiddleware());
 app.use(compression());
 
 // Boot diagnostics (Canary routes)
@@ -131,12 +123,6 @@ const loadFullApp = async (req, res, next) => {
     const roleMiddleware = require('./middlewares/role.middleware');
     const sequelize = require('./config/db.config');
     const protectedRoutes = [authMiddleware, contextMiddleware];
-
-    // Security Hardening (Helmet + CSP)
-    app.use(helmet({ 
-      crossOriginResourcePolicy: { policy: "cross-origin" },
-      contentSecurityPolicy: false // Deshabilitado temporalmente en producción para evitar 403 en assets
-    }));
 
     app.use(express.json({ limit: '1mb' }));
     app.use(express.urlencoded({ extended: true, limit: '1mb' }));
