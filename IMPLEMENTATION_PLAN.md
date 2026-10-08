@@ -210,18 +210,33 @@ flowchart TD
   - Script unificado `npm test` en el root del monorepo (`clinica-saas-monorepo`) junto con comandos modulares (`npm run test:security`, `npm run test:unit`, `npm run test:integration`, `npm run test:all`).
   - Cobertura global verificada: **36/36 suites de prueba pasando (246/246 tests en verde, 0 fallos)**.
 
-#### Fase 15 — Pipeline de Integración Continua (CI/CD)
-- **Objetivo:** Prevenir regresiones y automatizar validaciones previas al despliegue.
+#### Fase 15 — Pipeline de Integración Continua (CI/CD) [COMPLETADA]
+- **Objetivo:** Prevenir regresiones, proteger las ramas principales (`develop`, `staging`, `main`) y automatizar la validación rigurosa de calidad y seguridad antes de cualquier despliegue.
 - **Entregables:**
-  - Workflow de GitHub Actions que ejecute lint, typecheck, unit tests, integration tests y security checks.
-  - Bloqueo de promoción si cualquier prueba crítica falla.
+  - Workflow de GitHub Actions endurecido ([.github/workflows/ci.yml](file:///d:/projects/clinica-saas/.github/workflows/ci.yml)):
+    - Validación estática TypeScript (`npx tsc --noEmit`) y compilación Angular en modo producción (`npm run build -- --configuration=production`).
+    - Servicio PostgreSQL efímero (`postgres:16-alpine`) con healthchecks automáticos para validación de migraciones de base de datos (`npx sequelize-cli db:migrate`).
+    - Ejecución estricta de las 15 suites de seguridad (`npm test -- src/__tests__/security`) y de la batería de pruebas completa.
+    - Verificación de compilación multi-stage de imágenes Docker (`validate-docker`) mediante `docker/build-push-action` sin subida (dry-run).
+    - Bloqueo de promoción y despliegue si cualquier paso o prueba crítica falla.
 
-#### Fase 16 — Límites de Dominio y Event Bus Interno
-- **Objetivo:** Establecer la arquitectura de monolito modular desacoplado.
+#### Fase 16 — Límites de Dominio y Event Bus Interno [COMPLETADA]
+- **Objetivo:** Establecer la arquitectura de monolito modular desacoplado, definiendo límites de bounded context explícitos y comunicación asíncrona no bloqueante.
 - **Entregables:**
-  - Definición de límites de dominio claros (`identity`, `organizations`, `patients`, `appointments`, `clinical`, `billing`, `notifications`, `files`, `audit`).
-  - Implementación de un `DomainEventBus` en memoria (preparado para ser reemplazado por Redis/RabbitMQ en el futuro).
-  - Eventos de dominio: `PatientCreated`, `AppointmentCreated`, `AppointmentCancelled`, `PaymentReceived`, `MedicalRecordSigned`.
+  - Especificación formal de límites de dominio ([server/src/events/domainEvents.js](file:///d:/projects/clinica-saas/server/src/events/domainEvents.js)):
+    - 11 contextos canónicos delimitados (`identity`, `organizations`, `patients`, `appointments`, `clinical`, `billing`, `inventory`, `hospital`, `notifications`, `files`, `audit`).
+    - Diccionario de eventos de dominio inmutables (`Patient.Registered`, `Appointment.Scheduled`, `Appointment.Confirmed`, `Billing.PaymentCollected`, `Clinical.MedicalRecordSigned`, etc.).
+  - Implementación del `DomainEventBus` en memoria ([server/src/events/eventBus.js](file:///d:/projects/clinica-saas/server/src/events/eventBus.js)):
+    - Despacho asíncrono no bloqueante vía `setImmediate` para evitar retener locks o transacciones HTTP.
+    - Sobres de evento inmutables con UUID v4 criptográfico, marcas de tiempo ISO y metadatos de trazabilidad (`organizationId`, `userId`, `correlationId`, `requestId`).
+    - Aislamiento de fallos (*fault isolation*): un fallo en un suscriptor externo no tumba el bus ni interrumpe la respuesta HTTP del usuario.
+    - Soporte de comodines (`*`) para analytics globales y auditoría.
+  - Integración en controladores de negocio:
+    - `createAppointment` emite `Appointment.Scheduled`.
+    - `signRecord` emite `Clinical.MedicalRecordSigned`.
+    - `collectPayment` emite `Billing.PaymentCollected`.
+  - Suite de pruebas de arquitectura y eventos ([domainEventBusSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/domainEventBusSecurity.test.js)): 7/7 pruebas pasando con éxito.
+  - Verificación global del monolito: **37/37 suites pasando, 253/253 tests en verde**.
 
 ---
 

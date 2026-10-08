@@ -200,6 +200,25 @@ exports.collectPayment = async (req, res) => {
       sendEmail(emailToSend).catch(err => console.error('Error sending confirmation email:', err));
     }
 
+    // Domain Event Bus Dispatch
+    try {
+      const { eventBus, DOMAIN_EVENTS } = require('../events/eventBus');
+      eventBus.publish(DOMAIN_EVENTS.PAYMENT_COLLECTED, {
+        paymentId: payment.id,
+        amount: payment.amount,
+        currency: payment.currency,
+        paymentType: payment.paymentType,
+        patientId: payment.patientId,
+        appointmentId: payment.appointmentId
+      }, {
+        organizationId: payment.organizationId,
+        userId: req.user?.id,
+        requestId: req.headers ? req.headers['x-request-id'] : null
+      });
+    } catch (busErr) {
+      // Non-blocking dispatch
+    }
+
     res.json({ message: 'Payment marked as Paid and processed', payment });
   } catch (error) {
     await t.rollback();

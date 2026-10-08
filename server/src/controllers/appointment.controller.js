@@ -68,6 +68,24 @@ exports.createAppointment = async (req, res) => {
       ip: req.ip
     }).catch(err => console.error('Audit create appointment error:', err));
 
+    // Domain Event Bus Dispatch
+    try {
+      const { eventBus, DOMAIN_EVENTS } = require('../events/eventBus');
+      eventBus.publish(DOMAIN_EVENTS.APPOINTMENT_SCHEDULED, {
+        appointmentId: appointment.id,
+        patientId,
+        doctorId,
+        date,
+        reason
+      }, {
+        organizationId,
+        userId: req.user?.id,
+        requestId: req.headers ? req.headers['x-request-id'] : null
+      });
+    } catch (busErr) {
+      // Non-blocking event dispatch
+    }
+
     res.status(201).json(appointmentDetails);
   } catch (error) {
     res.status(500).json({ error: error.message });

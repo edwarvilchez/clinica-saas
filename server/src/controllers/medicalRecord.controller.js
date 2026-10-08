@@ -185,6 +185,23 @@ exports.signRecord = async (req, res) => {
       details: { signedAt: record.signedAt }
     }).catch(err => console.error('Audit sign error:', err));
 
+    // Domain Event Bus Dispatch
+    try {
+      const { eventBus, DOMAIN_EVENTS } = require('../events/eventBus');
+      eventBus.publish(DOMAIN_EVENTS.MEDICAL_RECORD_SIGNED, {
+        medicalRecordId: record.id,
+        patientId: record.patientId,
+        doctorId: req.user.id,
+        signedAt: record.signedAt
+      }, {
+        organizationId,
+        userId: req.user.id,
+        requestId: req.headers ? req.headers['x-request-id'] : null
+      });
+    } catch (busErr) {
+      // Non-blocking dispatch
+    }
+
     res.json({ success: true, message: 'Historia médica firmada digitalmente', record });
   } catch (error) {
     console.error('Error signing record:', error);

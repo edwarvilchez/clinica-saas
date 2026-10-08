@@ -1,64 +1,156 @@
-name: CI - Quality Assurance
+name: CI - Continuous Integration & Quality Assurance
 
 on:
   push:
-    branches: [develop, staging, master]
+    branches: [develop, main, master, staging]
   pull_request:
-    branches: [develop, staging, master]
+    branches: [develop, main, master, staging]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  # ----------------------------------------------------------------------------
+  # 1. CLIENT VALIDATION (TypeScript Typecheck & Angular Production Build)
+  # ----------------------------------------------------------------------------
   validate-client:
-    name: Client Validation
+    name: Client - TypeCheck & Production Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
-          cache-dependency-path: client/package-lock.json
+          cache-dependency-path: client/package.json
 
-      - name: Install Dependencies
+      - name: Install Client Dependencies
         run: |
           cd client
           npm ci --no-audit
 
-      - name: TypeScript Validation
+      - name: TypeScript Static Validation
         run: |
           cd client
           npx tsc --noEmit
 
-      - name: Build Validation
+      - name: Angular Production Build
         run: |
           cd client
-          npm run build
+          npm run build -- --configuration=production
 
+  # ----------------------------------------------------------------------------
+  # 2. SERVER VALIDATION (PostgreSQL Service, Migrations, Security & Real Tests)
+  # ----------------------------------------------------------------------------
   validate-server:
-    name: Server Validation
+    name: Server - PostgreSQL, Migrations & Security Tests
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Set up Node.js
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: clinica_saas_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_password_123
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "npm"
-          cache-dependency-path: server/package-lock.json
+          cache-dependency-path: server/package.json
 
-      - name: Install Dependencies
+      - name: Install Server Dependencies
         run: |
           cd server
           npm ci --no-audit
 
-      - name: Lint (if exists)
+      - name: Run Database Migrations
+        env:
+          NODE_ENV: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_NAME: clinica_saas_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres_ci_password_123
+          JWT_SECRET: ci_super_secure_jwt_secret_key_minimum_32_chars_long
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          BACKUP_ENCRYPTION_KEY: ci_backup_encryption_key_test_32_chars
         run: |
           cd server
-          npm run lint || echo "Lint script not found, skipping."
+          npx sequelize-cli db:migrate
 
-      - name: Run Tests
+      - name: Run Security & Compliance Test Suite (Fases 1 a 14)
+        env:
+          NODE_ENV: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_NAME: clinica_saas_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres_ci_password_123
+          JWT_SECRET: ci_super_secure_jwt_secret_key_minimum_32_chars_long
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          BACKUP_ENCRYPTION_KEY: ci_backup_encryption_key_test_32_chars
         run: |
           cd server
-          npm run test:coverage || echo "Tests failed or not found, continuing."
+          npm test -- src/__tests__/security --runInBand
+
+      - name: Run Complete Automated Test Battery
+        env:
+          NODE_ENV: test
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_NAME: clinica_saas_test
+          DB_USER: postgres
+          DB_PASSWORD: postgres_ci_password_123
+          JWT_SECRET: ci_super_secure_jwt_secret_key_minimum_32_chars_long
+          ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+          BACKUP_ENCRYPTION_KEY: ci_backup_encryption_key_test_32_chars
+        run: |
+          cd server
+          npm test -- --runInBand
+
+  # ----------------------------------------------------------------------------
+  # 3. DOCKER BUILD VALIDATION (Ensures Multi-Stage Image Builds Cleanly)
+  # ----------------------------------------------------------------------------
+  validate-docker:
+    name: Docker - Multi-Stage Container Build Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: actions/setup-buildx-action@v3
+
+      - name: Build Server Image (Dry-Run Cache Check)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          push: false
+          tags: clinica-saas-server:ci-test
+
+      - name: Build Client Image (Dry-Run Cache Check)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./client
+          file: ./client/Dockerfile
+          push: false
+          tags: clinica-saas-client:ci-test

@@ -1,0 +1,60 @@
+'use strict';
+
+/**
+ * 🏛️ DOMAIN BOUNDARIES SPECIFICATION - Modular Monolith Architecture
+ * Defines canonical domain aggregates, bounded contexts, and allowed dependencies.
+ */
+const DOMAINS = Object.freeze({
+  IDENTITY: 'identity',           // Users, Authentication, Roles, TOTP 2FA, Refresh Tokens
+  ORGANIZATIONS: 'organizations', // Tenants, Clinics, Subscriptions, Quota Limits
+  PATIENTS: 'patients',           // Demographics, Medical Records, Insurance Coverage
+  APPOINTMENTS: 'appointments',   // Scheduling, Agenda, Status Workflow, Video Consultations
+  CLINICAL: 'clinical',           // Consultations, Medical Records, Prescriptions, Lab Results
+  BILLING: 'billing',             // Invoicing, Payments, Doctor Fees, Revenue Splits, CXP
+  INVENTORY: 'inventory',         // Pharmacy Stock, Batches, FEFO, Supplies
+  HOSPITAL: 'hospital',           // Admissions, Bed Stays, Area Movements, Discharges
+  NOTIFICATIONS: 'notifications', // WhatsApp, Email, Push Alerts, Background Queue
+  FILES: 'files',                 // Encrypted Medical Documents, Receipts, Lab PDFs
+  AUDIT: 'audit'                  // Cryptographic SHA-256 Tamper-Evident Trail
+});
+
+/**
+ * 📢 CANONICAL DOMAIN EVENTS
+ * Immutable event signatures emitted when state changes across domain boundaries.
+ */
+const DOMAIN_EVENTS = Object.freeze({
+  // Identity & Security
+  USER_LOGGED_IN: 'Identity.UserLoggedIn',
+  USER_PASSWORD_RESET: 'Identity.UserPasswordReset',
+  SECURITY_ANOMALY_DETECTED: 'Identity.SecurityAnomalyDetected',
+
+  // Patient & Clinical
+  PATIENT_REGISTERED: 'Patient.Registered',
+  PATIENT_UPDATED: 'Patient.Updated',
+  MEDICAL_RECORD_CREATED: 'Clinical.MedicalRecordCreated',
+  MEDICAL_RECORD_SIGNED: 'Clinical.MedicalRecordSigned',
+  PRESCRIPTION_ISSUED: 'Clinical.PrescriptionIssued',
+  LAB_RESULT_UPLOADED: 'Clinical.LabResultUploaded',
+
+  // Appointments
+  APPOINTMENT_SCHEDULED: 'Appointment.Scheduled',
+  APPOINTMENT_CONFIRMED: 'Appointment.Confirmed',
+  APPOINTMENT_CANCELLED: 'Appointment.Cancelled',
+  APPOINTMENT_COMPLETED: 'Appointment.Completed',
+
+  // Billing & Financial
+  PAYMENT_RECEIVED: 'Billing.PaymentReceived',
+  PAYMENT_COLLECTED: 'Billing.PaymentCollected',
+  DOCTOR_FEE_RECONCILED: 'Billing.DoctorFeeReconciled',
+  SUBSCRIPTION_UPGRADED: 'Billing.SubscriptionUpgraded',
+
+  // Hospitalization
+  ADMISSION_OPENED: 'Hospital.AdmissionOpened',
+  ADMISSION_DISCHARGED: 'Hospital.AdmissionDischarged',
+  PATIENT_AREA_TRANSFERRED: 'Hospital.PatientAreaTransferred'
+});
+
+module.exports = {
+  DOMAINS,
+  DOMAIN_EVENTS
+};
