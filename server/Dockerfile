@@ -16,7 +16,7 @@ RUN apk add --no-cache libc6-compat
 COPY package*.json ./
 
 # Install only production dependencies
-RUN npm ci --only=production --ignore-scripts && \
+RUN (npm ci --omit=dev --ignore-scripts || npm install --omit=dev --ignore-scripts --no-audit) && \
     npm cache clean --force
 
 # ------------------------------------------------------------------------------

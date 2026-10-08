@@ -94,6 +94,7 @@ jobs:
           BACKUP_ENCRYPTION_KEY: ci_backup_encryption_key_test_32_chars
         run: |
           cd server
+          node -e "require('./src/models').sequelize.sync().then(() => console.log('Schema synchronized')).catch(e => { console.error(e); process.exit(1); })"
           npx sequelize-cli db:migrate
 
       - name: Run Security & Compliance Test Suite (Fases 1 a 14)
