@@ -28,6 +28,9 @@ router.get('/:id', videoConsultationController.getVideoConsultation);
 // Obtener videoconsulta por roomId
 router.get('/room/:roomId', videoConsultationController.getVideoConsultationByRoom);
 
+// Obtener token criptográfico de acceso a sala WebRTC (Anti-Eavesdropping Guard)
+router.post('/room/:roomId/token', videoConsultationController.getRoomAccessToken);
+
 // Iniciar videoconsulta
 router.put('/:id/start', videoConsultationController.startVideoConsultation);
 

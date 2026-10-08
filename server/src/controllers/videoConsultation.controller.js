@@ -1,324 +1,191 @@
-const { VideoConsultation, User, Appointment, Doctor, Patient } = require('../models');
-const { v4: uuidv4 } = require('uuid');
+'use strict';
 
-const validateAppointmentAccess = async (appointmentId, organizationId, role) => {
-  const isSuperAdmin = role === 'SUPERADMIN' || role === 'SUPERADMIN';
-  if (isSuperAdmin) return true;
+/**
+ * ⚡ VideoConsultationController - HTTP Handlers for Telemedicine & WebRTC
+ * Refactored in Phase 26 to integrate TelemedicineService with strict Anti-IDOR,
+ * token generation and audit logging.
+ */
 
-  const appointment = await Appointment.findByPk(appointmentId, {
-    include: [
-      { model: Patient, include: [{ model: User, attributes: ['organizationId'] }] },
-      { model: Doctor, include: [{ model: User, attributes: ['organizationId'] }] }
-    ]
-  });
+const telemedicineService = require('../services/telemedicine.service');
 
-  if (!appointment) return false;
-
-  const patientOrgId = appointment.Patient?.User?.organizationId;
-  const doctorOrgId = appointment.Doctor?.User?.organizationId;
-
-  return patientOrgId === organizationId || doctorOrgId === organizationId;
-};
-
-// Crear sala de videoconsulta
+// 1. Crear sala de videoconsulta
 exports.createVideoConsultation = async (req, res) => {
   try {
-    const { organizationId, role } = req.user;
-    const { appointmentId } = req.body;
-    
-    if (!appointmentId) {
-      return res.status(400).json({ message: 'appointmentId es requerido' });
-    }
+    const { organizationId } = req.user;
+    const { appointmentId, doctorId, patientId } = req.body;
 
-    const hasAccess = await validateAppointmentAccess(appointmentId, organizationId, role);
-    if (!hasAccess) {
-      return res.status(403).json({ message: 'No tienes acceso a esta cita' });
-    }
-
-    // Verificar que la cita existe
-    const appointment = await Appointment.findByPk(appointmentId, {
-      include: [
-        { 
-          model: Patient, 
-          include: [{ model: User }]
-        },
-        {
-          model: Doctor,
-          include: [{ model: User }]
-        }
-      ]
-    });
-
-    if (!appointment) {
-      return res.status(404).json({ message: 'Cita no encontrada' });
-    }
-
-    // Obtener los User IDs
-    const patientUserId = appointment.Patient?.User?.id;
-    const doctorUserId = appointment.Doctor?.User?.id;
-
-    if (!patientUserId || !doctorUserId) {
-      return res.status(400).json({ message: 'La cita no tiene asociados correctamente al paciente o doctor' });
-    }
-
-    // Verificar que no exista ya una videoconsulta para esta cita
-    // Forzamos el tipo de appointmentId para evitar errores de casting
-    const existing = await VideoConsultation.findOne({ 
-      where: { appointmentId: appointmentId.toString() } 
-    });
-
-    if (existing) {
-      return res.status(200).json({
-        message: 'Videoconsulta ya existe',
-        videoConsultation: existing
-      });
-    }
-
-    // Generar ID único para la sala
-    const roomId = uuidv4();
-
-    const videoConsultation = await VideoConsultation.create({
+    const result = await telemedicineService.createConsultationRoom({
       appointmentId,
-      doctorId: doctorUserId,
-      patientId: patientUserId,
-      roomId,
-      status: 'scheduled',
-      organizationId
+      doctorId,
+      patientId,
+      organizationId,
+      actorUserId: req.user.id,
+      ip: req.ip
     });
 
-    console.log(`✅ Videoconsulta creada: ${roomId} (ID: ${videoConsultation.id})`);
-
-    res.status(201).json({
-      message: 'Videoconsulta creada exitosamente',
-      videoConsultation
+    res.status(result.created ? 201 : 200).json({
+      message: result.created ? 'Videoconsulta creada exitosamente' : 'Videoconsulta ya existe',
+      videoConsultation: result.videoConsultation
     });
   } catch (error) {
-    console.error('❌ Error creando videoconsulta:', error);
-    res.status(500).json({ 
-      message: 'Error del servidor al crear videoconsulta', 
-      error: error.message 
-    });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
   }
 };
 
-// Obtener videoconsulta por ID
+// 2. Generar token criptográfico de acceso a sala WebRTC (Anti-Eavesdropping Guard)
+exports.getRoomAccessToken = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const tokenInfo = await telemedicineService.generateRoomAccessToken({
+      roomId,
+      userId: req.user.id,
+      role: req.user.role,
+      organizationId: req.user.organizationId,
+      actorUserId: req.user.id,
+      ip: req.ip
+    });
+
+    res.json(tokenInfo);
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
+  }
+};
+
+// 3. Obtener videoconsulta por ID o RoomID
 exports.getVideoConsultation = async (req, res) => {
   try {
     const { id } = req.params;
-    
-    if (!id || id === 'NaN' || id === 'undefined') {
-      return res.status(400).json({ message: 'ID de videoconsulta inválido' });
-    }
-    // Soportar: (1) id numérico (PK) o (2) roomId (UUID/string) en la misma ruta.
-    // Evita errores cuando el frontend pasa el roomId en lugar del ID numérico.
-    let videoConsultation = null;
-    const isNumericId = /^\d+$/.test(String(id));
+    const consultation = await telemedicineService.getConsultation({
+      id,
+      organizationId: req.user.organizationId,
+      userId: req.user.id,
+      role: req.user.role
+    });
 
-    if (isNumericId) {
-      // Buscar por PK numérico
-      videoConsultation = await VideoConsultation.findByPk(id, {
-        include: [
-          { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] },
-          { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
-          { model: Appointment, attributes: ['id', 'date', 'reason', 'status'] }
-        ]
-      });
-    } else {
-      // Buscar por roomId cuando se recibe un UUID/string
-      videoConsultation = await VideoConsultation.findOne({
-        where: { roomId: id },
-        include: [
-          { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] },
-          { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
-          { model: Appointment, attributes: ['id', 'date', 'reason', 'status'] }
-        ]
-      });
-    }
-
-    if (!videoConsultation) {
-      return res.status(404).json({ message: 'Videoconsulta no encontrada' });
-    }
-
-    res.json(videoConsultation);
+    res.json(consultation);
   } catch (error) {
-    const fs = require('fs');
-    fs.appendFileSync('server_error.log', `[${new Date().toISOString()}] Error getting VC ${id}: ${error.stack}\n`);
-    console.error(`❌ Error obteniendo videoconsulta ${req.params.id}:`, error);
-    res.status(500).json({ message: 'Error del servidor al obtener videoconsulta', error: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
   }
 };
 
-// Obtener videoconsulta por roomId
+// 4. Obtener videoconsulta por roomId
 exports.getVideoConsultationByRoom = async (req, res) => {
   try {
     const { roomId } = req.params;
-
-    const videoConsultation = await VideoConsultation.findOne({
-      where: { roomId },
-      include: [
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName'] },
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName'] },
-        { model: Appointment }
-      ]
+    const consultation = await telemedicineService.getConsultation({
+      id: roomId,
+      organizationId: req.user.organizationId,
+      userId: req.user.id,
+      role: req.user.role
     });
 
-    if (!videoConsultation) {
-      return res.status(404).json({ message: 'Sala no encontrada' });
-    }
-
-    res.json(videoConsultation);
+    res.json(consultation);
   } catch (error) {
-    console.error('❌ Error obteniendo videoconsulta por sala:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
   }
 };
 
-// Iniciar videoconsulta
+// 5. Iniciar videoconsulta
 exports.startVideoConsultation = async (req, res) => {
   try {
     const { id } = req.params;
-
-    const videoConsultation = await VideoConsultation.findByPk(id);
-    if (!videoConsultation) {
-      return res.status(404).json({ message: 'Videoconsulta no encontrada' });
-    }
-
-    if (videoConsultation.status === 'active') {
-      return res.json({
-        message: 'Videoconsulta ya está activa',
-        videoConsultation
-      });
-    }
-
-    videoConsultation.status = 'active';
-    videoConsultation.startTime = new Date();
-    await videoConsultation.save();
-
-    console.log(`▶️ Videoconsulta iniciada: ${videoConsultation.roomId}`);
+    const consultation = await telemedicineService.startSession({
+      id,
+      organizationId: req.user.organizationId,
+      actorUserId: req.user.id,
+      ip: req.ip
+    });
 
     res.json({
       message: 'Videoconsulta iniciada',
-      videoConsultation
+      videoConsultation: consultation
     });
   } catch (error) {
-    console.error('❌ Error iniciando videoconsulta:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
   }
 };
 
-// Finalizar videoconsulta
+// 6. Finalizar videoconsulta
 exports.endVideoConsultation = async (req, res) => {
   try {
     const { id } = req.params;
     const { notes } = req.body;
-
-    const videoConsultation = await VideoConsultation.findByPk(id);
-    if (!videoConsultation) {
-      return res.status(404).json({ message: 'Videoconsulta no encontrada' });
-    }
-
-    if (videoConsultation.status === 'completed') {
-      return res.json({
-        message: 'Videoconsulta ya fue finalizada',
-        videoConsultation
-      });
-    }
-
-    const endTime = new Date();
-    const startTime = new Date(videoConsultation.startTime);
-    const duration = videoConsultation.startTime 
-      ? Math.round((endTime - startTime) / 60000) // minutos
-      : 0;
-
-    videoConsultation.status = 'completed';
-    videoConsultation.endTime = endTime;
-    videoConsultation.duration = duration;
-    videoConsultation.notes = notes || null;
-    await videoConsultation.save();
-
-    console.log(`⏹️ Videoconsulta finalizada: ${videoConsultation.roomId} (${duration} min)`);
+    const consultation = await telemedicineService.endSession({
+      id,
+      notes,
+      organizationId: req.user.organizationId,
+      actorUserId: req.user.id,
+      ip: req.ip
+    });
 
     res.json({
       message: 'Videoconsulta finalizada',
-      videoConsultation
+      videoConsultation: consultation
     });
   } catch (error) {
-    console.error('❌ Error finalizando videoconsulta:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
   }
 };
 
-// Listar videoconsultas del doctor
-exports.getDoctorVideoConsultations = async (req, res) => {
-  try {
-    const isStaff = ['SUPERADMIN', 'ADMINISTRATIVE', 'PLATFORM_ADMIN', 'RECEPTIONIST'].includes(req.user.role);
-    const where = isStaff ? {} : { doctorId: req.user.id };
-
-    const consultations = await VideoConsultation.findAll({
-      where,
-      include: [
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] },
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
-        { model: Appointment, attributes: ['id', 'date', 'status'] }
-      ],
-      order: [['createdAt', 'DESC']]
-    });
-
-    res.json(consultations);
-  } catch (error) {
-    console.error('❌ Error obteniendo videoconsultas del doctor:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-};
-
-// Listar videoconsultas del paciente
-exports.getPatientVideoConsultations = async (req, res) => {
-  try {
-    const isStaff = ['SUPERADMIN', 'ADMINISTRATIVE', 'PLATFORM_ADMIN', 'RECEPTIONIST'].includes(req.user.role);
-    const where = isStaff ? {} : { patientId: req.user.id };
-
-    const consultations = await VideoConsultation.findAll({
-      where,
-      include: [
-        { model: User, as: 'doctor', attributes: ['id', 'firstName', 'lastName', 'email'] },
-        { model: User, as: 'patient', attributes: ['id', 'firstName', 'lastName', 'email'] },
-        { model: Appointment, attributes: ['id', 'date', 'status'] }
-      ],
-      order: [['createdAt', 'DESC']]
-    });
-
-    res.json(consultations);
-  } catch (error) {
-    console.error('❌ Error obteniendo videoconsultas del paciente:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
-  }
-};
-
-// Cancelar videoconsulta
+// 7. Cancelar videoconsulta
 exports.cancelVideoConsultation = async (req, res) => {
   try {
     const { id } = req.params;
-
-    const videoConsultation = await VideoConsultation.findByPk(id);
-    if (!videoConsultation) {
-      return res.status(404).json({ message: 'Videoconsulta no encontrada' });
-    }
-
-    if (videoConsultation.status === 'completed') {
-      return res.status(400).json({ message: 'No se puede cancelar una videoconsulta completada' });
-    }
-
-    videoConsultation.status = 'cancelled';
-    await videoConsultation.save();
-
-    console.log(`🚫 Videoconsulta cancelada: ${videoConsultation.roomId}`);
+    const { reason } = req.body || {};
+    const consultation = await telemedicineService.cancelSession({
+      id,
+      reason,
+      organizationId: req.user.organizationId,
+      actorUserId: req.user.id,
+      ip: req.ip
+    });
 
     res.json({
       message: 'Videoconsulta cancelada',
-      videoConsultation
+      videoConsultation: consultation
     });
   } catch (error) {
-    console.error('❌ Error cancelando videoconsulta:', error);
-    res.status(500).json({ message: 'Error del servidor', error: error.message });
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
+  }
+};
+
+// 8. Listar videoconsultas del doctor
+exports.getDoctorVideoConsultations = async (req, res) => {
+  try {
+    const consultations = await telemedicineService.listConsultations({
+      organizationId: req.user.organizationId,
+      userId: req.user.id,
+      role: req.user.role,
+      isDoctorFilter: true
+    });
+
+    res.json(consultations);
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
+  }
+};
+
+// 9. Listar videoconsultas del paciente
+exports.getPatientVideoConsultations = async (req, res) => {
+  try {
+    const consultations = await telemedicineService.listConsultations({
+      organizationId: req.user.organizationId,
+      userId: req.user.id,
+      role: req.user.role,
+      isPatientFilter: true
+    });
+
+    res.json(consultations);
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ message: error.message, error: error.message });
   }
 };

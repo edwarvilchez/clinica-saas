@@ -77,7 +77,13 @@ const DOMAIN_EVENTS = Object.freeze({
   // Communications & Omnichannel Delivery (Fase 25)
   COMMUNICATION_SENT: 'Communication.Sent',
   COMMUNICATION_DELIVERED: 'Communication.Delivered',
-  COMMUNICATION_FAILED: 'Communication.Failed'
+  COMMUNICATION_FAILED: 'Communication.Failed',
+
+  // Telemedicine & WebRTC Security (Fase 26)
+  TELEMEDICINE_SESSION_CREATED: 'Telemedicine.SessionCreated',
+  TELEMEDICINE_SESSION_STARTED: 'Telemedicine.SessionStarted',
+  TELEMEDICINE_SESSION_ENDED: 'Telemedicine.SessionEnded',
+  TELEMEDICINE_SESSION_CANCELLED: 'Telemedicine.SessionCancelled'
 });
 
 module.exports = {

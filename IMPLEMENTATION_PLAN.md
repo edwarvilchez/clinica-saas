@@ -447,8 +447,17 @@ flowchart TD
     - 16/16 pruebas pasando exitosamente.
   - Verificación global de regresión: **46/46 suites pasando, 386/386 tests en verde (100%)**.
 
-#### Fase 26 — Endurecimiento de Telemedicina
+#### Fase 26 — Endurecimiento de Telemedicina [COMPLETADA]
 - **Fase 26:** Endurecimiento de Telemedicina (seguridad en salas WebRTC y auditoría de sesiones).
+- **Entregables Implementados:**
+  - Emisión de Room Access Tokens criptográficos de corta duración (JWT con `sub: 'webrtc_room_access'`) firmados con HMAC-SHA256, con TTL configurable (default: 60m), multi-tenant validation y comprobación estricta Anti-IDOR (`doctorUser.id` o `patientUser.id`).
+  - Guard de admisión en WebRTC Signaling WebSocket (`videoSocket.js` - evento `join-room-secure`), rechazando sockets con tokens inválidos o manipulados y bloqueando la sala contra escuchas no autorizados mediante límite estricto de capacidad máxima (máximo 2 participantes autorizados: Doctor + Paciente).
+  - Aislamiento multi-tenant y verificación Anti-IDOR en endpoints REST (`/room/:roomId/token`, `/room/:roomId`, `/:id`, `/:id/start`, `/:id/end`, `/:id/cancel`).
+  - Ciclo de vida completo de videoconsultas (`scheduled` -> `active` -> `completed` / `cancelled`) con cómputo de duración en minutos y notas clínicas protegidas.
+  - Registro de auditoría inmutable en `AuditLog` para emisión de tokens y transiciones de estado, y emisión de eventos de dominio (`Telemedicine.SessionCreated`, `Telemedicine.SessionStarted`, `Telemedicine.SessionEnded`, `Telemedicine.SessionCancelled`).
+  - Suite de Pruebas de Seguridad y WebRTC ([server/src/__tests__/security/telemedicineSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/telemedicineSecurity.test.js)):
+    - 13/13 pruebas pasando exitosamente.
+  - Verificación global de regresión: **47/47 suites pasando, 399/399 tests en verde (100%)**.
 
 ---
 
