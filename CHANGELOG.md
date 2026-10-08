@@ -5,6 +5,40 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.6.0] — 2026-10-08
+
+### 🛡️ Arquitectura Avanzada, Inteligencia Clínica, Seguridad WebRTC y Production Readiness (Fases 20 a 28)
+
+- **Fase 20 — Automatización de No-Shows y Reconciliación de Citas:**
+  - Marcado manual y automático de ausencias con registro en auditoría inmutable.
+  - Tareas programadas de recordatorios y métricas analíticas de ausentismo por clínica.
+- **Fase 21 — Inteligencia de Ingresos & Liquidación a Médicos (Revenue Intelligence):**
+  - Métricas agregadas de ingresos brutos, netos, pasivos pendientes a médicos y ticket promedio en USD.
+  - Reportes de series temporales y liquidación de honorarios médicos (*Fee Splits*).
+- **Fase 22 — Auditoría Forense y Cumplimiento HIPAA / SOC-2:**
+  - Trazabilidad append-only inmutable en `audit_logs` con encadenamiento criptográfico SHA-256.
+  - Triggers inmutables en PostgreSQL (`trg_prevent_audit_log_mutation`) para protección contra manipulaciones.
+- **Fase 23 — Portal del Paciente con Defensas Anti-IDOR:**
+  - Aislamiento multi-tenant y verificación estricta de identidad para auto-consulta de historias, citas y recetas.
+- **Fase 24 — Soporte a la Decisión Clínica con IA (CDSS):**
+  - Sugerencias asistidas de codificación CIE-11 y resúmenes clínicos basados en LLMs.
+  - Directiva ética obligatoria: aprobación y firma explícita del médico tratante previa a cualquier persistencia.
+- **Fase 25 — Comunicaciones Desacopladas y Proveedores de WhatsApp:**
+  - Arquitectura desacoplada para envío omnicanal (Meta WhatsApp Cloud API, Twilio, Resend, SMTP).
+  - Emisión de eventos canónicos (`Communication.Sent`, `Communication.Delivered`, `Communication.Failed`).
+- **Fase 26 — Endurecimiento de Telemedicina WebRTC:**
+  - Emisión de Tokens Criptográficos de Sala (`JWT` con `sub: 'webrtc_room_access'`) con expiración corta.
+  - Guard de señalización WebSocket que rechaza tokens forjados y limita la sala a un máximo estricto de 2 participantes (Médico + Paciente).
+- **Fase 27 — Especificación y Diseño de Futuros Microservicios:**
+  - Creación del documento normativo [`FUTURE_MICROSERVICES.md`](FUTURE_MICROSERVICES.md) analizando los 6 candidatos: Notifications, Clinical AI, File Storage, Telemedicine, Audit y Analytics.
+  - Contratos de datos REST, gRPC y Event-Driven con catálogo de 42 eventos canónicos congelados.
+- **Fase 28 — Production Readiness Check:**
+  - Script automatizado de auditoría previa al despliegue: `npm run production:check`.
+  - 16 verificaciones en 8 categorías (Secretos, Base de Datos, Migraciones, RLS, Auditoría, Storage, Health, Event Bus).
+  - Verificación global: **49 suites pasadas, 422/422 pruebas en verde (100%)**.
+
+---
+
 ## [4.5.0] — 2026-10-07
 
 - **Multi-Environment Architecture**: Configuración de bases de datos y esquemas independientes para `develop` (`clinica_saas_dev`), `qa`/`staging` (`clinica_saas_qa`) y `production` (`clinica_saas_prod`).

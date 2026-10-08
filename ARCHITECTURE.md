@@ -169,4 +169,4 @@ La separación física a servicios independientes solo se justificará cuando se
 2. **Aislamiento de Disponibilidad Crítica:** Caídas en proveedores externos (como WhatsApp o pasarelas de pago) provocan agotamiento de hilos en el monolito.
 3. **Escala de Equipos de Ingeniería:** Múltiples equipos autónomos necesitan desplegar ciclos de release independientes sin coordinar el monolito.
 
-La especificación completa de contratos y condiciones de separación se documentará en `FUTURE_MICROSERVICES.md`.
+La especificación exhaustiva de contratos de datos, protocolos gRPC/REST, disparadores cuantitativos y arquitectura de eventos se encuentra formalmente definida en el documento normativo [**FUTURE_MICROSERVICES.md**](FUTURE_MICROSERVICES.md) (completado en Fase 27).

@@ -59,10 +59,13 @@ cd client && npm run build
 # 2. Migrar base de datos
 cd ../server && npx sequelize-cli db:migrate
 
-# 3. Iniciar backend con PM2
+# 3. Auditoría automatizada de pre-vuelo para producción (Fase 28)
+npm run production:check
+
+# 4. Iniciar backend con PM2
 cd .. && pm2 start ecosystem.config.js && pm2 save
 
-# 4. Habilitar Nginx y SSL
+# 5. Habilitar Nginx y SSL
 sudo cp nginx.conf.example /etc/nginx/sites-available/clinica-saas
 sudo ln -s /etc/nginx/sites-available/clinica-saas /etc/nginx/sites-enabled/
 sudo systemctl reload nginx
@@ -70,4 +73,4 @@ sudo certbot --nginx -d tu-dominio.com
 ```
 
 ---
-*© 2026 Clínica SaaS - Plataforma Médica Integral*
+*© 2026 Clínica SaaS / Medicusve - Plataforma Médica Integral*
