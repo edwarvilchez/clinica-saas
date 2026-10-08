@@ -38,6 +38,11 @@ const Surgery = require('./Surgery');
 const InventoryItem = require('./InventoryItem');
 const InventoryMovement = require('./InventoryMovement');
 const ClinicalPackage = require('./ClinicalPackage');
+const RefreshToken = require('./RefreshToken');
+
+// User - RefreshToken
+User.hasMany(RefreshToken, { foreignKey: 'userId', onDelete: 'CASCADE' });
+RefreshToken.belongsTo(User, { foreignKey: 'userId' });
 
 // User - Role
 Role.hasMany(User, { foreignKey: 'roleId' });
@@ -475,5 +480,6 @@ module.exports = {
   InventoryItem,
   InventoryMovement,
   ClinicalPackage,
+  RefreshToken,
   sequelize
 };

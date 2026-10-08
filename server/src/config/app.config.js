@@ -53,7 +53,7 @@ const config = {
 
   auth: {
     jwtSecret: process.env.JWT_SECRET || (isTest ? 'test_jwt_secret_github_actions_2026' : 'dev_jwt_secret_key_clinica_saas_2026_secure'),
-    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '8h',
+    jwtExpiresIn: process.env.JWT_EXPIRES_IN || '15m',
     initSecret: process.env.INIT_SECRET || (isTest ? 'test_init_secret' : 'clinica-saas-dev-secret'),
     bcryptRounds: 10
   },

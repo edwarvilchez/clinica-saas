@@ -3,7 +3,8 @@
 const crypto = require('crypto');
 const logger = require('../utils/logger');
 const context = require('../utils/context');
-const { AuditLog, sequelize } = require('../models');
+const AuditLog = require('../models/AuditLog');
+const sequelize = require('../config/db.config');
 
 /**
  * 🔒 GENESIS HASH for unchained root records

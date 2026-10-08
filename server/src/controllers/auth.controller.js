@@ -2,6 +2,7 @@ const { User, Role, Patient, Organization, sequelize } = require('../models');
 const jwt = require('jsonwebtoken');
 const { Op } = require('sequelize');
 const auditService = require('../services/audit.service');
+const refreshTokenService = require('../services/refreshToken.service');
 
 /**
  * Genera una contraseña temporal que cumple con el patrón de seguridad:
@@ -300,7 +301,7 @@ exports.login = async (req, res) => {
         success: false,
         reason: 'User not found'
       }).catch(err => console.error('Audit login error:', err));
-      return res.status(401).json({ message: 'Credenciales inválidas (Usuario no encontrado)' });
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
     // 3. Diagnóstico de contraseña (Solo visible en logs de servidor)
@@ -320,7 +321,7 @@ exports.login = async (req, res) => {
         success: false,
         reason: 'Incorrect password'
       }).catch(err => console.error('Audit login error:', err));
-      return res.status(401).json({ message: 'Credenciales inválidas (Contraseña incorrecta)' });
+      return res.status(401).json({ message: 'Credenciales inválidas' });
     }
 
     console.log(`[LOGIN SUCCESS] Sesión iniciada para: ${user.email}`);
@@ -360,14 +361,9 @@ exports.login = async (req, res) => {
       });
     }
 
-    log(`Account active. Generating Token...`);
+    log(`Account active. Generating Access & Refresh Tokens...`);
 
-    // Incluir mustChangePassword en el token JWT para que el guard del frontend pueda verificarlo
-    const token = jwt.sign(
-      { id: user.id, role: user.Role.name, mustChangePassword: user.mustChangePassword },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
+    const tokenData = await refreshTokenService.generateTokens(user, { req });
 
     // Tamper-evident Audit Log: Successful Login
     auditService.logAuthEvent({
@@ -377,9 +373,11 @@ exports.login = async (req, res) => {
       success: true
     }).catch(err => console.error('Audit login error:', err));
 
-    log(`Token Generated. Sending Response.`);
+    log(`Tokens Generated. Sending Response.`);
     res.json({
-      token,
+      token: tokenData.accessToken,
+      refreshToken: tokenData.refreshToken,
+      expiresIn: tokenData.expiresIn,
       user: {
         id: user.id,
         username: user.username,
@@ -608,11 +606,7 @@ exports.verify2FALogin = async (req, res) => {
       return res.status(401).json({ message: 'Código de autenticación inválido o expirado' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, role: user.Role.name, mustChangePassword: user.mustChangePassword },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
+    const tokenData = await refreshTokenService.generateTokens(user, { req });
 
     auditService.logAuthEvent({
       action: '2FA_LOGIN_SUCCESS',
@@ -622,7 +616,9 @@ exports.verify2FALogin = async (req, res) => {
     }).catch(err => console.error('Audit 2FA error:', err));
 
     res.json({
-      token,
+      token: tokenData.accessToken,
+      refreshToken: tokenData.refreshToken,
+      expiresIn: tokenData.expiresIn,
       user: {
         id: user.id,
         username: user.username,
@@ -732,6 +728,96 @@ exports.disable2FA = async (req, res) => {
     res.json({ message: 'Autenticación de doble factor desactivada.', twoFactorEnabled: false });
   } catch (error) {
     res.status(500).json({ message: 'Error al desactivar 2FA', error: error.message });
+  }
+};
+
+/**
+ * 🔄 Refresh Token Controller
+ * Rotates the submitted refresh token, validates against family replay,
+ * and issues a fresh 15-minute access token and new refresh token.
+ */
+exports.refreshToken = async (req, res) => {
+  try {
+    const rawRefreshToken = req.body?.refreshToken || req.headers['x-refresh-token'];
+
+    if (!rawRefreshToken) {
+      return res.status(400).json({ message: 'Token de refresco requerido' });
+    }
+
+    const result = await refreshTokenService.rotateRefreshToken(rawRefreshToken, { req });
+
+    if (!result.success) {
+      const statusCode = result.reason === 'REUSE_DETECTED' ? 403 : 401;
+      return res.status(statusCode).json({
+        error: result.reason,
+        message: result.message
+      });
+    }
+
+    res.json({
+      token: result.accessToken,
+      refreshToken: result.refreshToken,
+      expiresIn: result.expiresIn,
+      user: result.user
+    });
+  } catch (error) {
+    console.error('[REFRESH ERROR]', error);
+    res.status(500).json({ message: 'Error al refrescar token: ' + error.message });
+  }
+};
+
+/**
+ * 🚪 Logout from all devices
+ * Invalida todos los refresh tokens activos del usuario.
+ */
+exports.logoutAllDevices = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const revokedCount = await refreshTokenService.revokeAllUserTokens(userId);
+
+    auditService.logAuthEvent({
+      action: 'LOGOUT_ALL_DEVICES',
+      user: req.user,
+      req,
+      success: true,
+      details: { revokedCount }
+    }).catch(err => console.error('Audit logout all devices error:', err));
+
+    res.json({
+      success: true,
+      message: 'Todas las sesiones activas han sido cerradas en todos los dispositivos',
+      revokedCount
+    });
+  } catch (error) {
+    console.error('[LOGOUT ALL DEVICES ERROR]', error);
+    res.status(500).json({ message: 'Error cerrando sesiones: ' + error.message });
+  }
+};
+
+/**
+ * 🚪 Logout from current session
+ */
+exports.logout = async (req, res) => {
+  try {
+    const rawRefreshToken = req.body?.refreshToken || req.headers['x-refresh-token'];
+
+    if (rawRefreshToken) {
+      await refreshTokenService.revokeToken(rawRefreshToken);
+    }
+
+    if (req.user) {
+      auditService.logAuthEvent({
+        action: 'LOGOUT',
+        user: req.user,
+        req,
+        success: true
+      }).catch(err => console.error('Audit logout error:', err));
+    }
+
+    res.json({ success: true, message: 'Sesión cerrada exitosamente' });
+  } catch (error) {
+    console.error('[LOGOUT ERROR]', error);
+    res.status(500).json({ message: 'Error cerrando sesión: ' + error.message });
   }
 };
 

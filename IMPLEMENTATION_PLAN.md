@@ -98,13 +98,15 @@ flowchart TD
 
 ### 🔑 BLOQUE 2: AUTENTICACIÓN, SESIONES Y OBSERVABILIDAD (Fases 7 a 13)
 
-#### Fase 7 — Autenticación Endurecida y Refresh Tokens
+#### Fase 7 — Autenticación Endurecida y Refresh Tokens [COMPLETADA]
 - **Objetivo:** Reducir la ventana de exposición de credenciales y soportar gestión de sesiones activas.
 - **Entregables:**
-  - Reducción del ciclo de vida del Access Token JWT a 15 minutos.
-  - Modelo `RefreshToken` con rotación estricta, hash SHA-256 y detección de reutilización anómala.
-  - Endpoints `/api/auth/refresh` y `/api/auth/logout-all-devices`.
-  - Corrección de enumeración de usuarios en login (respuesta genérica: "Credenciales inválidas").
+  - Reducción del ciclo de vida del Access Token JWT a 15 minutos en configuración centralizada (`app.config.js`).
+  - Modelo `RefreshToken` con rotación estricta, hash SHA-256 (`tokenHash`), control de familias (`family`) y detección de reutilización anómala (`server/src/models/RefreshToken.js`).
+  - Servicio `refreshToken.service.js` con anulación automática de la familia entera ante detección de reintento/robo de token.
+  - Endpoints `/api/auth/refresh`, `/api/auth/logout` y `/api/auth/logout-all-devices`.
+  - Corrección de enumeración de usuarios en login (respuesta genérica: "Credenciales inválidas" tanto para usuario no encontrado como para contraseña errónea).
+  - Suite de pruebas completa (`refreshTokenSecurity.test.js`) con 10 pruebas pasando.
 
 #### Fase 8 — Password Reset Seguro y Cifrado 2FA
 - **Objetivo:** Proteger la recuperación de cuentas y las claves TOTP en reposo.
