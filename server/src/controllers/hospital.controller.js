@@ -49,6 +49,7 @@ exports.getAdmissions = async (req, res) => {
 };
 
 exports.createAdmission = async (req, res) => {
+  let t = null;
   try {
     const orgId = getOrgId(req);
     const {
@@ -100,9 +101,8 @@ exports.createAdmission = async (req, res) => {
       return res.status(400).json({ message: 'Paciente no encontrado. Ingrese un paciente válido o un número de historia médica existente.' });
     }
 
-    const t = await sequelize.transaction();
-    try {
-      // Validar que el paciente NO tenga un episodio de admisión activo
+    t = await sequelize.transaction();
+    // Validar que el paciente NO tenga un episodio de admisión activo
       const { Op } = require('sequelize');
       const activeAdmission = await Admission.findOne({
         where: {
@@ -250,7 +250,9 @@ exports.createAdmission = async (req, res) => {
         missingFields
       });
     } catch (error) {
-      await t.rollback();
+      if (t) {
+        try { await t.rollback(); } catch (_) {}
+      }
       console.error('Error in createAdmission:', error);
       res.status(500).json({ message: error.message });
     }

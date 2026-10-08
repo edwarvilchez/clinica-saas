@@ -5,7 +5,6 @@ import { RouterModule, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { LanguageService } from '../../services/language.service';
 import { CurrencyService } from '../../services/currency.service';
-import { TranslatePipe } from '../../services/translate.pipe';
 import { API_URL } from '../../api-config';
 import Swal from 'sweetalert2';
 
@@ -21,7 +20,7 @@ interface ClaimItem {
 @Component({
   selector: 'app-insurance',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, TranslatePipe],
+  imports: [CommonModule, FormsModule, RouterModule],
   templateUrl: './insurance.html',
   styleUrls: ['./insurance.css']
 })
