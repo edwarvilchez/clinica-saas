@@ -308,3 +308,93 @@ exports.rescheduleAppointment = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+const noShowAutomationService = require('../services/noShowAutomation.service');
+
+exports.processUpcomingReminders = async (req, res) => {
+  try {
+    const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+    const organizationId = isSuperAdmin ? (req.query?.organizationId || req.body?.organizationId || req.user?.organizationId) : req.user?.organizationId;
+    const windowHours = parseInt(req.body?.windowHours || req.query?.windowHours) || 24;
+
+    const result = await noShowAutomationService.processUpcomingReminders({
+      organizationId,
+      windowHours
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.reconcileOverdueNoShows = async (req, res) => {
+  try {
+    const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+    const organizationId = isSuperAdmin ? (req.query?.organizationId || req.body?.organizationId || req.user?.organizationId) : req.user?.organizationId;
+    const gracePeriodMinutes = parseInt(req.body?.gracePeriodMinutes || req.query?.gracePeriodMinutes) || 30;
+    const sendNotice = req.body?.sendNotice === true;
+
+    const result = await noShowAutomationService.reconcileOverdueAppointments({
+      organizationId,
+      gracePeriodMinutes,
+      actorUserId: req.user?.id,
+      ip: req.ip,
+      sendNotice
+    });
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.markAppointmentAsNoShow = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+    const organizationId = isSuperAdmin ? null : req.user?.organizationId;
+    const { reason, sendNotice } = req.body || {};
+
+    const appointment = await noShowAutomationService.markAppointmentAsNoShow({
+      appointmentId: id,
+      organizationId,
+      reason: reason || 'PATIENT_DID_NOT_ARRIVE',
+      actorUserId: req.user?.id,
+      ip: req.ip,
+      sendNotice: sendNotice === true
+    });
+
+    res.json({
+      message: 'Cita marcada como No-Show exitosamente',
+      appointment
+    });
+  } catch (error) {
+    const status = error.statusCode || 500;
+    res.status(status).json({ error: error.message });
+  }
+};
+
+exports.getNoShowStats = async (req, res) => {
+  try {
+    const role = (req.user?.role || '').toUpperCase();
+    if (role === 'PATIENT') {
+      return res.status(403).json({ error: 'Acceso no autorizado a estadísticas operacionales de la clínica' });
+    }
+
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+    const organizationId = isSuperAdmin ? (req.query?.organizationId || req.user?.organizationId) : req.user?.organizationId;
+    const { startDate, endDate } = req.query;
+
+    const stats = await noShowAutomationService.getNoShowStats({
+      organizationId,
+      startDate,
+      endDate
+    });
+
+    res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+

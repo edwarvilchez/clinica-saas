@@ -2,6 +2,31 @@
 
 module.exports = {
   async up(queryInterface, Sequelize) {
+    try {
+      await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";');
+    } catch (_) {
+      try {
+        await queryInterface.sequelize.query('CREATE EXTENSION IF NOT EXISTS "pgcrypto";');
+      } catch (__) {}
+    }
+
+    try {
+      await queryInterface.sequelize.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_proc WHERE proname = 'uuid_generate_v4'
+          ) THEN
+            CREATE OR REPLACE FUNCTION uuid_generate_v4() RETURNS uuid AS $func$
+            BEGIN
+              RETURN gen_random_uuid();
+            END;
+            $func$ LANGUAGE plpgsql;
+          END IF;
+        END$$;
+      `);
+    } catch (_) {}
+
     await queryInterface.createTable('Users', {
       id: {
         type: Sequelize.UUID,

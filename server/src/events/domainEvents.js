@@ -41,6 +41,8 @@ const DOMAIN_EVENTS = Object.freeze({
   APPOINTMENT_CONFIRMED: 'Appointment.Confirmed',
   APPOINTMENT_CANCELLED: 'Appointment.Cancelled',
   APPOINTMENT_COMPLETED: 'Appointment.Completed',
+  APPOINTMENT_NO_SHOW: 'Appointment.NoShow',
+  APPOINTMENT_REMINDER_SENT: 'Appointment.ReminderSent',
 
   // Billing & Financial
   PAYMENT_RECEIVED: 'Billing.PaymentReceived',

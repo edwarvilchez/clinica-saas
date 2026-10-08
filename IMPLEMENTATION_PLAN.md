@@ -294,8 +294,37 @@ flowchart TD
     - 10/10 pruebas pasando exitosamente.
   - Verificación global de regresión: **40/40 suites pasando, 278/278 tests en verde**.
 
-#### Fases 20 a 26 — Resto de Funcionalidades de Negocio
-- **Fase 20:** Automatización de No-Shows (recordatorios multicanal vía `NotificationService`).
+#### Fase 20 — Automatización de No-Shows y Recordatorios Multicanal [COMPLETADA]
+- **Objetivo:** Mitigar el ausentismo clínico mediante recordatorios multicanal proactivos (WhatsApp/Email), reconciliación automática de citas vencidas a `NoShow`, y analítica operacional con estricto aislamiento multi-tenant.
+- **Entregables:**
+  - Abstracción de mensajería `NotificationService` ([server/src/services/notification.service.js](file:///d:/projects/clinica-saas/server/src/services/notification.service.js)):
+    - Soporte multicanal: WhatsApp (`whatsapp.service.js`), Email HTML interactivo (`sendEmail.js` con enlace Google Calendar) y simulación/fallback seguro sin excepciones no controladas.
+    - Notificaciones parametrizadas: recordatorios de citas 24h/2h, avisos de inasistencia/reprogramación (`sendNoShowNotice`), y cancelaciones.
+  - Servicio de automatización `NoShowAutomationService` ([server/src/services/noShowAutomation.service.js](file:///d:/projects/clinica-saas/server/src/services/noShowAutomation.service.js)):
+    - `processUpcomingReminders`: despacho idempotente de recordatorios dentro de ventana de tiempo y actualización de flags `reminder24hSent`.
+    - `reconcileOverdueAppointments`: detección de citas pasadas en `Pending`/`Confirmed` y transición atómica a estado `NoShow` tras período de gracia.
+    - `markAppointmentAsNoShow`: marcaje asistido por personal de recepción con validación de estado y auditoría SHA-256.
+    - `getNoShowStats`: analítica agregada para directores médicos (tasa de inasistencia %, total citas, y distribución por médico).
+  - Migración y esquemas de base de datos:
+    - Migración oficial ([server/src/migrations/20261008030000-add-noshow-status-and-notifications.js](file:///d:/projects/clinica-saas/server/src/migrations/20261008030000-add-noshow-status-and-notifications.js)) agregando `'NoShow'` al tipo `enum_Appointments_status` en PostgreSQL de manera idempotente.
+    - Actualización del modelo `Appointment` ([server/src/models/Appointment.js](file:///d:/projects/clinica-saas/server/src/models/Appointment.js)) y validador Joi ([server/src/validators/appointment.validator.js](file:///d:/projects/clinica-saas/server/src/validators/appointment.validator.js)).
+  - Endpoints seguros montados en `/api/appointments`:
+    - `POST /api/appointments/no-shows/process-reminders` (`appointments:write`).
+    - `POST /api/appointments/no-shows/reconcile` (`appointments:write`).
+    - `POST /api/appointments/:id/no-show` (`appointments:write`).
+    - `GET /api/appointments/no-shows/stats` (`appointments:read`, restringido a personal clínico con 403 a rol `PATIENT`).
+  - Eventos de Dominio y Auditoría:
+    - Emisión canónica de `Appointment.NoShow` y `Appointment.ReminderSent` a través de `DomainEventBus`.
+    - Registro inmutable de trazabilidad `APPOINTMENT_MARKED_NO_SHOW` en `AuditLog`.
+  - Estabilización del Pipeline CI/CD:
+    - Soporte garantizado para `uuid-ossp` y fallback `uuid_generate_v4` en migraciones para eliminar errores en PostgreSQL efímero de CI.
+    - Corrección de `docker/setup-buildx-action@v3` en `.github/workflows/ci.yml`.
+    - Purga de workflow obsoleto `.github/workflows/deploy.yml` que generaba falsos positivos y correos de fallo.
+  - Suite de pruebas de seguridad y lógica ([noShowAutomationSecurity.test.js](file:///d:/projects/clinica-saas/server/src/__tests__/security/noShowAutomationSecurity.test.js)):
+    - 13/13 pruebas pasando (autenticación 401, rechazo 403 a pacientes, aislamiento multi-tenant, reconciliación automática, idempotencia y métricas).
+  - Verificación global del monorepo: **41/41 suites pasando, 291/291 tests en verde**.
+
+#### Fases 21 a 26 — Resto de Funcionalidades de Negocio
 - **Fase 21:** Smart Waitlist (reasignación ágil de citas liberadas).
 - **Fase 22:** Revenue Intelligence (analítica financiera desagregada sin cruzar permisos clínicos).
 - **Fase 23:** Portal del Paciente (acceso seguro de mínimo privilegio para consulta de citas y resultados).

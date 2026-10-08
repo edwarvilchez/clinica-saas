@@ -10,10 +10,17 @@ module.exports = {
       try {
         await queryInterface.addIndex(tableName, fields, options);
       } catch (err) {
-        // Ignore duplicate index errors to allow idempotency
-        if (!err.message || (!err.message.includes('already exists') && !err.message.includes('duplicate'))) {
-          throw err;
+        // Ignore duplicate index errors to allow idempotency across language locales (42P07)
+        const msg = (err.message || '').toLowerCase();
+        if (
+          err.parent?.code === '42P07' ||
+          msg.includes('already exists') ||
+          msg.includes('ya existe') ||
+          msg.includes('duplicate')
+        ) {
+          return;
         }
+        throw err;
       }
     };
 
