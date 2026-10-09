@@ -37,8 +37,10 @@ RUN apk add --no-cache dumb-init curl
 COPY --from=dependencies /usr/src/app/node_modules ./node_modules
 COPY package*.json ./
 
-# Copy application code
+# Copy application code and configuration
 COPY src ./src
+COPY config ./config
+COPY .sequelizerc ./.sequelizerc
 
 # Create storage directories and set ownership to unprivileged user 'node'
 RUN mkdir -p uploads storage backups && \

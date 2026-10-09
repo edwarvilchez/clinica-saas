@@ -8,7 +8,7 @@ WORKDIR /usr/src/app
 RUN apk add --no-cache libc6-compat
 
 COPY server/package*.json ./
-RUN npm ci --only=production --ignore-scripts && \
+RUN npm ci --omit=dev --ignore-scripts && \
     npm cache clean --force
 
 FROM node:20-alpine AS runner
@@ -19,6 +19,8 @@ RUN apk add --no-cache dumb-init curl
 COPY --from=dependencies /usr/src/app/node_modules ./node_modules
 COPY server/package*.json ./
 COPY server/src ./src
+COPY server/config ./config
+COPY server/.sequelizerc ./.sequelizerc
 
 RUN mkdir -p uploads storage backups && \
     chown -R node:node /usr/src/app
