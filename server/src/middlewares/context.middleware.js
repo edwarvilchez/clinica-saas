@@ -1,16 +1,22 @@
+'use strict';
+
 const context = require('../utils/context');
-const { setTenantContext, clearTenantContext } = require('../utils/tenantRls');
+const tenantRls = require('../utils/tenantRls');
 const sequelize = require('../config/db.config');
+const logger = require('../utils/logger');
 
 /**
  * Request Context Middleware
  * Must be executed AFTER auth/verifyToken
+ * Guarantees strict fail-closed security: if tenant context fails to initialize, halts request immediately.
  */
 const contextMiddleware = (req, res, next) => {
   const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+  const organizationId = req.user?.organizationId || null;
+
   const data = {
     userId: req.user?.id || null,
-    organizationId: req.user?.organizationId || null,
+    organizationId,
     role: req.user?.role || null,
     isSuperAdmin,
     requestId: req.get('x-request-id') || null,
@@ -18,23 +24,28 @@ const contextMiddleware = (req, res, next) => {
     userAgent: req.get('user-agent') || 'system'
   };
 
-  context.storage.run(data, async () => {
-    let sessionConfigured = false;
-    if (req.user?.organizationId || isSuperAdmin) {
+  // Attach transaction helper directly to req for routes that require strict transactional RLS isolation
+  req.withTenantTransaction = (callback) => {
+    return tenantRls.withTenantTransaction(sequelize, { organizationId, isSuperAdmin }, callback);
+  };
+
+  return context.storage.run(data, async () => {
+    if (organizationId || isSuperAdmin) {
       try {
-        await setTenantContext(sequelize, {
-          organizationId: req.user?.organizationId,
+        await tenantRls.setTenantContext(sequelize, {
+          organizationId,
           isSuperAdmin
         });
-        sessionConfigured = true;
       } catch (err) {
-        // Silently continue if session config encounters an error
+        logger.error({ error: err.message, organizationId }, '❌ Failed to initialize multi-tenant RLS context');
+        return res.status(500).json({
+          error: 'SECURITY_CONTEXT_INITIALIZATION_FAILED',
+          message: 'Error crítico de aislamiento de seguridad multi-tenant. La solicitud fue abortada.'
+        });
       }
-    }
 
-    if (sessionConfigured) {
       res.on('finish', () => {
-        clearTenantContext(sequelize).catch(() => {});
+        tenantRls.clearTenantContext(sequelize).catch(() => {});
       });
     }
 

@@ -188,13 +188,36 @@ exports.getPaymentReceipt = async (req, res) => {
     // If stored as storage key or URL
     let storageKey = payment.receiptUrl;
     if (storageKey.startsWith('/uploads/')) {
-      // Legacy upload fallback: check legacy directory or map to filename
-      const legacyPath = path.resolve(__dirname, '../../uploads', storageKey.replace('/uploads/', ''));
-      if (fs.existsSync(legacyPath)) {
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        return fs.createReadStream(legacyPath).pipe(res);
+      const relativePart = storageKey.replace('/uploads/', '').trim();
+      if (relativePart.includes('..') || relativePart.includes('\0')) {
+        return res.status(403).json({ message: 'Ruta de comprobante inválida o intento de traversal bloqueado' });
       }
+
+      const uploadsBase = path.resolve(__dirname, '../../../uploads');
+      const canonicalBase = path.resolve(uploadsBase);
+      const targetPath = path.resolve(canonicalBase, relativePart);
+
+      // Verify directory boundary with separator
+      if (!targetPath.startsWith(canonicalBase + path.sep)) {
+        return res.status(403).json({ message: 'Acceso denegado: violación de contención de directorio' });
+      }
+
+      if (!fs.existsSync(targetPath)) {
+        return res.status(404).json({ message: 'Comprobante legacy no encontrado en disco' });
+      }
+
+      // Check symlink escape
+      const real = fs.realpathSync(targetPath);
+      if (!real.startsWith(canonicalBase + path.sep)) {
+        return res.status(403).json({ message: 'Acceso denegado: symlink traversal detectado' });
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'");
+      res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+      res.setHeader('Content-Disposition', `inline; filename="recibo_${payment.id}.pdf"`);
+      return fs.createReadStream(real).pipe(res);
     }
 
     // Stream from secure storage

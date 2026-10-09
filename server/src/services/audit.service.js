@@ -22,9 +22,31 @@ const CRITICAL_ACTIONS = new Set([
   'ORGANIZATION_ADMIN'
 ]);
 
+const SENSITIVE_FIELDS = new Set([
+  'password', 'token', 'refreshtoken', 'resettoken', 'twofactorsecret',
+  'recoverycodes', 'secret', 'apikey', 'authorization', 'cookie'
+]);
+
+function redactSensitiveData(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(redactSensitiveData);
+  const sanitized = {};
+  for (const [k, v] of Object.entries(data)) {
+    const lowerKey = k.toLowerCase();
+    if (SENSITIVE_FIELDS.has(lowerKey) || lowerKey.includes('password') || lowerKey.includes('token') || lowerKey.includes('secret')) {
+      sanitized[k] = '[REDACTED]';
+    } else if (typeof v === 'object' && v !== null) {
+      sanitized[k] = redactSensitiveData(v);
+    } else {
+      sanitized[k] = v;
+    }
+  }
+  return sanitized;
+}
+
 class AuditService {
   constructor() {
-    this.ignoredDiffFields = ['createdAt', 'updatedAt', 'password', 'deletedAt'];
+    this.ignoredDiffFields = ['createdAt', 'updatedAt', 'password', 'deletedAt', 'token', 'resetToken', 'twoFactorSecret', 'recoveryCodes'];
   }
 
   /**
@@ -167,20 +189,22 @@ class AuditService {
       const ctx = context.get() || {};
       const resolvedOrgId = organizationId !== undefined ? organizationId : (ctx.organizationId || null);
 
-      // 🔒 Concurrency lock: Acquire transaction-scoped PostgreSQL advisory lock per organization
-      // Hashing the string into an integer prevents concurrent race conditions and chain forking
-      try {
+      // 🔒 Concurrency lock: Fail-Closed transactional advisory lock in PostgreSQL
+      if (sequelize.getDialect() === 'postgres') {
         const lockKeyStr = `audit_chain_${resolvedOrgId || 'global'}`;
-        await sequelize.query(
-          `SELECT pg_advisory_xact_lock(hashtext(:lockKey));`,
-          {
-            replacements: { lockKey: lockKeyStr },
-            transaction,
-            logging: false
-          }
-        );
-      } catch (lockErr) {
-        // Continue if advisory lock is not supported or during test fallback
+        try {
+          await sequelize.query(
+            `SELECT pg_advisory_xact_lock(hashtext(:lockKey));`,
+            {
+              replacements: { lockKey: lockKeyStr },
+              transaction,
+              logging: false
+            }
+          );
+        } catch (lockErr) {
+          logger.error({ error: lockErr.message, lockKeyStr }, '❌ Advisory lock acquisition failed (fail-closed)');
+          throw lockErr;
+        }
       }
 
       const resolvedActorId = actorUserId !== undefined ? actorUserId : (ctx.userId || null);
@@ -193,19 +217,25 @@ class AuditService {
         finalChanges = this.calculateDiff(oldValues, newValues);
       }
 
+      // Redact sensitive data before hashing and storing
+      const sanitizedOld = oldValues ? redactSensitiveData(JSON.parse(JSON.stringify(oldValues))) : null;
+      const sanitizedNew = newValues ? redactSensitiveData(JSON.parse(JSON.stringify(newValues))) : null;
+      const sanitizedChanges = finalChanges ? redactSensitiveData(JSON.parse(JSON.stringify(finalChanges))) : null;
+      const sanitizedMetadata = metadata ? redactSensitiveData(JSON.parse(JSON.stringify(metadata))) : null;
+
       const timestamp = new Date();
 
       // Retrieve previous hash in this organization's chain (strictly serialized under advisory lock)
       const previousHash = await this.getLatestHash(resolvedOrgId, transaction);
 
-      // Compute current cryptographic SHA-256 hash
+      // Compute current cryptographic SHA-256 hash using sanitized payload
       const currentHash = this.computeAuditHash({
         action,
         actorUserId: resolvedActorId,
-        changes: finalChanges,
+        changes: sanitizedChanges,
         entity,
         entityId,
-        metadata,
+        metadata: sanitizedMetadata,
         organizationId: resolvedOrgId,
         timestamp
       }, previousHash);
@@ -216,13 +246,13 @@ class AuditService {
         action,
         entity,
         entityId: entityId ? String(entityId) : null,
-        oldValues: oldValues ? JSON.parse(JSON.stringify(oldValues)) : null,
-        newValues: newValues ? JSON.parse(JSON.stringify(newValues)) : null,
-        changes: finalChanges,
+        oldValues: sanitizedOld,
+        newValues: sanitizedNew,
+        changes: sanitizedChanges,
         ip: resolvedIp,
         userAgent: resolvedUserAgent,
         requestId: resolvedRequestId,
-        metadata: metadata ? JSON.parse(JSON.stringify(metadata)) : null,
+        metadata: sanitizedMetadata,
         timestamp,
         previousHash,
         currentHash
@@ -251,8 +281,8 @@ class AuditService {
       }, '❌ Failed to record tamper-evident audit log');
 
       // Failure policy: critical actions roll back the business transaction
-      if (isCritical || CRITICAL_ACTIONS.has(action)) {
-        const auditErr = new Error(`Critical audit logging failure for ${action}: ${error.message}`);
+      if (isCritical || CRITICAL_ACTIONS.has(action) || transaction) {
+        const auditErr = new Error(`[CRITICAL_AUDIT_LOG_FAILED] Critical audit logging failure for ${action}: ${error.message}`);
         auditErr.code = 'CRITICAL_AUDIT_LOG_FAILED';
         throw auditErr;
       }
