@@ -101,8 +101,25 @@ async function withTenantTransaction(sequelize, optionsOrCallback, maybeCallback
   });
 }
 
+/**
+ * Standard resolver: retrieves req.withTenantTransaction or defaults to withTenantTransaction
+ * @param {object} req 
+ * @returns {function(function(import('sequelize').Transaction): Promise<any>): Promise<any>}
+ */
+function getTenantTransaction(req) {
+  if (req && typeof req.withTenantTransaction === 'function') {
+    return req.withTenantTransaction.bind(req);
+  }
+  const defaultSequelize = require('../config/db.config');
+  return (callback) => withTenantTransaction(defaultSequelize, {
+    organizationId: req?.user?.organizationId,
+    isSuperAdmin: req?.user?.role === 'SUPERADMIN' || req?.user?.role === 'PLATFORM_ADMIN'
+  }, callback);
+}
+
 module.exports = {
   setTenantContext,
   clearTenantContext,
-  withTenantTransaction
+  withTenantTransaction,
+  getTenantTransaction
 };

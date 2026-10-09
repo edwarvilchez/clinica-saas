@@ -321,12 +321,24 @@ class AuditService {
       });
 
       if (logs.length === 0) {
-        return { verified: true, count: 0, message: 'No logs found to verify' };
+        return {
+          verified: false,
+          status: 'EMPTY',
+          totalRecords: 0,
+          count: 0,
+          tipHash: null,
+          historicalUnhashed: { count: 0, status: 'NONE' },
+          cryptographicSegments: { verifiedCount: 0, tipHash: null },
+          breaks: [],
+          message: 'No logs found to verify'
+        };
       }
 
       let lastHashedLog = null;
+      let firstHashedLog = null;
       let legacyUnhashedCount = 0;
       let verifiedCount = 0;
+      const breaks = [];
 
       for (let i = 0; i < logs.length; i++) {
         const currentLog = logs[i];
@@ -337,46 +349,82 @@ class AuditService {
           continue;
         }
 
+        if (!firstHashedLog) {
+          firstHashedLog = currentLog;
+        }
+
         // 1. Check previous hash connection against predecessor hashed log
         if (lastHashedLog) {
           if (currentLog.previousHash !== lastHashedLog.currentHash) {
-            return {
-              verified: false,
-              count: verifiedCount,
-              legacyUnhashedCount,
-              brokenAt: currentLog.id,
+            breaks.push({
+              logId: currentLog.id,
+              previousHash: currentLog.previousHash,
+              expectedPreviousHash: lastHashedLog.currentHash,
               reason: `Chain broken at log ${currentLog.id}: previousHash does not match predecessor currentHash.`
-            };
+            });
           }
         }
 
         // 2. Re-compute hash and verify against stored currentHash
         const recomputedHash = this.computeAuditHash(currentLog, currentLog.previousHash);
         if (recomputedHash !== currentLog.currentHash) {
-          return {
-            verified: false,
-            count: verifiedCount,
-            legacyUnhashedCount,
-            brokenAt: currentLog.id,
+          breaks.push({
+            logId: currentLog.id,
+            storedHash: currentLog.currentHash,
+            recomputedHash,
             reason: `Data tampering detected at log ${currentLog.id}: recomputed hash ${recomputedHash} does not match stored currentHash ${currentLog.currentHash}.`
-          };
+          });
         }
 
         lastHashedLog = currentLog;
         verifiedCount++;
       }
 
+      // STRICT VERIFICATION POLICY:
+      // Never mark the entire chain as verified if there are unsealed historical records or breaks
+      const isFullyVerified = legacyUnhashedCount === 0 && breaks.length === 0 && verifiedCount > 0;
+
+      let status = 'FULLY_VERIFIED';
+      if (breaks.length > 0) {
+        status = 'CHAIN_BROKEN';
+      } else if (legacyUnhashedCount > 0) {
+        status = 'PARTIAL_HISTORICAL_UNHASHED';
+      }
+
       return {
-        verified: true,
+        verified: isFullyVerified, // Strictly false if any unsealed or broken records exist
+        status,
+        totalRecords: logs.length,
         count: verifiedCount,
-        legacyUnhashedCount,
-        tipHash: lastHashedLog ? lastHashedLog.currentHash : null
+        tipHash: lastHashedLog ? lastHashedLog.currentHash : null,
+        historicalUnhashed: {
+          count: legacyUnhashedCount,
+          status: legacyUnhashedCount > 0 ? 'PRESERVED_HISTORICAL_EVIDENCE' : 'NONE',
+          message: legacyUnhashedCount > 0 
+            ? `Contains ${legacyUnhashedCount} historical records prior to cryptographic chaining. Preserved as original evidence without synthetic fabrication.`
+            : 'No unhashed historical records present.'
+        },
+        cryptographicSegments: {
+          verifiedCount,
+          firstHashedId: firstHashedLog ? firstHashedLog.id : null,
+          tipHash: lastHashedLog ? lastHashedLog.currentHash : null
+        },
+        breaks,
+        brokenAt: breaks[0]?.logId || null,
+        reason: breaks[0]?.reason || (legacyUnhashedCount > 0 ? `Chain contains ${legacyUnhashedCount} historical unhashed records. Cannot certify entire historical timeline.` : null)
       };
     } catch (err) {
       logger.error({ error: err.message }, 'Failed during audit chain verification');
       return {
         verified: false,
+        status: 'VERIFICATION_ERROR',
+        totalRecords: 0,
         count: 0,
+        tipHash: null,
+        historicalUnhashed: { count: 0, status: 'ERROR' },
+        cryptographicSegments: { verifiedCount: 0, tipHash: null },
+        breaks: [{ reason: err.message }],
+        brokenAt: null,
         reason: `Verification error: ${err.message}`
       };
     }

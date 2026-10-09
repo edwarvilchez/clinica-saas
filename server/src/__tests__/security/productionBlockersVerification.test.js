@@ -4,12 +4,17 @@
  * 🛡️ SUITE DE VERIFICACIÓN DE PRODUCTION BLOCKERS (P0 / P1)
  * Valida de forma ejecutable:
  *   1. Migración no destructiva de auditoría (preservación de filas históricas, IDs y hashes)
- *   2. Trigger inmutable append-only de PostgreSQL (bloqueo de UPDATE y DELETE)
- *   3. Fallo cerrado de contexto multi-tenant en contextMiddleware
- *   4. Contención estricta de rutas de archivos, anti-traversal y symlink escape
- *   5. Fail-closed en advisory locks de auditoría y atomicidad con operaciones críticas
- *   6. Redacción estricta de secretos y PII en registros de auditoría
- *   7. Production Check: detección de fallo ante --skip-db y tablas RLS desprotegidas
+ *   2. Verificación de cadena criptográfica (3 partes: unhashed, segments, breaks)
+ *   3. Rollback no destructivo (down) de migración de auditoría sin pérdida de registros
+ *   4. Trigger inmutable append-only de PostgreSQL (bloqueo de UPDATE y DELETE)
+ *   5. Fallo cerrado de contexto multi-tenant en contextMiddleware
+ *   6. Aislamiento RLS en PostgreSQL con rol no-superusuario (NOSUPERUSER NOBYPASSRLS)
+ *   7. Aislamiento bajo solicitudes concurrentes en conexiones separadas
+ *   8. Protección uniforme y anti-acceso cruzado en controladores (Patient, Payment, Lab, Inventory, Files)
+ *   9. Contención estricta de rutas de archivos, anti-traversal y symlink escape
+ *   10. Fail-closed en advisory locks de auditoría y atomicidad con operaciones críticas
+ *   11. Redacción estricta de secretos y PII en registros de auditoría
+ *   12. Production Check: detección de fallo ante --skip-db y validación exhaustiva de 27 tablas RLS
  */
 
 const path = require('path');
@@ -18,25 +23,88 @@ const { v4: uuidv4 } = require('uuid');
 const sequelize = require('../../config/db.config');
 const fileStorageService = require('../../services/fileStorage.service');
 const auditService = require('../../services/audit.service');
+const tenantRls = require('../../utils/tenantRls');
 const { ProductionReadinessChecker } = require('../../scripts/productionCheck');
 const contextMiddleware = require('../../middlewares/context.middleware');
 const fileController = require('../../controllers/file.controller');
-const { Payment, Organization, User } = require('../../models');
+const patientController = require('../../controllers/patient.controller');
+const paymentController = require('../../controllers/payment.controller');
+const labResultController = require('../../controllers/labResult.controller');
+const inventoryController = require('../../controllers/inventory.controller');
+const { Payment, Organization, User, Patient, LabResult, InventoryItem, AuditLog } = require('../../models');
 
 describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
   const isPostgres = sequelize.getDialect() === 'postgres';
+  let orgA;
+  let orgB;
+
+  beforeAll(async () => {
+    if (isPostgres) {
+      // Configurar rol de aplicación no privilegiado (NOSUPERUSER NOBYPASSRLS) para pruebas estrictas de RLS
+      await sequelize.query(`
+        DO $$
+        BEGIN
+          IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'clinica_test_user') THEN
+            CREATE ROLE clinica_test_user WITH LOGIN PASSWORD 'testpass' NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+          END IF;
+          GRANT USAGE ON SCHEMA public TO clinica_test_user;
+          GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO clinica_test_user;
+          GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO clinica_test_user;
+        END
+        $$;
+      `);
+
+      const orgs = await Organization.findAll({ limit: 2 });
+      if (orgs.length >= 2) {
+        orgA = orgs[0].id;
+        orgB = orgs[1].id;
+      } else {
+        const user = await User.findOne();
+        const fallbackOwner = user ? user.id : uuidv4();
+        const o1 = await Organization.create({
+          id: uuidv4(),
+          name: 'Org A Test',
+          code: `OA-${Date.now() % 10000}`,
+          type: 'CLINIC',
+          ownerId: fallbackOwner
+        });
+        const o2 = await Organization.create({
+          id: uuidv4(),
+          name: 'Org B Test',
+          code: `OB-${Date.now() % 10000}`,
+          type: 'CLINIC',
+          ownerId: fallbackOwner
+        });
+        orgA = o1.id;
+        orgB = o2.id;
+      }
+    }
+  });
+
+  // Helper para simular req con withTenantTransaction real
+  const createMockReq = ({ params = {}, body = {}, userOrgId, role = 'ADMIN', userId = uuidv4() }) => ({
+    params,
+    body,
+    user: { id: userId, organizationId: userOrgId, role },
+    ip: '127.0.0.1',
+    get: (header) => header === 'x-request-id' ? 'req-mock-test' : null,
+    withTenantTransaction: (cb) => tenantRls.withTenantTransaction(sequelize, {
+      organizationId: userOrgId,
+      isSuperAdmin: role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN'
+    }, cb)
+  });
 
   // =========================================================================
-  // 1. MIGRACIÓN NO DESTRUCTIVA Y PRESERVACIÓN TRANSPARENTE DE AUDITORÍA
+  // 1. MIGRACIÓN NO DESTRUCTIVA Y AUDITORÍA CRIPTOGRÁFICA
   // =========================================================================
-  describe('1. Migración de Auditoría: Preservación sin Hashes Fabricados & Trigger Inmutable', () => {
+  describe('1. Migración de Auditoría: Preservación sin Hashes Fabricados, Rollback Seguro & verifyChain()', () => {
     it('🔒 Debe preservar registros históricos con hashes ausentes/nulos sin inventar hashes falsos', async () => {
       if (!isPostgres) return;
 
-      const existingOrg = await Organization.findOne();
-      const testOrgId = existingOrg ? existingOrg.id : null;
+      const testOrgId = orgA;
 
       // 1. Insertar directamente un registro histórico legacy que no posea hash (simulación pre-criptográfica)
+      await sequelize.query(`SELECT set_config('app.is_super_admin', 'true', false);`);
       const legacyId = uuidv4();
       await sequelize.query(`
         INSERT INTO audit_logs (id, "organizationId", action, entity, "entityId", timestamp, "currentHash", "previousHash", metadata)
@@ -44,6 +112,7 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
       `, {
         replacements: { id: legacyId, orgId: testOrgId }
       });
+      await sequelize.query(`SELECT set_config('app.is_super_admin', 'false', false);`);
 
       // 2. Ejecutar la migración incremental
       const migration = require('../../migrations/20261008000000-create-tamper-evident-audit-logs');
@@ -66,13 +135,106 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
       expect(latestHash.length).toBe(64);
     });
 
+    it('🔒 verifyChain() debe informar por separado registros históricos sin hash, segmentos y rupturas, y marcar verified=false si hay registros no sellados', async () => {
+      if (!isPostgres) return;
+
+      await sequelize.query(`SELECT set_config('app.is_super_admin', 'true', false);`);
+      const unhashedId = uuidv4();
+      await sequelize.query(`
+        INSERT INTO audit_logs (id, "organizationId", action, entity, "entityId", timestamp, "currentHash", "previousHash", metadata)
+        VALUES (:id, :orgId, 'UNSEALED_LEGACY_OP', 'User', 'u-leg', NOW() - INTERVAL '10 days', NULL, NULL, '{"migrationStatus": "PRESERVED_HISTORICAL_UNHASHED"}'::jsonb);
+      `, {
+        replacements: { id: unhashedId, orgId: orgA }
+      });
+      await sequelize.query(`SELECT set_config('app.is_super_admin', 'false', false);`);
+
+      // Insertar dos registros criptográficamente encadenados
+      await auditService.logEvent({
+        action: 'CHAIN_STEP_1',
+        entity: 'Appointment',
+        entityId: 'apt-1',
+        organizationId: orgA
+      });
+
+      await auditService.logEvent({
+        action: 'CHAIN_STEP_2',
+        entity: 'Appointment',
+        entityId: 'apt-2',
+        organizationId: orgA
+      });
+
+      const verification = await auditService.verifyChain({ organizationId: orgA });
+
+      // Verificación estricta: NO se marca la cadena como verificada totalmente porque hay registros históricos no sellados
+      expect(verification.verified).toBe(false);
+      expect(verification.status).toBe('PARTIAL_HISTORICAL_UNHASHED');
+      expect(verification.historicalUnhashed.count).toBeGreaterThanOrEqual(1);
+      expect(verification.historicalUnhashed.status).toBe('PRESERVED_HISTORICAL_EVIDENCE');
+      expect(verification.cryptographicSegments.verifiedCount).toBeGreaterThanOrEqual(2);
+      expect(verification.breaks).toHaveLength(0);
+    });
+
+    it('🔒 verifyChain() debe detectar rupturas de hash o manipulación e informar CHAIN_BROKEN', async () => {
+      const mockLogs = [
+        {
+          id: 'log-1',
+          timestamp: new Date('2026-10-01'),
+          currentHash: 'hash-1-tampered',
+          previousHash: auditService.GENESIS_HASH,
+          action: 'MOCK_ACTION',
+          entity: 'Mock'
+        },
+        {
+          id: 'log-2',
+          timestamp: new Date('2026-10-02'),
+          currentHash: 'hash-2',
+          previousHash: 'different-hash-break',
+          action: 'MOCK_ACTION_2',
+          entity: 'Mock'
+        }
+      ];
+
+      jest.spyOn(AuditLog, 'findAll').mockResolvedValueOnce(mockLogs);
+
+      const result = await auditService.verifyChain({ organizationId: 'mock-org' });
+
+      expect(result.verified).toBe(false);
+      expect(result.status).toBe('CHAIN_BROKEN');
+      expect(result.breaks.length).toBeGreaterThan(0);
+      expect(result.breaks[0].reason).toMatch(/Data tampering|Chain broken/);
+
+      AuditLog.findAll.mockRestore();
+    });
+
+    it('🔒 El rollback (down) de la migración de auditoría debe ser no destructivo y preservar todas las filas históricas', async () => {
+      if (!isPostgres) return;
+
+      const [countBefore] = await sequelize.query(`SELECT COUNT(*)::int AS total FROM audit_logs;`);
+      const beforeTotal = countBefore[0].total;
+
+      const migration = require('../../migrations/20261008000000-create-tamper-evident-audit-logs');
+
+      // Ejecutar down()
+      await migration.down(sequelize.getQueryInterface(), sequelize.Sequelize);
+
+      const [countAfterDown] = await sequelize.query(`SELECT COUNT(*)::int AS total FROM audit_logs;`);
+      expect(countAfterDown[0].total).toBe(beforeTotal); // Preservación absoluta, no hubo truncate ni drop table
+
+      // Re-ejecutar up() para restaurar disparadores y políticas
+      await migration.up(sequelize.getQueryInterface(), sequelize.Sequelize);
+
+      const [countAfterUp] = await sequelize.query(`SELECT COUNT(*)::int AS total FROM audit_logs;`);
+      expect(countAfterUp[0].total).toBe(beforeTotal);
+    });
+
     it('🔒 El trigger PostgreSQL debe bloquear de forma irrevocable cualquier UPDATE o DELETE', async () => {
       if (!isPostgres) return;
 
       const testRecord = await auditService.logEvent({
         action: 'IMMUTABILITY_ENFORCEMENT_TEST',
         entity: 'SecurityPolicy',
-        entityId: 'immutable-1'
+        entityId: 'immutable-1',
+        organizationId: orgA
       });
 
       // Intento de UPDATE
@@ -94,9 +256,9 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
   });
 
   // =========================================================================
-  // 2. CONTEXTO MULTI-TENANT & AISLAMIENTO TRANSACCIONAL
+  // 2. CONTEXTO MULTI-TENANT & MOTOR RLS DE POSTGRESQL (ROL NO-SUPERUSUARIO)
   // =========================================================================
-  describe('2. Aislamiento Multi-Tenant & Fail-Closed en Transacciones Explícitas', () => {
+  describe('2. Aislamiento Multi-Tenant: Engine-Level RLS (NOSUPERUSER NOBYPASSRLS) & Concurrencia', () => {
     it('🔒 contextMiddleware no ejecuta queries en conexiones desprotegidas del pool y expone withTenantTransaction', async () => {
       const querySpy = jest.spyOn(sequelize, 'query');
 
@@ -111,7 +273,6 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
 
       await contextMiddleware(req, res, next);
 
-      // Debe pasar directamente a next() sin emitir queries arbitrarias a nivel de pool
       expect(next).toHaveBeenCalled();
       expect(typeof req.withTenantTransaction).toBe('function');
       expect(req.tenantContext.organizationId).toBe(req.user.organizationId);
@@ -120,7 +281,6 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
     });
 
     it('🔒 withTenantTransaction debe fallar cerrado (revertir) si falla setTenantContext', async () => {
-      const tenantRls = require('../../utils/tenantRls');
       const originalSetContext = tenantRls.setTenantContext;
 
       tenantRls.setTenantContext = jest.fn().mockRejectedValue(new Error('PostgreSQL connection dropped'));
@@ -163,6 +323,96 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
         expect(result[0].org).toBe(testOrgId);
       });
     });
+
+    it('🔒 Con rol no privilegiado (clinica_test_user), consultas raw bajo RLS devuelven 0 filas de otros tenants', async () => {
+      if (!isPostgres) return;
+
+      // Crear paciente de Org B directamente
+      const patientBId = uuidv4();
+      await Patient.create({
+        id: patientBId,
+        organizationId: orgB,
+        documentId: `V-${Date.now() % 90000000}`,
+        medicalRecordNumber: `HC-B-${Date.now() % 10000}`
+      });
+
+      // Ahora ejecutar transacción como clinica_test_user (NOSUPERUSER, NOBYPASSRLS) con tenant = orgA
+      await sequelize.transaction(async (t) => {
+        await sequelize.query(`SET LOCAL ROLE clinica_test_user;`, { transaction: t });
+        await sequelize.query(`SELECT set_config('app.current_organization_id', :orgId, true);`, {
+          replacements: { orgId: orgA },
+          transaction: t
+        });
+        await sequelize.query(`SELECT set_config('app.is_super_admin', 'false', true);`, { transaction: t });
+
+        // Consulta raw directa sobre Patients: NO debe ver al paciente de orgB
+        const [rows] = await sequelize.query(
+          `SELECT id, "organizationId" FROM "Patients" WHERE id = :id;`,
+          {
+            replacements: { id: patientBId },
+            transaction: t
+          }
+        );
+
+        expect(rows).toHaveLength(0); // Aislamiento absoluto por motor PostgreSQL RLS
+      });
+    });
+
+    it('🔒 Con rol no privilegiado, inserción cruzada en tabla protegida arroja violación de política RLS WITH CHECK', async () => {
+      if (!isPostgres) return;
+
+      await expect(
+        sequelize.transaction(async (t) => {
+          await sequelize.query(`SET LOCAL ROLE clinica_test_user;`, { transaction: t });
+          await sequelize.query(`SELECT set_config('app.current_organization_id', :orgId, true);`, {
+            replacements: { orgId: orgA },
+            transaction: t
+          });
+          await sequelize.query(`SELECT set_config('app.is_super_admin', 'false', true);`, { transaction: t });
+
+          // Intentar insertar fila con organizationId = orgB bajo el contexto de orgA
+          await sequelize.query(`
+            INSERT INTO "Patients" (id, "organizationId", "documentId", "medicalRecordNumber", "createdAt", "updatedAt")
+            VALUES (:id, :badOrg, 'V-33334444', 'HC-BAD-1', NOW(), NOW());
+          `, {
+            replacements: { id: uuidv4(), badOrg: orgB },
+            transaction: t
+          });
+        })
+      ).rejects.toThrow(/política de seguridad de registros|row-level security policy/i);
+    });
+
+    it('🔒 Solicitudes concurrentes en conexiones separadas garantizan aislamiento simultáneo sin cross-talk', async () => {
+      if (!isPostgres) return;
+
+      const runTenantTask = async (orgId) => {
+        return sequelize.transaction(async (t) => {
+          await sequelize.query(`SET LOCAL ROLE clinica_test_user;`, { transaction: t });
+          await sequelize.query(`SELECT set_config('app.current_organization_id', :orgId, true);`, {
+            replacements: { orgId },
+            transaction: t
+          });
+          await sequelize.query(`SELECT set_config('app.is_super_admin', 'false', true);`, { transaction: t });
+
+          // Pequeño retardo para forzar concurrencia real entre conexiones
+          await new Promise(r => setTimeout(r, 40));
+
+          const [res] = await sequelize.query(
+            `SELECT current_setting('app.current_organization_id', true) AS active_org;`,
+            { transaction: t }
+          );
+          return res[0].active_org;
+        });
+      };
+
+      const [activeA, activeB] = await Promise.all([
+        runTenantTask(orgA),
+        runTenantTask(orgB)
+      ]);
+
+      expect(activeA).toBe(orgA);
+      expect(activeB).toBe(orgB);
+    });
   });
 
   // =========================================================================
@@ -180,13 +430,13 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
       const maliciousPaymentId = uuidv4();
       jest.spyOn(Payment, 'findByPk').mockResolvedValue({
         id: maliciousPaymentId,
-        organizationId: 'org-test-1',
+        organizationId: orgA,
         receiptUrl: '/uploads/../../server/.env'
       });
 
       const req = {
         params: { id: maliciousPaymentId },
-        user: { id: uuidv4(), organizationId: 'org-test-1', role: 'ADMIN' },
+        user: { id: uuidv4(), organizationId: orgA, role: 'ADMIN' },
         withTenantTransaction: async (cb) => cb(null)
       };
 
@@ -210,13 +460,13 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
       const paymentId = uuidv4();
       jest.spyOn(Payment, 'findByPk').mockResolvedValue({
         id: paymentId,
-        organizationId: 'org-victim',
-        receiptUrl: 'tenants/org-victim/receipts/recibo.pdf'
+        organizationId: orgA,
+        receiptUrl: `tenants/${orgA}/receipts/recibo.pdf`
       });
 
       const req = {
         params: { id: paymentId },
-        user: { id: uuidv4(), organizationId: 'org-attacker', role: 'ADMIN' },
+        user: { id: uuidv4(), organizationId: orgB, role: 'ADMIN' },
         withTenantTransaction: async (cb) => cb(null)
       };
 
@@ -237,11 +487,127 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
   });
 
   // =========================================================================
-  // 4. AUDITORÍA: getLatestHash FAIL-CLOSED, ADVISORY LOCK & REDACCIÓN
+  // 4. AISLAMIENTO Y BLOQUEO DE ACCESO CRUZADO EN CONTROLADORES SENSIBLES
   // =========================================================================
-  describe('4. Auditoría: getLatestHash Fail-Closed, Advisory Lock & Redacción de Secretos', () => {
+  describe('4. Controladores Sensibles: Aislamiento Transaccional y Bloqueo Cross-Tenant', () => {
+    it('🔒 Patient Controller: rechaza getPatientById si el paciente pertenece a otra organización', async () => {
+      const patientId = uuidv4();
+
+      await Patient.create({
+        id: patientId,
+        organizationId: orgA,
+        documentId: `V-${Date.now() % 90000000}`,
+        medicalRecordNumber: `HC-V-${Date.now() % 10000}`
+      });
+
+      const req = createMockReq({
+        params: { id: patientId },
+        userOrgId: orgB,
+        role: 'ADMIN'
+      });
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await patientController.getPatientById(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ message: expect.stringMatching(/no encontrado/i) }));
+    });
+
+    it('🔒 Payment Controller: rechaza deletePayment y updatePayment de pagos de otra clínica', async () => {
+      const paymentId = uuidv4();
+
+      await Payment.create({
+        id: paymentId,
+        organizationId: orgA,
+        amount: 150.00,
+        status: 'Pending',
+        concept: 'Consulta Especializada'
+      });
+
+      // Intento de borrado desde orgB
+      const reqDelete = createMockReq({
+        params: { id: paymentId },
+        userOrgId: orgB,
+        role: 'ADMIN'
+      });
+      const resDelete = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await paymentController.deletePayment(reqDelete, resDelete);
+      expect(resDelete.status).toHaveBeenCalledWith(404);
+
+      // Intento de actualización desde orgB
+      const reqUpdate = createMockReq({
+        params: { id: paymentId },
+        body: { amount: 10.00 },
+        userOrgId: orgB,
+        role: 'ADMIN'
+      });
+      const resUpdate = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await paymentController.updatePayment(reqUpdate, resUpdate);
+      expect(resUpdate.status).toHaveBeenCalledWith(404);
+    });
+
+    it('🔒 Lab Result Controller: rechaza getPatientLabs para pacientes de otra organización', async () => {
+      const patientId = uuidv4();
+
+      await Patient.create({
+        id: patientId,
+        organizationId: orgA,
+        documentId: `V-${Date.now() % 90000000}`,
+        medicalRecordNumber: `HC-L-${Date.now() % 10000}`
+      });
+
+      const req = createMockReq({
+        params: { patientId },
+        userOrgId: orgB,
+        role: 'DOCTOR'
+      });
+      const res = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await labResultController.getPatientLabs(req, res);
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it('🔒 Inventory Controller: rechaza deleteItem y registerMovement sobre ítems de otra clínica', async () => {
+      const itemId = uuidv4();
+
+      await InventoryItem.create({
+        id: itemId,
+        organizationId: orgA,
+        code: `SKU-${Date.now() % 10000}`,
+        name: 'Reactivo Clínico Confidencial',
+        itemType: 'PRODUCT',
+        stockCurrent: 50
+      });
+
+      const reqDelete = createMockReq({
+        params: { id: itemId },
+        userOrgId: orgB,
+        role: 'ADMIN'
+      });
+      const resDelete = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await inventoryController.deleteItem(reqDelete, resDelete);
+      expect(resDelete.status).toHaveBeenCalledWith(403);
+
+      const reqMovement = createMockReq({
+        body: { itemId, quantity: 5, movementType: 'CLINICAL_CONSUMPTION' },
+        userOrgId: orgB,
+        role: 'ADMIN'
+      });
+      const resMovement = { status: jest.fn().mockReturnThis(), json: jest.fn() };
+
+      await inventoryController.registerMovement(reqMovement, resMovement);
+      expect(resMovement.status).toHaveBeenCalledWith(403);
+    });
+  });
+
+  // =========================================================================
+  // 5. AUDITORÍA: getLatestHash FAIL-CLOSED, ADVISORY LOCK & REDACCIÓN
+  // =========================================================================
+  describe('5. Auditoría: getLatestHash Fail-Closed, Advisory Lock & Redacción de Secretos', () => {
     it('🔒 getLatestHash() debe propagar errores y NUNCA devolver GENESIS_HASH como fallback ante fallo de query', async () => {
-      const { AuditLog } = require('../../models');
       const findOneSpy = jest.spyOn(AuditLog, 'findOne').mockRejectedValueOnce(new Error('Connection terminated unexpectedly'));
 
       await expect(
@@ -259,7 +625,8 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
           action: 'MEDICAL_RECORD_SIGN',
           entity: 'MedicalRecord',
           entityId: 'med-rec-critical',
-          isCritical: true
+          isCritical: true,
+          organizationId: orgA
         })
       ).rejects.toThrow(/CRITICAL_AUDIT_LOG_FAILED/);
 
@@ -271,6 +638,7 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
         action: 'USER_PASSWORD_CHANGE',
         entity: 'User',
         entityId: 'user-redact-test',
+        organizationId: orgA,
         oldValues: { password: 'old-plain-password', email: 'user@test.com' },
         newValues: { password: 'new-plain-password', resetToken: 'secret-token-xyz' },
         metadata: { apiKey: 'key_1234567890' }
@@ -286,13 +654,12 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
   });
 
   // =========================================================================
-  // 5. MIGRACIÓN RLS FAIL-FAST Y PRODUCTION CHECK STRICT
+  // 6. MIGRACIÓN RLS FAIL-FAST Y PRODUCTION CHECK STRICT
   // =========================================================================
-  describe('5. Verificación de Migración RLS y Production Check Estricto', () => {
+  describe('6. Verificación de Migración RLS y Production Check Estricto', () => {
     it('🔒 Migración RLS debe abortar con error si falta una tabla esperada o no tiene políticas', async () => {
       const rlsMigration = require('../../migrations/20261007210000-enable-postgresql-rls-and-tenant-columns');
       
-      // Simular que una de las tablas requeridas no existe
       const mockQueryInterface = {
         tableExists: jest.fn().mockImplementation(async (name) => {
           if (name === 'MedicalRecords') return false; // Falta tabla crítica
