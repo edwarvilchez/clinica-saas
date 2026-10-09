@@ -8,7 +8,8 @@
 const path = require('path');
 const { ProductionReadinessChecker } = require('../server/src/scripts/productionCheck');
 
-const checker = new ProductionReadinessChecker();
+const isNonStrict = process.argv.includes('--non-strict');
+const checker = new ProductionReadinessChecker({ strict: !isNonStrict });
 checker
   .runAll()
   .then(report => {

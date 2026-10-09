@@ -132,13 +132,24 @@ class FileStorageService {
       throw new Error('Security Error: Path traversal attempt blocked');
     }
 
-    const absolute = path.resolve(this.baseDir, candidatePath);
+    const canonicalBase = path.resolve(this.baseDir);
+    const resolvedPath = path.resolve(canonicalBase, candidatePath);
 
-    if (!absolute.startsWith(this.baseDir)) {
+    // Enforce boundary with directory separator
+    if (!resolvedPath.startsWith(canonicalBase + path.sep) && resolvedPath !== canonicalBase) {
       throw new Error('Security Error: Path traversal attempt blocked');
     }
 
-    return absolute;
+    // Verify realpath against symlink escapes if file exists
+    if (fs.existsSync(resolvedPath)) {
+      const real = fs.realpathSync(resolvedPath);
+      if (!real.startsWith(canonicalBase + path.sep) && real !== canonicalBase) {
+        throw new Error('Security Error: Symlink traversal escape blocked');
+      }
+      return real;
+    }
+
+    return resolvedPath;
   }
 
   /**

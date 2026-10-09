@@ -27,6 +27,26 @@ if (!fs.existsSync(config.backupDir)) {
   fs.mkdirSync(config.backupDir, { recursive: true });
 }
 
+const resolvePgBinary = (binName) => {
+  if (process.env.PG_BIN_PATH) {
+    const candidate = path.join(process.env.PG_BIN_PATH, binName + (process.platform === 'win32' ? '.exe' : ''));
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  if (process.platform === 'win32') {
+    const defaultWinPaths = [
+      'C:\\Program Files\\PostgreSQL\\16\\bin',
+      'C:\\Program Files\\PostgreSQL\\15\\bin',
+      'C:\\Program Files\\PostgreSQL\\14\\bin',
+      'C:\\Program Files\\PostgreSQL\\13\\bin'
+    ];
+    for (const p of defaultWinPaths) {
+      const candidate = path.join(p, `${binName}.exe`);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return binName;
+};
+
 const formatTimestamp = () => {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
@@ -113,7 +133,8 @@ const executeBackup = async (options = {}) => {
   ];
 
   await new Promise((resolve, reject) => {
-    const proc = spawn('pg_dump', args, { env });
+    const pgDumpExecutable = resolvePgBinary('pg_dump');
+    const proc = spawn(pgDumpExecutable, args, { env });
     let stderr = '';
     proc.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
     proc.on('close', (code) => {

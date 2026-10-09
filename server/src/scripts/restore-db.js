@@ -19,6 +19,26 @@ const config = {
   dbPassword: process.env.DB_PASSWORD || ''
 };
 
+const resolvePgBinary = (binName) => {
+  if (process.env.PG_BIN_PATH) {
+    const candidate = path.join(process.env.PG_BIN_PATH, binName + (process.platform === 'win32' ? '.exe' : ''));
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  if (process.platform === 'win32') {
+    const defaultWinPaths = [
+      'C:\\Program Files\\PostgreSQL\\16\\bin',
+      'C:\\Program Files\\PostgreSQL\\15\\bin',
+      'C:\\Program Files\\PostgreSQL\\14\\bin',
+      'C:\\Program Files\\PostgreSQL\\13\\bin'
+    ];
+    for (const p of defaultWinPaths) {
+      const candidate = path.join(p, `${binName}.exe`);
+      if (fs.existsSync(candidate)) return candidate;
+    }
+  }
+  return binName;
+};
+
 const verifySha256 = async (filePath, checksumFilePath) => {
   if (!fs.existsSync(checksumFilePath)) {
     throw new Error(`Archivo de verificación checksum no encontrado: ${checksumFilePath}`);
@@ -107,7 +127,8 @@ const executeRestore = async (options = {}) => {
     ];
 
     await new Promise((resolve, reject) => {
-      const proc = spawn('pg_restore', args, { env });
+      const pgRestoreExecutable = resolvePgBinary('pg_restore');
+      const proc = spawn(pgRestoreExecutable, args, { env });
       let stderr = '';
       proc.stderr.on('data', chunk => { stderr += chunk.toString(); });
       proc.on('close', code => {
@@ -134,3 +155,20 @@ module.exports = {
   verifySha256,
   decryptFile
 };
+
+if (require.main === module) {
+  const filePath = process.argv[2];
+  if (!filePath) {
+    console.error('Uso: node restore-db.js <ruta_del_archivo_dump>');
+    process.exit(1);
+  }
+  executeRestore({ file: filePath })
+    .then((res) => {
+      console.log('Resultado:', res);
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('Error durante la restauración:', err.message);
+      process.exit(1);
+    });
+}

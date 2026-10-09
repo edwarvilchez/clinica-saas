@@ -1,6 +1,7 @@
 const { User, Patient, Doctor, LabTest, Role, Specialty, sequelize } = require('../models');
 const fs = require('fs');
 const { isCsvFile, isXlsxFile, validateRecord, parseCsv, parseXlsx } = require('../services/importService');
+const { withTenantTransaction } = require('../utils/tenantRls');
 
 exports.importData = async (req, res) => {
   const { type } = req.params;
@@ -27,6 +28,9 @@ exports.importData = async (req, res) => {
     if (records.length > 5000) throw new Error('El archivo excede el máximo permitido de 5,000 filas');
 
     let rowIndex = 1;
+    const seenDocsInBatch = new Set();
+    const IdentityDocumentService = require('../services/identityDocument.service');
+
     for (const record of records) {
       rowIndex++;
       const validationErrors = validateRecord(type, record, rowIndex);
@@ -35,25 +39,64 @@ exports.importData = async (req, res) => {
         continue;
       }
 
-      const t = await sequelize.transaction();
-      try {
-        if (type === 'patients') await importPatient(record, t, userOrgId);
-        else if (type === 'doctors') await importDoctor(record, t, userOrgId);
-        else if (type === 'lab_catalog') await importLabTest(record, t, userOrgId);
-        else if (type === 'pharmacy_inventory' || type === 'inventory') await importInventoryItem(record, t, userOrgId);
-        else if (type === 'insurance_companies') await importInsuranceCompany(record, t, userOrgId);
-        else if (type === 'baremos') await importBaremoService(record, t, userOrgId);
-        else throw new Error(`Tipo de importación inválido: ${type}`);
-
-        if (dryRun) {
-          await t.rollback(); // En modo simulación siempre revertimos cambios
-        } else {
-          await t.commit();
+      if (type === 'patients') {
+        const docVal = record.documentId || record.documentNumber;
+        const parsed = IdentityDocumentService.parse(docVal);
+        if (!parsed.isValid) {
+          errors.push({ row: rowIndex, field: 'documentId', message: parsed.error });
+          continue;
         }
+
+        // 1. Detección de duplicados dentro del mismo archivo
+        if (seenDocsInBatch.has(parsed.normalized)) {
+          errors.push({
+            row: rowIndex,
+            field: 'documentId',
+            message: `Documento de identidad duplicado dentro del mismo archivo (${parsed.canonical}).`
+          });
+          continue;
+        }
+        seenDocsInBatch.add(parsed.normalized);
+
+        // 2. Detección de duplicados contra la base de datos
+        const dupCheck = await IdentityDocumentService.checkDuplicate({
+          documentInput: parsed.canonical,
+          organizationId: userOrgId,
+          PatientModel: Patient
+        });
+        if (dupCheck.isDuplicate) {
+          errors.push({
+            row: rowIndex,
+            field: 'documentId',
+            message: `El registro ya existe. Verifique el número de documento ingresado (${parsed.canonical}).`
+          });
+          continue;
+        }
+
+        record._parsedDoc = parsed;
+      }
+
+      try {
+        await withTenantTransaction(sequelize, { organizationId: userOrgId, isSuperAdmin }, async (t) => {
+          if (type === 'patients') await importPatient(record, t, userOrgId);
+          else if (type === 'doctors') await importDoctor(record, t, userOrgId);
+          else if (type === 'lab_catalog') await importLabTest(record, t, userOrgId);
+          else if (type === 'pharmacy_inventory' || type === 'inventory') await importInventoryItem(record, t, userOrgId);
+          else if (type === 'insurance_companies') await importInsuranceCompany(record, t, userOrgId);
+          else if (type === 'baremos') await importBaremoService(record, t, userOrgId);
+          else throw new Error(`Tipo de importación inválido: ${type}`);
+
+          if (dryRun) {
+            throw new Error('__DRY_RUN_ROLLBACK__');
+          }
+        });
         successCount++;
       } catch (err) {
-        await t.rollback();
-        errors.push({ row: rowIndex, field: 'transaction', message: err.message });
+        if (err.message === '__DRY_RUN_ROLLBACK__') {
+          successCount++;
+        } else {
+          errors.push({ row: rowIndex, field: 'transaction', message: err.message });
+        }
       }
     }
 
@@ -92,9 +135,20 @@ async function importPatient(data, transaction, organizationId) {
         organizationId
     }, { transaction });
 
+    const IdentityDocumentService = require('../services/identityDocument.service');
+    const parsed = data._parsedDoc || IdentityDocumentService.parse(data.documentId || data.documentNumber);
+    const canonicalDoc = parsed.isValid ? parsed.canonical : data.documentId;
+    const normalizedDoc = parsed.isValid ? parsed.normalized : data.documentId;
+    const prefix = parsed.isValid ? parsed.prefix : 'V';
+    const number = parsed.isValid ? parsed.number : data.documentId;
+
     await Patient.create({
         userId: user.id,
-        documentId: data.documentId,
+        documentId: canonicalDoc,
+        documentNumberNormalized: normalizedDoc,
+        documentPrefix: prefix,
+        documentNumber: number,
+        medicalRecordNumber: `HC-${canonicalDoc}`,
         birthDate: data.birthDate,
         gender: data.gender,
         phone: data.phone,

@@ -19,6 +19,11 @@ async function setTenantContext(sequelize, { organizationId, isSuperAdmin = fals
   const orgId = organizationId || context.getOrgId() || '';
   const isSuper = isSuperAdmin !== undefined ? isSuperAdmin : (context.getRole() === 'SUPERADMIN' || context.getRole() === 'PLATFORM_ADMIN');
 
+  if (!transaction && process.env.NODE_ENV !== 'test') {
+    const logger = require('./logger');
+    logger.warn({ orgId }, '⚠️ setTenantContext called without explicit transaction; highly discouraged due to connection pooling risks');
+  }
+
   const query = `
     SELECT 
       set_config('app.current_organization_id', :orgId, :isLocal),
@@ -37,30 +42,84 @@ async function setTenantContext(sequelize, { organizationId, isSuperAdmin = fals
 }
 
 /**
+ * Clears PostgreSQL session variables for RLS to prevent leakage in connection pools
+ * @param {import('sequelize').Sequelize} sequelize 
+ * @param {object} [options]
+ * @param {import('sequelize').Transaction} [options.transaction]
+ */
+async function clearTenantContext(sequelize, { transaction } = {}) {
+  const query = `
+    SELECT 
+      set_config('app.current_organization_id', '', :isLocal),
+      set_config('app.is_super_admin', 'false', :isLocal);
+  `;
+
+  await sequelize.query(query, {
+    replacements: {
+      isLocal: !!transaction
+    },
+    transaction,
+    logging: false
+  });
+}
+
+/**
  * Executes a callback within a tenant-scoped database transaction with RLS guaranteed
  * @param {import('sequelize').Sequelize} sequelize 
- * @param {object} options
- * @param {string} [options.organizationId]
- * @param {boolean} [options.isSuperAdmin]
- * @param {function(import('sequelize').Transaction): Promise<any>} callback
+ * @param {object|function} optionsOrCallback
+ * @param {string} [optionsOrCallback.organizationId]
+ * @param {boolean} [optionsOrCallback.isSuperAdmin]
+ * @param {function(import('sequelize').Transaction): Promise<any>} [maybeCallback]
  */
-async function withTenantTransaction(sequelize, { organizationId, isSuperAdmin } = {}, callback) {
-  if (typeof options === 'function') {
-    callback = options;
+async function withTenantTransaction(sequelize, optionsOrCallback, maybeCallback) {
+  let options = {};
+  let callback;
+  if (typeof optionsOrCallback === 'function') {
+    callback = optionsOrCallback;
     options = {};
+  } else {
+    options = optionsOrCallback || {};
+    callback = maybeCallback;
   }
 
+  const { organizationId, isSuperAdmin } = options;
+
   return sequelize.transaction(async (t) => {
-    await setTenantContext(sequelize, {
-      organizationId,
-      isSuperAdmin,
-      transaction: t
-    });
+    try {
+      await module.exports.setTenantContext(sequelize, {
+        organizationId,
+        isSuperAdmin,
+        transaction: t
+      });
+    } catch (err) {
+      const tenantErr = new Error(`[TENANT_CONTEXT_FAILED] Failed to initialize RLS tenant context inside transaction: ${err.message}`);
+      tenantErr.code = 'TENANT_CONTEXT_FAILED';
+      tenantErr.original = err;
+      throw tenantErr;
+    }
     return callback(t);
   });
 }
 
+/**
+ * Standard resolver: retrieves req.withTenantTransaction or defaults to withTenantTransaction
+ * @param {object} req 
+ * @returns {function(function(import('sequelize').Transaction): Promise<any>): Promise<any>}
+ */
+function getTenantTransaction(req) {
+  if (req && typeof req.withTenantTransaction === 'function') {
+    return req.withTenantTransaction.bind(req);
+  }
+  const defaultSequelize = require('../config/db.config');
+  return (callback) => withTenantTransaction(defaultSequelize, {
+    organizationId: req?.user?.organizationId,
+    isSuperAdmin: req?.user?.role === 'SUPERADMIN' || req?.user?.role === 'PLATFORM_ADMIN'
+  }, callback);
+}
+
 module.exports = {
   setTenantContext,
-  withTenantTransaction
+  clearTenantContext,
+  withTenantTransaction,
+  getTenantTransaction
 };

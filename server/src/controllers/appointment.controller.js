@@ -1,8 +1,9 @@
-const { Appointment, Patient, Doctor, User } = require('../models');
+const { Appointment, Patient, Doctor, User, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const whatsapp = require('../utils/whatsapp.service');
 const { validateAppointment } = require('../utils/appointmentValidator');
 const auditService = require('../services/audit.service');
+const { getTenantTransaction } = require('../utils/tenantRls');
 
 exports.createAppointment = async (req, res) => {
   try {
@@ -17,39 +18,49 @@ exports.createAppointment = async (req, res) => {
     }
     
     const organizationId = req.user?.organizationId || req.body.organizationId;
+    const withTx = getTenantTransaction(req);
 
-    const appointment = await Appointment.create({
-      patientId,
-      doctorId,
-      date,
-      reason,
-      notes,
-      status: 'Confirmed',
-      organizationId
+    const result = await withTx(async (t) => {
+      const appointment = await Appointment.create({
+        patientId,
+        doctorId,
+        date,
+        reason,
+        notes,
+        status: 'Confirmed',
+        organizationId
+      }, { transaction: t });
+
+      // Fetch details for WhatsApp
+      const appointmentDetails = await Appointment.findByPk(appointment.id, {
+        include: [
+          { model: Patient, include: [User] },
+          { model: Doctor, include: [User] }
+        ],
+        transaction: t
+      });
+
+      return { appointment, appointmentDetails };
     });
 
-    // Fetch details for WhatsApp
-    const appointmentDetails = await Appointment.findByPk(appointment.id, {
-      include: [
-        { model: Patient, include: [User] },
-        { model: Doctor, include: [User] }
-      ]
-    });
+    const { appointment, appointmentDetails } = result;
 
-    const patientPhone = appointmentDetails.Patient.phone;
-    const patientName = `${appointmentDetails.Patient.User.firstName} ${appointmentDetails.Patient.User.lastName}`;
-    const doctorName = `${appointmentDetails.Doctor.User.firstName} ${appointmentDetails.Doctor.User.lastName}`;
+    const patientPhone = appointmentDetails?.Patient?.phone;
+    const patientName = `${appointmentDetails?.Patient?.User?.firstName || ''} ${appointmentDetails?.Patient?.User?.lastName || ''}`.trim() || 'Paciente';
+    const doctorName = `${appointmentDetails?.Doctor?.User?.firstName || ''} ${appointmentDetails?.Doctor?.User?.lastName || ''}`.trim() || 'Médico';
     const appointmentDate = new Date(date);
     
     // Send WhatsApp with Calendar Link
-    whatsapp.sendAppointmentConfirmation(patientPhone, {
-      patientName,
-      doctorName,
-      date: appointmentDate.toLocaleDateString(),
-      time: appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      appointmentId: appointment.id,
-      rawDate: appointmentDate
-    }).catch(err => console.error('WhatsApp Error:', err));
+    if (patientPhone) {
+      whatsapp.sendAppointmentConfirmation(patientPhone, {
+        patientName,
+        doctorName,
+        date: appointmentDate.toLocaleDateString(),
+        time: appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        appointmentId: appointment.id,
+        rawDate: appointmentDate
+      }).catch(err => console.error('WhatsApp Error:', err));
+    }
 
     // Tamper-evident Audit Log: Appointment creation
     auditService.logEvent({
@@ -104,7 +115,7 @@ exports.getAppointments = async (req, res) => {
     const offset = (page - 1) * limit;
 
     let whereClause = {};
-    const adminRoles = ['SUPERADMIN', 'SUPERADMIN', 'ADMINISTRATIVE', 'NURSE', 'RECEPTIONIST'];
+    const adminRoles = ['SUPERADMIN', 'ADMINISTRATIVE', 'NURSE', 'RECEPTIONIST'];
 
     // Dynamic Include for Doctor to filter by Organization
     let doctorUserInclude = { model: User, attributes: ['id', 'firstName', 'lastName', 'email', 'organizationId'] };
@@ -115,49 +126,65 @@ exports.getAppointments = async (req, res) => {
         doctorUserInclude.where = { organizationId };
     }
 
-    if (adminRoles.includes(userRole)) {
-        // Admin Roles: See all appointments in their Organization (via Doctor filter above)
-        whereClause = {};
-    } else {
-        // Doctor or Patient: Specific filtering
-        const conditions = [];
+    const withTx = getTenantTransaction(req);
+    const result = await withTx(async (t) => {
+      if (adminRoles.includes(userRole)) {
+          // Admin Roles: See all appointments in their Organization
+          whereClause = {};
+          if (organizationId && !isSuperAdmin) {
+            whereClause.organizationId = organizationId;
+          }
+      } else {
+          // Doctor or Patient: Specific filtering
+          const conditions = [];
 
-        if (userRole === 'PATIENT') {
-             const patient = await Patient.findOne({ where: { userId } });
-             if (patient) conditions.push({ patientId: patient.id });
-        } else if (userRole === 'DOCTOR') {
-             const doctor = await Doctor.findOne({ where: { userId } });
-             if (doctor) conditions.push({ doctorId: doctor.id });
-        }
+          if (userRole === 'PATIENT') {
+               const patient = await Patient.findOne({ where: { userId }, transaction: t });
+               if (patient) conditions.push({ patientId: patient.id });
+          } else if (userRole === 'DOCTOR') {
+               const doctor = await Doctor.findOne({ where: { userId }, transaction: t });
+               if (doctor) conditions.push({ doctorId: doctor.id });
+          }
 
-        if (conditions.length > 0) {
-            whereClause = { [Op.or]: conditions };
-        } else {
-            return res.json({ appointments: [], totalPages: 0, currentPage: 1, total: 0 });
-        }
-    }
+          if (conditions.length > 0) {
+              whereClause = { [Op.or]: conditions };
+              if (organizationId && !isSuperAdmin) {
+                whereClause.organizationId = organizationId;
+              }
+          } else {
+              return { empty: true };
+          }
+      }
 
-    const { count, rows } = await Appointment.findAndCountAll({
-      where: whereClause,
-      limit,
-      offset,
-      include: [
-        { model: Patient, include: [User] },
-        {
-            model: Doctor,
-            include: [doctorUserInclude],
-            required: true // Inner join to ensure Organization filter applies
-        }
-      ],
-      order: [['date', 'ASC']],
-      distinct: true // Para contar correctamente con includes
+      const { count, rows } = await Appointment.findAndCountAll({
+        where: whereClause,
+        limit,
+        offset,
+        include: [
+          { model: Patient, include: [User] },
+          {
+              model: Doctor,
+              include: [doctorUserInclude],
+              required: true // Inner join to ensure Organization filter applies
+          }
+        ],
+        order: [['date', 'ASC']],
+        distinct: true,
+        transaction: t
+      });
+
+      return { count, rows };
     });
 
+    if (result.empty) {
+      return res.json({ appointments: [], totalPages: 0, currentPage: 1, total: 0 });
+    }
+
     res.json({
-      appointments: rows,
-      totalPages: Math.ceil(count / limit),
+      appointments: result.rows,
+      totalPages: Math.ceil(result.count / limit),
       currentPage: page,
-      total: count,
+      total: result.count,
     });
   } catch (error) {
     const logger = require('../utils/logger');
@@ -173,34 +200,56 @@ exports.updateStatus = async (req, res) => {
     const organizationId = req.user?.organizationId;
     const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
     
-    // Get old data for audit with organization check
     const whereClause = { id };
     if (!isSuperAdmin && organizationId) {
       whereClause.organizationId = organizationId;
     }
 
-    const oldAppointment = await Appointment.findOne({ where: whereClause });
-    if (!oldAppointment) return res.status(404).json({ error: 'Cita no encontrada o acceso no autorizado' });
+    const withTx = getTenantTransaction(req);
+    const result = await withTx(async (t) => {
+      const oldAppointment = await Appointment.findOne({ where: whereClause, transaction: t });
+      if (!oldAppointment) return { status: 404, payload: { error: 'Cita no encontrada o acceso no autorizado' } };
 
-    await Appointment.update({ status }, { where: whereClause });
-    
-    const updatedAppointment = await Appointment.findOne({ where: whereClause });
+      await Appointment.update({ status }, { where: whereClause, transaction: t });
+      
+      let patientPhone = null;
+      let patientFirstName = null;
+      let appointmentDate = null;
 
-    // Handle specific status updates (like cancellation) if done via this generic endpoint
-    if (status === 'Cancelled') {
-        const appointment = await Appointment.findOne({
-            where: whereClause,
-            include: [{ model: Patient, include: [User] }]
-        });
-        
-        if (appointment) {
-            const dateObj = new Date(appointment.date);
-            whatsapp.sendCancellationNotice(appointment.Patient.User.phone, {
-                patientName: appointment.Patient.User.firstName,
-                date: dateObj.toLocaleDateString(),
-                time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            }).catch(e => console.error(e));
-        }
+      if (status === 'Cancelled') {
+          const appointment = await Appointment.findOne({
+              where: whereClause,
+              include: [{ model: Patient, include: [User] }],
+              transaction: t
+          });
+          
+          if (appointment) {
+              appointmentDate = new Date(appointment.date);
+              patientPhone = appointment.Patient?.User?.phone;
+              patientFirstName = appointment.Patient?.User?.firstName;
+          }
+      }
+
+      return {
+        status: 200,
+        payload: { message: 'Status updated' },
+        oldStatus: oldAppointment.status,
+        patientPhone,
+        patientFirstName,
+        appointmentDate
+      };
+    });
+
+    if (result.status !== 200) {
+      return res.status(result.status).json(result.payload);
+    }
+
+    if (result.patientPhone && result.patientFirstName) {
+      whatsapp.sendCancellationNotice(result.patientPhone, {
+          patientName: result.patientFirstName,
+          date: result.appointmentDate.toLocaleDateString(),
+          time: result.appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }).catch(e => console.error(e));
     }
 
     // Tamper-evident Audit Log: Status update
@@ -210,12 +259,12 @@ exports.updateStatus = async (req, res) => {
       entityId: id,
       organizationId,
       actorUserId: req.user?.id,
-      oldValues: { status: oldAppointment.status },
+      oldValues: { status: result.oldStatus },
       newValues: { status },
       ip: req.ip
     }).catch(err => console.error('Audit update appointment error:', err));
 
-    res.json({ message: 'Status updated' });
+    res.json(result.payload);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -232,24 +281,45 @@ exports.cancelAppointment = async (req, res) => {
           whereClause.organizationId = organizationId;
         }
 
-        const appointment = await Appointment.findOne({
-            where: whereClause,
-            include: [{ model: Patient, include: [User] }]
+        const withTx = getTenantTransaction(req);
+        const result = await withTx(async (t) => {
+          const appointment = await Appointment.findOne({
+              where: whereClause,
+              include: [{ model: Patient, include: [User] }],
+              transaction: t
+          });
+          if (!appointment) return { status: 404, payload: { error: 'Cita no encontrada o acceso no autorizado' } };
+
+          const oldValues = appointment.toJSON();
+          appointment.status = 'Cancelled';
+          await appointment.save({ transaction: t });
+
+          const dateObj = new Date(appointment.date);
+          const patientPhone = appointment.Patient?.User?.phone;
+          const patientName = appointment.Patient?.User?.firstName;
+
+          return {
+            status: 200,
+            payload: { message: 'Cita cancelada con éxito' },
+            oldValues,
+            dateObj,
+            patientPhone,
+            patientName
+          };
         });
-        if (!appointment) return res.status(404).json({ error: 'Cita no encontrada o acceso no autorizado' });
 
-        const oldValues = appointment.toJSON();
-        appointment.status = 'Cancelled';
-        await appointment.save();
-
-        const dateObj = new Date(appointment.date);
+        if (result.status !== 200) {
+          return res.status(result.status).json(result.payload);
+        }
         
         // Notify patient
-        whatsapp.sendCancellationNotice(appointment.Patient.User.phone, {
-            patientName: appointment.Patient.User.firstName,
-            date: dateObj.toLocaleDateString(),
-            time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
+        if (result.patientPhone && result.patientName) {
+          whatsapp.sendCancellationNotice(result.patientPhone, {
+              patientName: result.patientName,
+              date: result.dateObj.toLocaleDateString(),
+              time: result.dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }).catch(e => console.error(e));
+        }
 
         // Tamper-evident Audit Log: Appointment cancellation
         auditService.logEvent({
@@ -258,12 +328,12 @@ exports.cancelAppointment = async (req, res) => {
           entityId: id,
           organizationId,
           actorUserId: req.user?.id,
-          oldValues: { status: oldValues.status },
+          oldValues: { status: result.oldValues.status },
           newValues: { status: 'Cancelled' },
           ip: req.ip
         }).catch(err => console.error('Audit cancel appointment error:', err));
 
-        res.json({ message: 'Cita cancelada con éxito' });
+        res.json(result.payload);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -273,37 +343,63 @@ exports.rescheduleAppointment = async (req, res) => {
     try {
         const { id } = req.params;
         const { newDate } = req.body;
+        const organizationId = req.user?.organizationId;
+        const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+        const withTx = getTenantTransaction(req);
         
-        const appointment = await Appointment.findByPk(id, {
-             include: [
-                { model: Patient, include: [User] },
-                { model: Doctor, include: [User] }
-            ]
-        });
+        const result = await withTx(async (t) => {
+          const appointment = await Appointment.findByPk(id, {
+               include: [
+                  { model: Patient, include: [User] },
+                  { model: Doctor, include: [User] }
+              ],
+              transaction: t
+          });
 
-        if (!appointment) return res.status(404).json({ error: 'Cita no encontrada' });
+          if (!appointment) return { status: 404, payload: { error: 'Cita no encontrada' } };
+          if (!isSuperAdmin && organizationId && appointment.organizationId && appointment.organizationId !== organizationId) {
+            return { status: 403, payload: { error: 'Acceso no autorizado a cita de otra organización' } };
+          }
 
-        const oldValues = appointment.toJSON();
-        appointment.date = newDate;
-        appointment.status = 'Confirmed'; // Re-confirm if it was cancelled
-        appointment.reminderSent = false; // Reset reminder
-        await appointment.save();
+          const oldValues = appointment.toJSON();
+          appointment.date = newDate;
+          appointment.status = 'Confirmed';
+          appointment.reminderSent = false;
+          await appointment.save({ transaction: t });
 
-        const patientName = `${appointment.Patient.User.firstName} ${appointment.Patient.User.lastName}`;
-        const doctorName = `${appointment.Doctor.User.firstName} ${appointment.Doctor.User.lastName}`;
-        const appointmentDate = new Date(newDate);
+          const patientName = `${appointment.Patient?.User?.firstName || ''} ${appointment.Patient?.User?.lastName || ''}`.trim() || 'Paciente';
+          const doctorName = `${appointment.Doctor?.User?.firstName || ''} ${appointment.Doctor?.User?.lastName || ''}`.trim() || 'Médico';
+          const patientPhone = appointment.Patient?.User?.phone;
+          const appointmentDate = new Date(newDate);
 
-        // Send new confirmation
-        whatsapp.sendAppointmentConfirmation(appointment.Patient.User.phone, {
+          return {
+            status: 200,
+            payload: { message: 'Cita reagendada con éxito', appointment },
+            appointment,
+            patientPhone,
             patientName,
             doctorName,
-            date: appointmentDate.toLocaleDateString(),
-            time: appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            appointmentId: appointment.id,
-            rawDate: appointmentDate
+            appointmentDate
+          };
         });
 
-        res.json({ message: 'Cita reagendada con éxito', appointment });
+        if (result.status !== 200) {
+          return res.status(result.status).json(result.payload);
+        }
+
+        // Send new confirmation
+        if (result.patientPhone) {
+          whatsapp.sendAppointmentConfirmation(result.patientPhone, {
+              patientName: result.patientName,
+              doctorName: result.doctorName,
+              date: result.appointmentDate.toLocaleDateString(),
+              time: result.appointmentDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              appointmentId: result.appointment.id,
+              rawDate: result.appointmentDate
+          }).catch(e => console.error(e));
+        }
+
+        res.json(result.payload);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

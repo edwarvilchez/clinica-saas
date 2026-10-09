@@ -5,6 +5,36 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [4.7.0] — 2026-10-08
+
+### 🇻🇪 Formato Canónico, Normalización y Unicidad de Cédulas Venezolanas (Ley Orgánica de Identificación)
+
+- **Marco Jurídico & Servicio Canónico Central (`IdentityDocumentService`):**
+  - Implementación de `IdentityDocumentService` conforme a la *Ley Orgánica de Identificación* (Gaceta Oficial N° 38.458): distinción estricta entre `V` (venezolanos) y `E` (extranjeros).
+  - Normalización determinista (`normalizeIdentityDocument`) hacia la forma compacta `V########` / `E########` (1 a 8 dígitos) para búsqueda e índices únicos.
+  - Formato canónico persistido y visualizado `V-########` / `E-########` (`canonicalize`).
+  - Matriz de equivalencia probada para detectar variantes idénticas (`V-85397898`, `V85397898`, `V 85397898`, `v-85397898`, `V.85397898`, `V-85.397.898`).
+  - Rechazo estricto de formatos inválidos (`V--`, `X-12345678`, `12345678`, etc.).
+- **Base de Datos & Aislamiento Multi-Tenant (PostgreSQL & Sequelize):**
+  - Migración `20261008100000-add-canonical-and-normalized-document-to-patients.js`:
+    - Incorporación de columna `documentNumberNormalized` y migración canónica segura de registros históricos sin pérdida de datos.
+    - Creación de índices parciales únicos multi-tenant `uq_patients_org_doc_normalized` (por clínica/tenant) y `uq_patients_global_doc_normalized` (pacientes globales).
+    - Índices B-tree optimizados para búsquedas ultra-rápidas `idx_patients_doc_normalized` e `idx_patients_doc_canonical`.
+  - Mapeo automático de violaciones de concurrencia de base de datos (Postgres code `23505`) a respuesta uniforme `HTTP 409 Conflict` con código `IDENTITY_DOCUMENT_ALREADY_EXISTS`.
+- **Controladores & Reglas de Negocio:**
+  - `patient.controller.js`: soporte de prevención de duplicados semánticos en creación y edición (permite mantener la propia cédula, bloquea robo de cédula de otros pacientes).
+  - Nuevo endpoint `GET /api/patients/check-document` para verificación en tiempo real desde la interfaz de usuario.
+  - Cobertura de admisión express, registro de pacientes en portal público y citas públicas.
+  - `bulk.controller.js` & `importService.js`: validación de cédulas en importación masiva (CSV/Excel) con detección intra-lote y contra base de datos.
+- **Frontend Angular:**
+  - Validación en vivo, feedback visual (`is-valid`, `is-invalid`), vista previa del formato canónico y debounce de consulta asíncrona contra el servidor.
+  - Asistente de captura con selector de nacionalidad y máscara guiada.
+- **Pruebas Automatizadas & Documentación:**
+  - Suite unitaria exhaustiva en `server/src/__tests__/unit/identityDocument.test.js` (17/17 pruebas en verde).
+  - Documento normativo de arquitectura en [`docs/IDENTITY_DOCUMENT_STANDARD.md`](docs/IDENTITY_DOCUMENT_STANDARD.md).
+
+---
+
 ## [4.6.1] — 2026-10-08
 
 ### 🐛 Estabilización y Correcciones Críticas (Frontend & Backend Hotfix)
