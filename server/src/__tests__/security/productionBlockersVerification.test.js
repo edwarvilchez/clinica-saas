@@ -37,6 +37,9 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
   const isPostgres = sequelize.getDialect() === 'postgres';
   let orgA;
   let orgB;
+  let createdTestUser = null;
+  let createdOrgA = null;
+  let createdOrgB = null;
 
   beforeAll(async () => {
     if (isPostgres) {
@@ -72,6 +75,7 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
             roleId: role.id,
             isActive: true
           });
+          createdTestUser = user;
         }
         if (orgs.length === 1) {
           orgA = orgs[0].id;
@@ -82,6 +86,7 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
             ownerId: user.id
           });
           orgB = o2.id;
+          createdOrgB = o2;
         } else {
           const o1 = await Organization.create({
             id: uuidv4(),
@@ -97,8 +102,25 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
           });
           orgA = o1.id;
           orgB = o2.id;
+          createdOrgA = o1;
+          createdOrgB = o2;
         }
       }
+    }
+  });
+
+  afterAll(async () => {
+    if (isPostgres) {
+      try {
+        await tenantRls.setTenantContext(sequelize, { isSuperAdmin: true });
+        await Patient.destroy({ where: { organizationId: [orgA, orgB] }, force: true }).catch(() => {});
+        await Payment.destroy({ where: { organizationId: [orgA, orgB] }, force: true }).catch(() => {});
+        await InventoryItem.destroy({ where: { organizationId: [orgA, orgB] }, force: true }).catch(() => {});
+        if (createdOrgA) await Organization.destroy({ where: { id: createdOrgA.id }, force: true }).catch(() => {});
+        if (createdOrgB) await Organization.destroy({ where: { id: createdOrgB.id }, force: true }).catch(() => {});
+        if (createdTestUser) await User.destroy({ where: { id: createdTestUser.id }, force: true }).catch(() => {});
+        await tenantRls.clearTenantContext(sequelize);
+      } catch (_) {}
     }
   });
 
