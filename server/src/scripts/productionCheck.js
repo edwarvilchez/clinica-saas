@@ -288,14 +288,20 @@ class ProductionReadinessChecker {
   async checkRowLevelSecurity(sequelize) {
     const category = '4. Multi-Tenant RLS';
     if (this.skipDb) {
-      this.record(category, 'RLS Enforcement', 'WARN', 'RLS check skipped via --skip-db');
+      this.record(category, 'RLS Enforcement', 'FAIL', 'Database check was skipped via --skip-db. Release requires verified database RLS.');
       return;
     }
 
     try {
-      const criticalTables = ['Patients', 'Appointments', 'MedicalRecords', 'Prescriptions', 'audit_logs', 'Payments', 'InventoryItems'];
+      const criticalTables = [
+        'Patients', 'Appointments', 'MedicalRecords', 'Prescriptions', 'VideoConsultations',
+        'LabResults', 'Doctors', 'Nurses', 'Staffs', 'Payments', 'Quotes', 'InsuranceClaims',
+        'DoctorFees', 'EmergencyTriages', 'Admissions', 'HospitalStays', 'HospitalBeds',
+        'Surgeries', 'InventoryItems', 'InventoryMovements', 'AccountCharts', 'JournalEntries',
+        'TaxRetentions', 'ClinicalServices', 'ClinicalPackages', 'Employees', 'audit_logs'
+      ];
 
-      // Query PostgreSQL catalog for row security status
+      // 1. Query PostgreSQL catalog for row security status and force row security
       const [rlsRows] = await sequelize.query(`
         SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity
         FROM pg_class c
@@ -307,31 +313,50 @@ class ProductionReadinessChecker {
       const rlsMap = new Map();
       (Array.isArray(rlsRows) ? rlsRows : [rlsRows]).forEach(r => rlsMap.set(r.relname, r));
 
-      const enabledTables = [];
+      const missingFromDb = [];
       const disabledTables = [];
+      const missingForceRls = [];
 
       criticalTables.forEach(t => {
         const info = rlsMap.get(t);
-        if (info && info.relrowsecurity) {
-          enabledTables.push(t);
+        if (!info) {
+          missingFromDb.push(t);
         } else {
-          disabledTables.push(t);
+          if (!info.relrowsecurity) disabledTables.push(t);
+          if (!info.relforcerowsecurity) missingForceRls.push(t);
         }
       });
 
-      if (disabledTables.length === 0) {
+      // 2. Query policies in pg_policy to guarantee tenant_isolation_policy exists on all tables
+      const [policyRows] = await sequelize.query(`
+        SELECT c.relname, pol.polname
+        FROM pg_policy pol
+        JOIN pg_class c ON c.oid = pol.polrelid
+        WHERE c.relname IN (${criticalTables.map(t => `'${t}'`).join(', ')});
+      `);
+
+      const policyMap = new Set((policyRows || []).map(p => `${p.relname}:${p.polname}`));
+      const missingPolicies = criticalTables.filter(t => !policyMap.has(`${t}:tenant_isolation_policy`));
+
+      if (missingFromDb.length > 0 || disabledTables.length > 0 || missingForceRls.length > 0 || missingPolicies.length > 0) {
+        const errors = [];
+        if (missingFromDb.length > 0) errors.push(`Missing tables: [${missingFromDb.join(', ')}]`);
+        if (disabledTables.length > 0) errors.push(`RLS disabled: [${disabledTables.join(', ')}]`);
+        if (missingForceRls.length > 0) errors.push(`FORCE RLS missing: [${missingForceRls.join(', ')}]`);
+        if (missingPolicies.length > 0) errors.push(`Missing policies: [${missingPolicies.join(', ')}]`);
+
         this.record(
           category,
           'Row-Level Security (RLS)',
-          'PASS',
-          `RLS is active and enforced on all critical multi-tenant tables: ${enabledTables.join(', ')}`
+          'FAIL',
+          `Critical RLS enforcement failure: ${errors.join('; ')}`
         );
       } else {
         this.record(
           category,
           'Row-Level Security (RLS)',
-          'FAIL',
-          `RLS missing or disabled on critical tables: [${disabledTables.join(', ')}]. Database multi-tenant isolation requires RLS.`
+          'PASS',
+          `RLS is active and enforced on all ${criticalTables.length} tables with FORCE RLS and active tenant_isolation_policy`
         );
       }
     } catch (err) {
@@ -339,7 +364,7 @@ class ProductionReadinessChecker {
         category,
         'Row-Level Security (RLS)',
         'FAIL',
-        `Could not inspect pg_class RLS catalog: ${err.message}`
+        `Could not inspect pg_class/pg_policy RLS catalog: ${err.message}`
       );
     }
   }
@@ -531,12 +556,14 @@ class ProductionReadinessChecker {
     }
 
     await this.checkEnvironment();
-    if (sequelizeInstance) {
+    if (this.skipDb) {
+      this.record('2. Database Connectivity', 'Database Inspection (DB Skipped)', 'FAIL', 'CRITICAL: Database inspection was skipped via --skip-db. A production release CANNOT be approved without verifying database connectivity, migrations, RLS, and audit trail.');
+    } else if (sequelizeInstance) {
       await this.checkDatabase(sequelizeInstance);
       await this.checkMigrations(sequelizeInstance);
       await this.checkRowLevelSecurity(sequelizeInstance);
       await this.checkAuditLogImmutability(sequelizeInstance);
-    } else if (!this.skipDb) {
+    } else {
       this.record('2. Database Connectivity', 'PostgreSQL Models', 'FAIL', 'Could not load Sequelize models');
     }
     await this.checkStorage();

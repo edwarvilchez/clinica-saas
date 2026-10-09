@@ -1,74 +1,100 @@
 const { LabResult, Patient, User } = require('../models');
+const { getTenantTransaction } = require('../utils/tenantRls');
 
-const validatePatientAccess = async (patientId, organizationId, role) => {
-  const isSuperAdmin = role === 'SUPERADMIN' || role === 'SUPERADMIN';
-  if (isSuperAdmin) return true;
+const validatePatientAccess = async (patientId, organizationId, role, transaction = null) => {
+  const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+  if (isSuperAdmin || !organizationId) return true;
 
-  const patient = await Patient.findByPk(patientId, { include: [User] });
+  const patient = await Patient.findByPk(patientId, { include: [User], transaction });
   if (!patient) return false;
   
-  return patient.User.organizationId === organizationId;
+  return patient.User?.organizationId === organizationId || patient.organizationId === organizationId;
 };
 
 exports.createLabResult = async (req, res) => {
   try {
-    const { organizationId, role, id: userId } = req.user;
+    const { organizationId, role } = req.user || {};
     const { patientId } = req.body;
+    const withTx = getTenantTransaction(req);
 
-    const hasAccess = await validatePatientAccess(patientId, organizationId, role);
-    if (!hasAccess) {
-      return res.status(403).json({ message: 'No tienes acceso a este paciente' });
-    }
+    const result = await withTx(async (t) => {
+      const hasAccess = await validatePatientAccess(patientId, organizationId, role, t);
+      if (!hasAccess) {
+        const err = new Error('No tienes acceso a este paciente');
+        err.status = 403;
+        throw err;
+      }
 
-    req.body.organizationId = organizationId;
-    const result = await LabResult.create(req.body);
+      req.body.organizationId = organizationId || req.body.organizationId;
+      return await LabResult.create(req.body, { transaction: t });
+    });
+
     res.status(201).json(result);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 };
 
 exports.getPatientLabs = async (req, res) => {
   try {
-    const { organizationId, role } = req.user;
+    const { organizationId, role } = req.user || {};
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
     const { patientId } = req.params;
+    const withTx = getTenantTransaction(req);
 
-    const hasAccess = await validatePatientAccess(patientId, organizationId, role);
-    if (!hasAccess) {
-      return res.status(403).json({ message: 'No tienes acceso a este paciente' });
-    }
+    const labs = await withTx(async (t) => {
+      const hasAccess = await validatePatientAccess(patientId, organizationId, role, t);
+      if (!hasAccess) {
+        const err = new Error('No tienes acceso a este paciente');
+        err.status = 403;
+        throw err;
+      }
 
-    const labs = await LabResult.findAll({ 
-      where: { patientId }, 
-      order: [['createdAt', 'DESC']] 
+      const where = { patientId };
+      if (!isSuperAdmin && organizationId) {
+        where.organizationId = organizationId;
+      }
+
+      return await LabResult.findAll({ 
+        where, 
+        order: [['createdAt', 'DESC']],
+        transaction: t
+      });
     });
+
     res.json(labs);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 };
 
 exports.getAllLabs = async (req, res) => {
   try {
-    const { organizationId, role } = req.user;
-    const isSuperAdmin = role === 'SUPERADMIN' || role === 'SUPERADMIN';
+    const { organizationId, role } = req.user || {};
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+    const withTx = getTenantTransaction(req);
 
-    const options = {
-      order: [['createdAt', 'DESC']],
-      include: [{
-        model: Patient,
-        as: 'Patient',
+    const labs = await withTx(async (t) => {
+      const options = {
+        where: !isSuperAdmin && organizationId ? { organizationId } : {},
+        order: [['createdAt', 'DESC']],
         include: [{
-          model: User,
-          where: isSuperAdmin ? {} : { organizationId }
-        }]
-      }]
-    };
+          model: Patient,
+          as: 'Patient',
+          include: [{
+            model: User,
+            where: isSuperAdmin || !organizationId ? {} : { organizationId }
+          }]
+        }],
+        transaction: t
+      };
 
-    const labs = await LabResult.findAll(options);
+      return await LabResult.findAll(options);
+    });
+
     res.json(labs);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 };
 
@@ -82,18 +108,31 @@ exports.createExpressOrder = async (req, res) => {
       return res.status(400).json({ message: 'El ID del paciente y el nombre de la prueba son obligatorios' });
     }
 
+    const { organizationId, role } = req.user || {};
+    const withTx = getTenantTransaction(req);
+
     const year = new Date().getFullYear();
     const randomCode = Math.floor(100000 + Math.random() * 900000);
     const sampleBarcode = `LAB-${year}-${randomCode}`;
 
-    const labOrder = await LabResult.create({
-      patientId,
-      testName,
-      referenceRange: referenceRange || 'Normal',
-      price: price ? parseFloat(price) : 0.00,
-      status: 'Pending',
-      sampleStatus: 'ORDERED',
-      sampleBarcode
+    const labOrder = await withTx(async (t) => {
+      const hasAccess = await validatePatientAccess(patientId, organizationId, role, t);
+      if (!hasAccess) {
+        const err = new Error('No tienes acceso a este paciente');
+        err.status = 403;
+        throw err;
+      }
+
+      return await LabResult.create({
+        patientId,
+        organizationId: organizationId || req.body.organizationId || null,
+        testName,
+        referenceRange: referenceRange || 'Normal',
+        price: price ? parseFloat(price) : 0.00,
+        status: 'Pending',
+        sampleStatus: 'ORDERED',
+        sampleBarcode
+      }, { transaction: t });
     });
 
     res.status(201).json({
@@ -103,7 +142,7 @@ exports.createExpressOrder = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in createExpressOrder:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 };
 
@@ -120,22 +159,39 @@ exports.updateSampleStatus = async (req, res) => {
       return res.status(400).json({ message: `Estado de muestra inválido. Valores permitidos: ${validStatuses.join(', ')}` });
     }
 
-    const labOrder = await LabResult.findByPk(id);
-    if (!labOrder) return res.status(404).json({ message: 'Orden de laboratorio no encontrada' });
+    const { organizationId, role } = req.user || {};
+    const isSuperAdmin = role === 'SUPERADMIN' || role === 'PLATFORM_ADMIN';
+    const withTx = getTenantTransaction(req);
 
-    const updateData = { sampleStatus };
+    const labOrder = await withTx(async (t) => {
+      const order = await LabResult.findByPk(id, { transaction: t });
+      if (!order) {
+        const err = new Error('Orden de laboratorio no encontrada');
+        err.status = 404;
+        throw err;
+      }
 
-    if (sampleStatus === 'SAMPLE_COLLECTED' && !labOrder.collectionDate) {
-      updateData.collectionDate = new Date();
-    }
+      if (!isSuperAdmin && organizationId && order.organizationId && order.organizationId !== organizationId) {
+        const err = new Error('Orden de laboratorio no encontrada');
+        err.status = 404;
+        throw err;
+      }
 
-    if (sampleStatus === 'COMPLETED') {
-      updateData.status = 'Completed';
-      if (resultValue) updateData.resultValue = resultValue;
-      if (fileUrl) updateData.fileUrl = fileUrl;
-    }
+      const updateData = { sampleStatus };
 
-    await labOrder.update(updateData);
+      if (sampleStatus === 'SAMPLE_COLLECTED' && !order.collectionDate) {
+        updateData.collectionDate = new Date();
+      }
+
+      if (sampleStatus === 'COMPLETED') {
+        updateData.status = 'Completed';
+        if (resultValue) updateData.resultValue = resultValue;
+        if (fileUrl) updateData.fileUrl = fileUrl;
+      }
+
+      await order.update(updateData, { transaction: t });
+      return order;
+    });
 
     res.json({
       message: `✅ Estado de muestra actualizado a ${sampleStatus}`,
@@ -143,6 +199,6 @@ exports.updateSampleStatus = async (req, res) => {
     });
   } catch (error) {
     console.error('Error in updateSampleStatus:', error);
-    res.status(500).json({ error: error.message });
+    res.status(error.status || 500).json({ error: error.message });
   }
 };

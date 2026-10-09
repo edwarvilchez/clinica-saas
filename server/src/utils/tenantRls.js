@@ -19,6 +19,11 @@ async function setTenantContext(sequelize, { organizationId, isSuperAdmin = fals
   const orgId = organizationId || context.getOrgId() || '';
   const isSuper = isSuperAdmin !== undefined ? isSuperAdmin : (context.getRole() === 'SUPERADMIN' || context.getRole() === 'PLATFORM_ADMIN');
 
+  if (!transaction && process.env.NODE_ENV !== 'test') {
+    const logger = require('./logger');
+    logger.warn({ orgId }, '⚠️ setTenantContext called without explicit transaction; highly discouraged due to connection pooling risks');
+  }
+
   const query = `
     SELECT 
       set_config('app.current_organization_id', :orgId, :isLocal),
@@ -80,17 +85,41 @@ async function withTenantTransaction(sequelize, optionsOrCallback, maybeCallback
   const { organizationId, isSuperAdmin } = options;
 
   return sequelize.transaction(async (t) => {
-    await setTenantContext(sequelize, {
-      organizationId,
-      isSuperAdmin,
-      transaction: t
-    });
+    try {
+      await module.exports.setTenantContext(sequelize, {
+        organizationId,
+        isSuperAdmin,
+        transaction: t
+      });
+    } catch (err) {
+      const tenantErr = new Error(`[TENANT_CONTEXT_FAILED] Failed to initialize RLS tenant context inside transaction: ${err.message}`);
+      tenantErr.code = 'TENANT_CONTEXT_FAILED';
+      tenantErr.original = err;
+      throw tenantErr;
+    }
     return callback(t);
   });
+}
+
+/**
+ * Standard resolver: retrieves req.withTenantTransaction or defaults to withTenantTransaction
+ * @param {object} req 
+ * @returns {function(function(import('sequelize').Transaction): Promise<any>): Promise<any>}
+ */
+function getTenantTransaction(req) {
+  if (req && typeof req.withTenantTransaction === 'function') {
+    return req.withTenantTransaction.bind(req);
+  }
+  const defaultSequelize = require('../config/db.config');
+  return (callback) => withTenantTransaction(defaultSequelize, {
+    organizationId: req?.user?.organizationId,
+    isSuperAdmin: req?.user?.role === 'SUPERADMIN' || req?.user?.role === 'PLATFORM_ADMIN'
+  }, callback);
 }
 
 module.exports = {
   setTenantContext,
   clearTenantContext,
-  withTenantTransaction
+  withTenantTransaction,
+  getTenantTransaction
 };

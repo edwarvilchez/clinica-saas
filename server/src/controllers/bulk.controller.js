@@ -1,6 +1,7 @@
 const { User, Patient, Doctor, LabTest, Role, Specialty, sequelize } = require('../models');
 const fs = require('fs');
 const { isCsvFile, isXlsxFile, validateRecord, parseCsv, parseXlsx } = require('../services/importService');
+const { withTenantTransaction } = require('../utils/tenantRls');
 
 exports.importData = async (req, res) => {
   const { type } = req.params;
@@ -75,25 +76,27 @@ exports.importData = async (req, res) => {
         record._parsedDoc = parsed;
       }
 
-      const t = await sequelize.transaction();
       try {
-        if (type === 'patients') await importPatient(record, t, userOrgId);
-        else if (type === 'doctors') await importDoctor(record, t, userOrgId);
-        else if (type === 'lab_catalog') await importLabTest(record, t, userOrgId);
-        else if (type === 'pharmacy_inventory' || type === 'inventory') await importInventoryItem(record, t, userOrgId);
-        else if (type === 'insurance_companies') await importInsuranceCompany(record, t, userOrgId);
-        else if (type === 'baremos') await importBaremoService(record, t, userOrgId);
-        else throw new Error(`Tipo de importación inválido: ${type}`);
+        await withTenantTransaction(sequelize, { organizationId: userOrgId, isSuperAdmin }, async (t) => {
+          if (type === 'patients') await importPatient(record, t, userOrgId);
+          else if (type === 'doctors') await importDoctor(record, t, userOrgId);
+          else if (type === 'lab_catalog') await importLabTest(record, t, userOrgId);
+          else if (type === 'pharmacy_inventory' || type === 'inventory') await importInventoryItem(record, t, userOrgId);
+          else if (type === 'insurance_companies') await importInsuranceCompany(record, t, userOrgId);
+          else if (type === 'baremos') await importBaremoService(record, t, userOrgId);
+          else throw new Error(`Tipo de importación inválido: ${type}`);
 
-        if (dryRun) {
-          await t.rollback(); // En modo simulación siempre revertimos cambios
-        } else {
-          await t.commit();
-        }
+          if (dryRun) {
+            throw new Error('__DRY_RUN_ROLLBACK__');
+          }
+        });
         successCount++;
       } catch (err) {
-        await t.rollback();
-        errors.push({ row: rowIndex, field: 'transaction', message: err.message });
+        if (err.message === '__DRY_RUN_ROLLBACK__') {
+          successCount++;
+        } else {
+          errors.push({ row: rowIndex, field: 'transaction', message: err.message });
+        }
       }
     }
 

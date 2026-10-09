@@ -22,9 +22,31 @@ const CRITICAL_ACTIONS = new Set([
   'ORGANIZATION_ADMIN'
 ]);
 
+const SENSITIVE_FIELDS = new Set([
+  'password', 'token', 'refreshtoken', 'resettoken', 'twofactorsecret',
+  'recoverycodes', 'secret', 'apikey', 'authorization', 'cookie'
+]);
+
+function redactSensitiveData(data) {
+  if (!data || typeof data !== 'object') return data;
+  if (Array.isArray(data)) return data.map(redactSensitiveData);
+  const sanitized = {};
+  for (const [k, v] of Object.entries(data)) {
+    const lowerKey = k.toLowerCase();
+    if (SENSITIVE_FIELDS.has(lowerKey) || lowerKey.includes('password') || lowerKey.includes('token') || lowerKey.includes('secret')) {
+      sanitized[k] = '[REDACTED]';
+    } else if (typeof v === 'object' && v !== null) {
+      sanitized[k] = redactSensitiveData(v);
+    } else {
+      sanitized[k] = v;
+    }
+  }
+  return sanitized;
+}
+
 class AuditService {
   constructor() {
-    this.ignoredDiffFields = ['createdAt', 'updatedAt', 'password', 'deletedAt'];
+    this.ignoredDiffFields = ['createdAt', 'updatedAt', 'password', 'deletedAt', 'token', 'resetToken', 'twoFactorSecret', 'recoveryCodes'];
   }
 
   /**
@@ -109,11 +131,15 @@ class AuditService {
    * @returns {Promise<string>}
    */
   async getLatestHash(organizationId = null, transaction = null) {
-    try {
-      const whereClause = organizationId ? { organizationId } : { organizationId: null };
+    const { Op } = require('sequelize');
+    const whereClause = {
+      ...(organizationId !== undefined && organizationId !== null ? { organizationId } : { organizationId: null }),
+      currentHash: { [Op.ne]: null }
+    };
 
-      // We bypass standard tenant filtering to query the exact audit tip
-      const latest = await AuditLog.findOne({
+    let latest;
+    try {
+      latest = await AuditLog.findOne({
         where: whereClause,
         order: [
           ['timestamp', 'DESC'],
@@ -124,12 +150,12 @@ class AuditService {
         // Bypass hooks that might restrict finding the latest entry
         hooks: false
       });
-
-      return latest ? latest.currentHash : GENESIS_HASH;
     } catch (err) {
-      logger.warn({ error: err.message, organizationId }, 'Failed to fetch latest audit hash, fallback to GENESIS');
-      return GENESIS_HASH;
+      logger.error({ error: err.message, organizationId }, '❌ Failed to fetch latest audit hash from database (fail-closed, aborting operation)');
+      throw err;
     }
+
+    return latest ? latest.currentHash : GENESIS_HASH;
   }
 
   /**
@@ -167,20 +193,22 @@ class AuditService {
       const ctx = context.get() || {};
       const resolvedOrgId = organizationId !== undefined ? organizationId : (ctx.organizationId || null);
 
-      // 🔒 Concurrency lock: Acquire transaction-scoped PostgreSQL advisory lock per organization
-      // Hashing the string into an integer prevents concurrent race conditions and chain forking
-      try {
+      // 🔒 Concurrency lock: Fail-Closed transactional advisory lock in PostgreSQL
+      if (sequelize.getDialect() === 'postgres') {
         const lockKeyStr = `audit_chain_${resolvedOrgId || 'global'}`;
-        await sequelize.query(
-          `SELECT pg_advisory_xact_lock(hashtext(:lockKey));`,
-          {
-            replacements: { lockKey: lockKeyStr },
-            transaction,
-            logging: false
-          }
-        );
-      } catch (lockErr) {
-        // Continue if advisory lock is not supported or during test fallback
+        try {
+          await sequelize.query(
+            `SELECT pg_advisory_xact_lock(hashtext(:lockKey));`,
+            {
+              replacements: { lockKey: lockKeyStr },
+              transaction,
+              logging: false
+            }
+          );
+        } catch (lockErr) {
+          logger.error({ error: lockErr.message, lockKeyStr }, '❌ Advisory lock acquisition failed (fail-closed)');
+          throw lockErr;
+        }
       }
 
       const resolvedActorId = actorUserId !== undefined ? actorUserId : (ctx.userId || null);
@@ -193,19 +221,25 @@ class AuditService {
         finalChanges = this.calculateDiff(oldValues, newValues);
       }
 
+      // Redact sensitive data before hashing and storing
+      const sanitizedOld = oldValues ? redactSensitiveData(JSON.parse(JSON.stringify(oldValues))) : null;
+      const sanitizedNew = newValues ? redactSensitiveData(JSON.parse(JSON.stringify(newValues))) : null;
+      const sanitizedChanges = finalChanges ? redactSensitiveData(JSON.parse(JSON.stringify(finalChanges))) : null;
+      const sanitizedMetadata = metadata ? redactSensitiveData(JSON.parse(JSON.stringify(metadata))) : null;
+
       const timestamp = new Date();
 
       // Retrieve previous hash in this organization's chain (strictly serialized under advisory lock)
       const previousHash = await this.getLatestHash(resolvedOrgId, transaction);
 
-      // Compute current cryptographic SHA-256 hash
+      // Compute current cryptographic SHA-256 hash using sanitized payload
       const currentHash = this.computeAuditHash({
         action,
         actorUserId: resolvedActorId,
-        changes: finalChanges,
+        changes: sanitizedChanges,
         entity,
         entityId,
-        metadata,
+        metadata: sanitizedMetadata,
         organizationId: resolvedOrgId,
         timestamp
       }, previousHash);
@@ -216,13 +250,13 @@ class AuditService {
         action,
         entity,
         entityId: entityId ? String(entityId) : null,
-        oldValues: oldValues ? JSON.parse(JSON.stringify(oldValues)) : null,
-        newValues: newValues ? JSON.parse(JSON.stringify(newValues)) : null,
-        changes: finalChanges,
+        oldValues: sanitizedOld,
+        newValues: sanitizedNew,
+        changes: sanitizedChanges,
         ip: resolvedIp,
         userAgent: resolvedUserAgent,
         requestId: resolvedRequestId,
-        metadata: metadata ? JSON.parse(JSON.stringify(metadata)) : null,
+        metadata: sanitizedMetadata,
         timestamp,
         previousHash,
         currentHash
@@ -251,8 +285,8 @@ class AuditService {
       }, '❌ Failed to record tamper-evident audit log');
 
       // Failure policy: critical actions roll back the business transaction
-      if (isCritical || CRITICAL_ACTIONS.has(action)) {
-        const auditErr = new Error(`Critical audit logging failure for ${action}: ${error.message}`);
+      if (isCritical || CRITICAL_ACTIONS.has(action) || transaction) {
+        const auditErr = new Error(`[CRITICAL_AUDIT_LOG_FAILED] Critical audit logging failure for ${action}: ${error.message}`);
         auditErr.code = 'CRITICAL_AUDIT_LOG_FAILED';
         throw auditErr;
       }
@@ -287,47 +321,110 @@ class AuditService {
       });
 
       if (logs.length === 0) {
-        return { verified: true, count: 0, message: 'No logs found to verify' };
+        return {
+          verified: false,
+          status: 'EMPTY',
+          totalRecords: 0,
+          count: 0,
+          tipHash: null,
+          historicalUnhashed: { count: 0, status: 'NONE' },
+          cryptographicSegments: { verifiedCount: 0, tipHash: null },
+          breaks: [],
+          message: 'No logs found to verify'
+        };
       }
+
+      let lastHashedLog = null;
+      let firstHashedLog = null;
+      let legacyUnhashedCount = 0;
+      let verifiedCount = 0;
+      const breaks = [];
 
       for (let i = 0; i < logs.length; i++) {
         const currentLog = logs[i];
 
-        // 1. Check previous hash connection
-        if (i > 0) {
-          const previousLog = logs[i - 1];
-          if (currentLog.previousHash !== previousLog.currentHash) {
-            return {
-              verified: false,
-              count: i,
-              brokenAt: currentLog.id,
+        // Legacy unhashed entry preserved as raw evidence
+        if (!currentLog.currentHash) {
+          legacyUnhashedCount++;
+          continue;
+        }
+
+        if (!firstHashedLog) {
+          firstHashedLog = currentLog;
+        }
+
+        // 1. Check previous hash connection against predecessor hashed log
+        if (lastHashedLog) {
+          if (currentLog.previousHash !== lastHashedLog.currentHash) {
+            breaks.push({
+              logId: currentLog.id,
+              previousHash: currentLog.previousHash,
+              expectedPreviousHash: lastHashedLog.currentHash,
               reason: `Chain broken at log ${currentLog.id}: previousHash does not match predecessor currentHash.`
-            };
+            });
           }
         }
 
         // 2. Re-compute hash and verify against stored currentHash
         const recomputedHash = this.computeAuditHash(currentLog, currentLog.previousHash);
         if (recomputedHash !== currentLog.currentHash) {
-          return {
-            verified: false,
-            count: i,
-            brokenAt: currentLog.id,
+          breaks.push({
+            logId: currentLog.id,
+            storedHash: currentLog.currentHash,
+            recomputedHash,
             reason: `Data tampering detected at log ${currentLog.id}: recomputed hash ${recomputedHash} does not match stored currentHash ${currentLog.currentHash}.`
-          };
+          });
         }
+
+        lastHashedLog = currentLog;
+        verifiedCount++;
+      }
+
+      // STRICT VERIFICATION POLICY:
+      // Never mark the entire chain as verified if there are unsealed historical records or breaks
+      const isFullyVerified = legacyUnhashedCount === 0 && breaks.length === 0 && verifiedCount > 0;
+
+      let status = 'FULLY_VERIFIED';
+      if (breaks.length > 0) {
+        status = 'CHAIN_BROKEN';
+      } else if (legacyUnhashedCount > 0) {
+        status = 'PARTIAL_HISTORICAL_UNHASHED';
       }
 
       return {
-        verified: true,
-        count: logs.length,
-        tipHash: logs[logs.length - 1].currentHash
+        verified: isFullyVerified, // Strictly false if any unsealed or broken records exist
+        status,
+        totalRecords: logs.length,
+        count: verifiedCount,
+        tipHash: lastHashedLog ? lastHashedLog.currentHash : null,
+        historicalUnhashed: {
+          count: legacyUnhashedCount,
+          status: legacyUnhashedCount > 0 ? 'PRESERVED_HISTORICAL_EVIDENCE' : 'NONE',
+          message: legacyUnhashedCount > 0 
+            ? `Contains ${legacyUnhashedCount} historical records prior to cryptographic chaining. Preserved as original evidence without synthetic fabrication.`
+            : 'No unhashed historical records present.'
+        },
+        cryptographicSegments: {
+          verifiedCount,
+          firstHashedId: firstHashedLog ? firstHashedLog.id : null,
+          tipHash: lastHashedLog ? lastHashedLog.currentHash : null
+        },
+        breaks,
+        brokenAt: breaks[0]?.logId || null,
+        reason: breaks[0]?.reason || (legacyUnhashedCount > 0 ? `Chain contains ${legacyUnhashedCount} historical unhashed records. Cannot certify entire historical timeline.` : null)
       };
     } catch (err) {
       logger.error({ error: err.message }, 'Failed during audit chain verification');
       return {
         verified: false,
+        status: 'VERIFICATION_ERROR',
+        totalRecords: 0,
         count: 0,
+        tipHash: null,
+        historicalUnhashed: { count: 0, status: 'ERROR' },
+        cryptographicSegments: { verifiedCount: 0, tipHash: null },
+        breaks: [{ reason: err.message }],
+        brokenAt: null,
         reason: `Verification error: ${err.message}`
       };
     }

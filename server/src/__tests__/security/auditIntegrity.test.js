@@ -58,9 +58,9 @@ describe('🛡️ FASE 2: Audit Integrity & Tamper-Evidence Security Suite', () 
     // We clean up test organizations and users
     await setTenantContext(sequelize, { isSuperAdmin: true });
     try {
-      if (testUserA) await User.destroy({ where: { id: testUserA.id }, force: true });
       if (testOrgA) await Organization.destroy({ where: { id: testOrgA.id }, force: true });
       if (testOrgB) await Organization.destroy({ where: { id: testOrgB.id }, force: true });
+      if (testUserA) await User.destroy({ where: { id: testUserA.id }, force: true });
     } catch (e) {
       // Ignore cleanup error
     }

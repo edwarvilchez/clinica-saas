@@ -161,40 +161,82 @@ exports.getPaymentReceipt = async (req, res) => {
   try {
     const { id } = req.params;
     const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+    const tenantRls = require('../utils/tenantRls');
+    const { sequelize } = require('../models');
 
-    const payment = await Payment.findByPk(id);
-    if (!payment || !payment.receiptUrl) {
-      return res.status(404).json({ message: 'Comprobante de pago no encontrado' });
-    }
+    const withTx = typeof req.withTenantTransaction === 'function'
+      ? req.withTenantTransaction.bind(req)
+      : (cb) => tenantRls.withTenantTransaction(sequelize, {
+          organizationId: req.user?.organizationId,
+          isSuperAdmin: req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN'
+        }, cb);
 
-    // Tenant check
-    if (!isSuperAdmin) {
-      const isSameOrg = req.user.organizationId && payment.organizationId === req.user.organizationId;
-      
-      // If user is patient, verify patient ownership
-      let isOwnerPatient = false;
-      if (req.user.role === 'PATIENT' && payment.patientId) {
-        const patient = await Patient.findOne({ where: { userId: req.user.id } });
-        if (patient && patient.id === payment.patientId) {
-          isOwnerPatient = true;
+    const checkResult = await withTx(async (t) => {
+      const payment = await Payment.findByPk(id, { transaction: t });
+      if (!payment || !payment.receiptUrl) {
+        return { status: 404, payload: { message: 'Comprobante de pago no encontrado' } };
+      }
+
+      // Tenant check
+      if (!isSuperAdmin) {
+        const isSameOrg = req.user.organizationId && payment.organizationId === req.user.organizationId;
+        
+        // If user is patient, verify patient ownership
+        let isOwnerPatient = false;
+        if (req.user.role === 'PATIENT' && payment.patientId) {
+          const patient = await Patient.findOne({ where: { userId: req.user.id }, transaction: t });
+          if (patient && patient.id === payment.patientId) {
+            isOwnerPatient = true;
+          }
+        }
+
+        if (!isSameOrg && !isOwnerPatient) {
+          return { status: 403, payload: { message: 'No tienes autorización para ver este comprobante' } };
         }
       }
 
-      if (!isSameOrg && !isOwnerPatient) {
-        return res.status(403).json({ message: 'No tienes autorización para ver este comprobante' });
-      }
+      return { status: 200, payment };
+    });
+
+    if (checkResult.status !== 200) {
+      return res.status(checkResult.status).json(checkResult.payload);
     }
+
+    const payment = checkResult.payment;
 
     // If stored as storage key or URL
     let storageKey = payment.receiptUrl;
     if (storageKey.startsWith('/uploads/')) {
-      // Legacy upload fallback: check legacy directory or map to filename
-      const legacyPath = path.resolve(__dirname, '../../uploads', storageKey.replace('/uploads/', ''));
-      if (fs.existsSync(legacyPath)) {
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-        return fs.createReadStream(legacyPath).pipe(res);
+      const relativePart = storageKey.replace('/uploads/', '').trim();
+      if (relativePart.includes('..') || relativePart.includes('\0')) {
+        return res.status(403).json({ message: 'Ruta de comprobante inválida o intento de traversal bloqueado' });
       }
+
+      const uploadsBase = path.resolve(__dirname, '../../../uploads');
+      const canonicalBase = path.resolve(uploadsBase);
+      const targetPath = path.resolve(canonicalBase, relativePart);
+
+      // Verify directory boundary with separator
+      if (!targetPath.startsWith(canonicalBase + path.sep)) {
+        return res.status(403).json({ message: 'Acceso denegado: violación de contención de directorio' });
+      }
+
+      if (!fs.existsSync(targetPath)) {
+        return res.status(404).json({ message: 'Comprobante legacy no encontrado en disco' });
+      }
+
+      // Check symlink escape
+      const real = fs.realpathSync(targetPath);
+      if (!real.startsWith(canonicalBase + path.sep)) {
+        return res.status(403).json({ message: 'Acceso denegado: symlink traversal detectado' });
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Content-Security-Policy', "default-src 'none'");
+      res.setHeader('Cache-Control', 'private, no-cache, no-store, must-revalidate');
+      res.setHeader('Content-Disposition', `inline; filename="recibo_${payment.id}.pdf"`);
+      return fs.createReadStream(real).pipe(res);
     }
 
     // Stream from secure storage

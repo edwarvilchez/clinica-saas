@@ -1,16 +1,22 @@
+'use strict';
+
 const context = require('../utils/context');
-const { setTenantContext, clearTenantContext } = require('../utils/tenantRls');
+const tenantRls = require('../utils/tenantRls');
 const sequelize = require('../config/db.config');
+const logger = require('../utils/logger');
 
 /**
  * Request Context Middleware
  * Must be executed AFTER auth/verifyToken
+ * Guarantees strict fail-closed security: if tenant context fails to initialize, halts request immediately.
  */
 const contextMiddleware = (req, res, next) => {
   const isSuperAdmin = req.user?.role === 'SUPERADMIN' || req.user?.role === 'PLATFORM_ADMIN';
+  const organizationId = req.user?.organizationId || null;
+
   const data = {
     userId: req.user?.id || null,
-    organizationId: req.user?.organizationId || null,
+    organizationId,
     role: req.user?.role || null,
     isSuperAdmin,
     requestId: req.get('x-request-id') || null,
@@ -18,26 +24,19 @@ const contextMiddleware = (req, res, next) => {
     userAgent: req.get('user-agent') || 'system'
   };
 
-  context.storage.run(data, async () => {
-    let sessionConfigured = false;
-    if (req.user?.organizationId || isSuperAdmin) {
-      try {
-        await setTenantContext(sequelize, {
-          organizationId: req.user?.organizationId,
-          isSuperAdmin
-        });
-        sessionConfigured = true;
-      } catch (err) {
-        // Silently continue if session config encounters an error
-      }
-    }
+  // Attach transaction helper directly to req for routes that require strict transactional RLS isolation
+  // Guarantees RLS context is established strictly on the transaction's connection and fails closed
+  req.withTenantTransaction = (callback) => {
+    return tenantRls.withTenantTransaction(sequelize, { organizationId, isSuperAdmin }, callback);
+  };
 
-    if (sessionConfigured) {
-      res.on('finish', () => {
-        clearTenantContext(sequelize).catch(() => {});
-      });
-    }
+  req.tenantContext = {
+    organizationId,
+    isSuperAdmin,
+    userId: data.userId
+  };
 
+  return context.storage.run(data, () => {
     next();
   });
 };
