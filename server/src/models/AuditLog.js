@@ -100,7 +100,7 @@ const AuditLog = sequelize.define('AuditLog', {
   },
   currentHash: {
     type: DataTypes.STRING(64),
-    allowNull: false
+    allowNull: true // Nullable to preserve unhashed historical records; newly created logs always enforce a computed hash
   }
 }, {
   tableName: 'audit_logs',

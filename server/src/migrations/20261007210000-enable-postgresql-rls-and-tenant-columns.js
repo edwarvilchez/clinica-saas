@@ -46,13 +46,21 @@ const TENANT_RLS_TABLES = [
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
-    // 1. Add organizationId and Index to clinical tables that lacked direct column
-    for (const tableName of TABLES_NEEDING_ORG_COLUMN) {
+    // 1. Strict table pre-flight check: all expected tenant tables must exist (no silent skips)
+    const missingTables = [];
+    for (const tableName of TENANT_RLS_TABLES) {
       const exists = await queryInterface.tableExists(tableName);
       if (!exists) {
-        continue;
+        missingTables.push(tableName);
       }
+    }
 
+    if (missingTables.length > 0) {
+      throw new Error(`[Migration RLS FATAL] Required tenant tables do not exist in database: ${missingTables.join(', ')}. Aborting migration.`);
+    }
+
+    // 2. Add organizationId and Index to clinical tables that lacked direct column
+    for (const tableName of TABLES_NEEDING_ORG_COLUMN) {
       const tableDescription = await queryInterface.describeTable(tableName);
       if (!tableDescription.organizationId) {
         console.log(`[Migration RLS] Adding organizationId column to "${tableName}"...`);
@@ -73,13 +81,21 @@ module.exports = {
       }
     }
 
-    // 2. Enable & Force Row Level Security (RLS) on all tenant-scoped tables (Fail-Fast)
+    // 3. Verify that EVERY table in TENANT_RLS_TABLES has the tenant column (fail-fast)
+    const missingOrgColTables = [];
     for (const tableName of TENANT_RLS_TABLES) {
-      const exists = await queryInterface.tableExists(tableName);
-      if (!exists) {
-        continue;
+      const desc = await queryInterface.describeTable(tableName);
+      if (!desc.organizationId) {
+        missingOrgColTables.push(tableName);
       }
+    }
 
+    if (missingOrgColTables.length > 0) {
+      throw new Error(`[Migration RLS FATAL] Tables missing required tenant column "organizationId": ${missingOrgColTables.join(', ')}. Aborting migration.`);
+    }
+
+    // 4. Enable & Force Row Level Security (RLS) and apply policy on all tenant-scoped tables
+    for (const tableName of TENANT_RLS_TABLES) {
       // Enable RLS
       await queryInterface.sequelize.query(`
         ALTER TABLE "${tableName}" ENABLE ROW LEVEL SECURITY;
@@ -116,27 +132,44 @@ module.exports = {
       console.log(`[Migration RLS] ✅ RLS policy enforced on "${tableName}"`);
     }
 
-    // 3. Post-verification: verify that RLS is active on all existing tables
+    // 5. Post-verification: verify that RLS, FORCE RLS, and policy are active on ALL 26 tables
     const [rlsCatalog] = await queryInterface.sequelize.query(`
-      SELECT c.relname, c.relrowsecurity, c.relforcerowsecurity
+      SELECT 
+        c.relname,
+        c.relrowsecurity,
+        c.relforcerowsecurity,
+        pol.polname
       FROM pg_class c
       JOIN pg_namespace n ON n.oid = c.relnamespace
+      LEFT JOIN pg_policy pol ON pol.polrelid = c.oid AND pol.polname = 'tenant_isolation_policy'
       WHERE n.nspname = 'public'
         AND c.relname IN (${TENANT_RLS_TABLES.map(t => `'${t}'`).join(', ')});
     `);
 
-    const unverified = [];
+    const catalogMap = new Map();
     for (const row of rlsCatalog) {
-      if (!row.relrowsecurity || !row.relforcerowsecurity) {
-        unverified.push(row.relname);
+      catalogMap.set(row.relname, row);
+    }
+
+    const failedTables = [];
+    for (const tableName of TENANT_RLS_TABLES) {
+      const entry = catalogMap.get(tableName);
+      if (!entry) {
+        failedTables.push(`${tableName} (missing in PostgreSQL catalog)`);
+      } else if (!entry.relrowsecurity) {
+        failedTables.push(`${tableName} (relrowsecurity is false)`);
+      } else if (!entry.relforcerowsecurity) {
+        failedTables.push(`${tableName} (relforcerowsecurity is false)`);
+      } else if (entry.polname !== 'tenant_isolation_policy') {
+        failedTables.push(`${tableName} (tenant_isolation_policy missing)`);
       }
     }
 
-    if (unverified.length > 0) {
-      throw new Error(`[Migration RLS FATAL] Failed to enforce RLS and FORCE RLS on tables: ${unverified.join(', ')}`);
+    if (failedTables.length > 0) {
+      throw new Error(`[Migration RLS FATAL] Row Level Security verification failed on tables:\n  - ${failedTables.join('\n  - ')}`);
     }
 
-    console.log(`[Migration RLS] ✅ All ${rlsCatalog.length} tables verified with active RLS and FORCE RLS`);
+    console.log(`[Migration RLS] ✅ All ${TENANT_RLS_TABLES.length} tables verified with active RLS, FORCE RLS, and tenant_isolation_policy`);
   },
 
   down: async (queryInterface, Sequelize) => {

@@ -25,30 +25,18 @@ const contextMiddleware = (req, res, next) => {
   };
 
   // Attach transaction helper directly to req for routes that require strict transactional RLS isolation
+  // Guarantees RLS context is established strictly on the transaction's connection and fails closed
   req.withTenantTransaction = (callback) => {
     return tenantRls.withTenantTransaction(sequelize, { organizationId, isSuperAdmin }, callback);
   };
 
-  return context.storage.run(data, async () => {
-    if (organizationId || isSuperAdmin) {
-      try {
-        await tenantRls.setTenantContext(sequelize, {
-          organizationId,
-          isSuperAdmin
-        });
-      } catch (err) {
-        logger.error({ error: err.message, organizationId }, '❌ Failed to initialize multi-tenant RLS context');
-        return res.status(500).json({
-          error: 'SECURITY_CONTEXT_INITIALIZATION_FAILED',
-          message: 'Error crítico de aislamiento de seguridad multi-tenant. La solicitud fue abortada.'
-        });
-      }
+  req.tenantContext = {
+    organizationId,
+    isSuperAdmin,
+    userId: data.userId
+  };
 
-      res.on('finish', () => {
-        tenantRls.clearTenantContext(sequelize).catch(() => {});
-      });
-    }
-
+  return context.storage.run(data, () => {
     next();
   });
 };

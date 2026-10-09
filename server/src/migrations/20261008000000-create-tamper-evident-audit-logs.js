@@ -98,6 +98,10 @@ module.exports = {
       });
     } else {
       // 2. Safe Incremental Migration for Existing Schema (Preserves all historical rows)
+      await queryInterface.sequelize.query(`
+        DROP TRIGGER IF EXISTS trg_prevent_audit_log_mutation ON audit_logs;
+      `);
+
       const tableDescription = await queryInterface.describeTable('audit_logs');
 
       // 2.1 Migrate ID to UUID if previously integer, preserving row identity deterministically
@@ -184,12 +188,16 @@ module.exports = {
         });
       }
 
-      // 2.6 Add cryptographic hash chaining columns
+      // 2.6 Add cryptographic hash chaining columns (allowNull: true to preserve historical unhashed records)
       if (!tableDescription.previousHash) {
         await queryInterface.addColumn('audit_logs', 'previousHash', {
           type: Sequelize.STRING(64),
           allowNull: true
         });
+      } else {
+        await queryInterface.sequelize.query(`
+          ALTER TABLE audit_logs ALTER COLUMN "previousHash" DROP NOT NULL;
+        `);
       }
 
       if (!tableDescription.currentHash) {
@@ -197,16 +205,37 @@ module.exports = {
           type: Sequelize.STRING(64),
           allowNull: true
         });
-
-        // Compute valid genesis/transition hashes for existing historical rows
+      } else {
         await queryInterface.sequelize.query(`
-          UPDATE audit_logs 
-          SET "currentHash" = encode(sha256((coalesce("action"::text, '') || coalesce("entity"::text, '') || coalesce("timestamp"::text, '') || id::text)::bytea), 'hex')
-          WHERE "currentHash" IS NULL;
+          ALTER TABLE audit_logs ALTER COLUMN "currentHash" DROP NOT NULL;
         `);
+      }
 
+      // 2.7 Transparent historical inspection: preserve evidence without inventing fake cryptographic integrity
+      const [hashStats] = await queryInterface.sequelize.query(`
+        SELECT 
+          COUNT(*)::int as total_rows,
+          COUNT(*) FILTER (WHERE "currentHash" IS NULL)::int as null_hashes,
+          COUNT(*) FILTER (WHERE "currentHash" IS NOT NULL)::int as hashed_rows
+        FROM audit_logs;
+      `);
+
+      const stats = hashStats[0] || { total_rows: 0, null_hashes: 0, hashed_rows: 0 };
+      console.log(`[Migration Audit] Historical audit inspection: Total: ${stats.total_rows}, Legacy Unhashed: ${stats.null_hashes}, Cryptographically Hashed: ${stats.hashed_rows}`);
+
+      if (stats.null_hashes > 0) {
+        console.log(`[Migration Audit] ⚠️ Preserving ${stats.null_hashes} legacy audit entries without fabricating synthetic hashes. Integrity status transparently recorded.`);
+        
+        // Transparently annotate legacy migration status in metadata without modifying raw evidence
         await queryInterface.sequelize.query(`
-          ALTER TABLE audit_logs ALTER COLUMN "currentHash" SET NOT NULL;
+          UPDATE audit_logs
+          SET metadata = jsonb_set(
+            COALESCE(metadata, '{}'::jsonb),
+            '{migrationStatus}',
+            '"PRESERVED_HISTORICAL_UNHASHED"'::jsonb,
+            true
+          )
+          WHERE "currentHash" IS NULL;
         `);
       }
     }

@@ -131,11 +131,15 @@ class AuditService {
    * @returns {Promise<string>}
    */
   async getLatestHash(organizationId = null, transaction = null) {
-    try {
-      const whereClause = organizationId ? { organizationId } : { organizationId: null };
+    const { Op } = require('sequelize');
+    const whereClause = {
+      ...(organizationId !== undefined && organizationId !== null ? { organizationId } : { organizationId: null }),
+      currentHash: { [Op.ne]: null }
+    };
 
-      // We bypass standard tenant filtering to query the exact audit tip
-      const latest = await AuditLog.findOne({
+    let latest;
+    try {
+      latest = await AuditLog.findOne({
         where: whereClause,
         order: [
           ['timestamp', 'DESC'],
@@ -146,12 +150,12 @@ class AuditService {
         // Bypass hooks that might restrict finding the latest entry
         hooks: false
       });
-
-      return latest ? latest.currentHash : GENESIS_HASH;
     } catch (err) {
-      logger.warn({ error: err.message, organizationId }, 'Failed to fetch latest audit hash, fallback to GENESIS');
-      return GENESIS_HASH;
+      logger.error({ error: err.message, organizationId }, '❌ Failed to fetch latest audit hash from database (fail-closed, aborting operation)');
+      throw err;
     }
+
+    return latest ? latest.currentHash : GENESIS_HASH;
   }
 
   /**
@@ -320,16 +324,26 @@ class AuditService {
         return { verified: true, count: 0, message: 'No logs found to verify' };
       }
 
+      let lastHashedLog = null;
+      let legacyUnhashedCount = 0;
+      let verifiedCount = 0;
+
       for (let i = 0; i < logs.length; i++) {
         const currentLog = logs[i];
 
-        // 1. Check previous hash connection
-        if (i > 0) {
-          const previousLog = logs[i - 1];
-          if (currentLog.previousHash !== previousLog.currentHash) {
+        // Legacy unhashed entry preserved as raw evidence
+        if (!currentLog.currentHash) {
+          legacyUnhashedCount++;
+          continue;
+        }
+
+        // 1. Check previous hash connection against predecessor hashed log
+        if (lastHashedLog) {
+          if (currentLog.previousHash !== lastHashedLog.currentHash) {
             return {
               verified: false,
-              count: i,
+              count: verifiedCount,
+              legacyUnhashedCount,
               brokenAt: currentLog.id,
               reason: `Chain broken at log ${currentLog.id}: previousHash does not match predecessor currentHash.`
             };
@@ -341,17 +355,22 @@ class AuditService {
         if (recomputedHash !== currentLog.currentHash) {
           return {
             verified: false,
-            count: i,
+            count: verifiedCount,
+            legacyUnhashedCount,
             brokenAt: currentLog.id,
             reason: `Data tampering detected at log ${currentLog.id}: recomputed hash ${recomputedHash} does not match stored currentHash ${currentLog.currentHash}.`
           };
         }
+
+        lastHashedLog = currentLog;
+        verifiedCount++;
       }
 
       return {
         verified: true,
-        count: logs.length,
-        tipHash: logs[logs.length - 1].currentHash
+        count: verifiedCount,
+        legacyUnhashedCount,
+        tipHash: lastHashedLog ? lastHashedLog.currentHash : null
       };
     } catch (err) {
       logger.error({ error: err.message }, 'Failed during audit chain verification');
