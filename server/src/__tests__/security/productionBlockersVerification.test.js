@@ -54,29 +54,50 @@ describe('🛡️ PRODUCTION BLOCKERS HARDENING & VERIFICATION SUITE', () => {
         $$;
       `);
 
-      const orgs = await Organization.findAll({ limit: 2 });
+      let orgs = await Organization.findAll({ limit: 2 });
       if (orgs.length >= 2) {
         orgA = orgs[0].id;
         orgB = orgs[1].id;
       } else {
-        const user = await User.findOne();
-        const fallbackOwner = user ? user.id : uuidv4();
-        const o1 = await Organization.create({
-          id: uuidv4(),
-          name: 'Org A Test',
-          code: `OA-${Date.now() % 10000}`,
-          type: 'CLINIC',
-          ownerId: fallbackOwner
-        });
-        const o2 = await Organization.create({
-          id: uuidv4(),
-          name: 'Org B Test',
-          code: `OB-${Date.now() % 10000}`,
-          type: 'CLINIC',
-          ownerId: fallbackOwner
-        });
-        orgA = o1.id;
-        orgB = o2.id;
+        const { Role } = require('../../models');
+        let user = await User.findOne();
+        if (!user) {
+          const role = await Role.findOne({ where: { name: 'DOCTOR' } }) ||
+                       await Role.create({ name: 'DOCTOR' });
+          user = await User.create({
+            id: uuidv4(),
+            username: `prod_blocker_user_${Date.now()}`,
+            email: `prod_blocker_user_${Date.now()}@test.com`,
+            password: 'Password123!',
+            roleId: role.id,
+            isActive: true
+          });
+        }
+        if (orgs.length === 1) {
+          orgA = orgs[0].id;
+          const o2 = await Organization.create({
+            id: uuidv4(),
+            name: `Org B Test ${Date.now()}`,
+            type: 'CLINIC',
+            ownerId: user.id
+          });
+          orgB = o2.id;
+        } else {
+          const o1 = await Organization.create({
+            id: uuidv4(),
+            name: `Org A Test ${Date.now()}`,
+            type: 'CLINIC',
+            ownerId: user.id
+          });
+          const o2 = await Organization.create({
+            id: uuidv4(),
+            name: `Org B Test ${Date.now()}`,
+            type: 'CLINIC',
+            ownerId: user.id
+          });
+          orgA = o1.id;
+          orgB = o2.id;
+        }
       }
     }
   });
